@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel>
+<title>Some Songs</title><podcast:guid>07adf84f-c1fa-47a7-a121-0fb544e859bd</podcast:guid><podcast:medium>music</podcast:medium>
+<atom:link href="https://phafe.com/x/some_songs.xml" rel="self" type="application/rss+xml"/>
+<itunes:image href="https://phafe.com/x/MezzaForte_profile-300.png"/>
+<podcast:publisher>
+<podcast:remoteItem medium="publisher" feedGuid="9620e1f8-0cca-5f08-b947-1c8f93244ff8" feedUrl="https://phafe.com/x/mezza.xml" rel="artist"/>
+<podcast:remoteItem medium="publisher" feedGuid="a9ce0ee9-fe9f-4495-b7b8-ebae25ff2112" feedUrl="https://phafe.com/Phafe.xml" rel="label studio host"/>
+</podcast:publisher></channel></rss>

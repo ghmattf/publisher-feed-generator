@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:foo="https://example.com/ns/foo" version="2.0">
+  <channel>
+    <title>Phafe</title>
+    <itunes:author>Phafe Records</itunes:author>
+    <description>A label &amp; studio.</description>
+    <link>https://phafe.com</link>
+    <language>en</language>
+    <generator>Old Generator</generator>
+    <lastBuildDate>Tue, 06 Oct 2026 10:10:06 GMT</lastBuildDate>
+    <pubDate>Tue, 06 Oct 2026 10:10:06 GMT</pubDate>
+    <podcast:guid>a9ce0ee9-fe9f-4495-b7b8-ebae25ff2112</podcast:guid>
+    <podcast:txt purpose="npub">npub12znrejs4k94kp5efhyhk9rzr9jxpy6ymgrlf6py4awpkkhed7cmshs6yg6</podcast:txt>
+    <podcast:txt purpose="other">keep me</podcast:txt>
+    <itunes:category text="Music"><itunes:category text="Music Commentary"/></itunes:category>
+    <image><url>https://phafe.com/img/phafe.png</url><title>Phafe</title><link>https://phafe.com</link></image>
+    <itunes:image href="https://phafe.com/img/phafe.png"/>
+    <podcast:medium>publisher</podcast:medium>
+    <itunes:explicit>no</itunes:explicit>
+    <itunes:new-feed-url>https://phafe.com/Phafe.xml</itunes:new-feed-url>
+    <podcast:locked owner="hello@phafe.com">yes</podcast:locked>
+    <foo:thing a="1">bar &amp; baz</foo:thing>
+    <podcast:value type="lightning" method="lnaddress" suggested="0.000033333">
+      <podcast:valueRecipient name="Phafe" address="phafe@getalby.com" split="98" type="lnaddress"/>
+      <podcast:valueRecipient name="MSP 2.0" address="msp@getalby.com" split="1" type="lnaddress" fee="true"/>
+      <podcast:valueRecipient name="Podcastindex.org" address="podcastindex@getalby.com" split="1" type="lnaddress"/>
+    </podcast:value>
+    <podcast:funding url="https://phafe.com/support">Support</podcast:funding>
+    <podcast:remoteItem feedGuid="07adf84f-c1fa-47a7-a121-0fb544e859bd" feedUrl="https://phafe.com/x/some_songs.xml" medium="music" title="Some Songs" feedImg="https://phafe.com/x/a.png" rel="label studio host" itemGuid="abc"/>
+    <podcast:remoteItem feedGuid="9620e1f8-0cca-5f08-b947-1c8f93244ff8" feedUrl="https://phafe.com/x/mezza.xml" medium="publisher" rel="artist"/>
+    <item><title>An item</title><guid>x1</guid><description><![CDATA[Hello <b>world</b> & more]]></description></item>
+  </channel>
+</rss>
