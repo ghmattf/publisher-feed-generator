@@ -1,18 +1,18 @@
 /**
- * MSP Publisher Feeds: hosted-mode client.
+ * Publisher Feed Generator: hosted-mode client.
  *
  * Handles Nostr remote-signer (NIP-46) connection, NIP-98 signing, the cookie
  * session, and calls to the plugin's REST API. Private keys never reach this
  * site: the signer app holds the user's key. This script only holds a throwaway
  * "client key" used to talk to the signer over relays.
  *
- * Exposes window.MSPFHosting.
+ * Exposes window.PFGHosting.
  */
 (function () {
   'use strict';
 
-  var N = window.MSPFNostr;
-  var STORE_KEY = 'mspf_signer';
+  var N = window.PFGNostr;
+  var STORE_KEY = 'pfg_signer';
 
   var cfg = null;
   var pool = null;
@@ -223,19 +223,19 @@
   async function api(method, url, body) {
     if (!session) throw new Error('Not signed in.');
     var bodyString = body !== undefined && body !== null ? JSON.stringify(body) : null;
-    var headers = { 'X-MSPF-CSRF': session.csrf };
+    var headers = { 'X-PFG-CSRF': session.csrf };
     var r = await rawFetch(method, url, bodyString, headers);
     if (r.res.status === 428) {
       emit('confirm-needed', true);
       try {
         var ev = await signHttpAuth(url, method, bodyString);
-        headers['X-MSPF-Auth'] = b64Json(ev);
+        headers['X-PFG-Auth'] = b64Json(ev);
         r = await rawFetch(method, url, bodyString, headers);
       } finally {
         emit('confirm-needed', false);
       }
     }
-    if (r.res.status === 401 || (r.res.status === 403 && r.data && r.data.code === 'mspf_csrf')) {
+    if (r.res.status === 401 || (r.res.status === 403 && r.data && r.data.code === 'pfg_csrf')) {
       session = null;
       emit('session', null);
     }
@@ -244,7 +244,7 @@
   }
 
   async function logout() {
-    try { if (session) await rawFetch('POST', cfg.urls.logout, null, { 'X-MSPF-CSRF': session.csrf }); } catch (e) { /* ignore */ }
+    try { if (session) await rawFetch('POST', cfg.urls.logout, null, { 'X-PFG-CSRF': session.csrf }); } catch (e) { /* ignore */ }
     session = null;
     clearSigner();
     emit('session', null);
@@ -253,7 +253,7 @@
   /* ---------------- feed helpers ---------------- */
   function feedUrl(id) { return cfg.urls.feedTemplate.replace(/\/0$/, '/' + encodeURIComponent(id)); }
 
-  window.MSPFHosting = {
+  window.PFGHosting = {
     init: init,
     on: on,
     connectBunker: connectBunker,

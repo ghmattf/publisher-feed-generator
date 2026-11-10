@@ -1,4 +1,4 @@
-const C = require(__dirname + '/../plugin/assets/js/mspf-core.js');
+const C = require(__dirname + '/../plugin/assets/js/pfg-core.js');
 const cases = require('./cases.json');
 const NOW = 1794000000;
 const out = cases.map(c => {

@@ -1,6 +1,6 @@
 # Rebuilding `plugin/assets/js/nostr-bundle.js`
 
-The bundle exposes `window.MSPFNostr` (nostr-tools NIP-46/NIP-19, SimplePool, sha256, QR code). It is generated, do not edit it by hand.
+The bundle exposes `window.PFGNostr` (nostr-tools NIP-46/NIP-19, SimplePool, sha256, QR code). It is generated, do not edit it by hand.
 
     cd build
     npm install

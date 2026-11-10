@@ -1,12 +1,12 @@
 /**
- * MSP Publisher Feeds: the feed editor form.
- * window.MSPFEditor.render(container, ctx) is called by mspf-app.js.
+ * Publisher Feed Generator: the feed editor form.
+ * window.PFGEditor.render(container, ctx) is called by pfg-app.js.
  * One editor serves both modes: anonymous (download/copy) and hosted (save).
  */
 (function () {
   'use strict';
 
-  var Core = window.MSPFCore;
+  var Core = window.PFGCore;
   var SLUG_RE = /^[a-z0-9][a-z0-9_-]{2,39}$/;
 
   function getPath(obj, path) { return path.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, obj); }
@@ -48,7 +48,7 @@
     /* ---------- field builders ---------- */
     function field(label, path, o) {
       o = o || {};
-      var id = 'mspf-f-' + path.replace(/\./g, '-');
+      var id = 'pfg-f-' + path.replace(/\./g, '-');
       var val = getPath(m, path);
       var input;
       if (o.select) {
@@ -64,8 +64,8 @@
       }
       if (o.readonly) { input.setAttribute('readonly', ''); if (o.select) input.setAttribute('disabled', ''); }
       if (o.placeholder) input.setAttribute('placeholder', o.placeholder);
-      var err = h('div', { class: 'mspf-error', id: id + '-err' });
-      var wrap = h('div', { class: 'mspf-field' + (o.wide ? ' mspf-wide' : '') }, [h('label', { for: id, text: label }), input, o.hint ? h('div', { class: 'mspf-hint', text: o.hint }) : null, err]);
+      var err = h('div', { class: 'pfg-error', id: id + '-err' });
+      var wrap = h('div', { class: 'pfg-field' + (o.wide ? ' pfg-wide' : '') }, [h('label', { for: id, text: label }), input, o.hint ? h('div', { class: 'pfg-hint', text: o.hint }) : null, err]);
       input.setAttribute('aria-describedby', id + '-err');
       var ev = o.select ? 'change' : 'input';
       input.addEventListener(ev, function () {
@@ -79,13 +79,13 @@
       return wrap;
     }
     function check(label, path) {
-      var cb = h('input', { type: 'checkbox', id: 'mspf-c-' + path });
+      var cb = h('input', { type: 'checkbox', id: 'pfg-c-' + path });
       cb.checked = !!getPath(m, path);
       cb.addEventListener('change', function () { setPath(m, path, cb.checked); changed(); });
-      return h('label', { class: 'mspf-check mspf-wide', for: 'mspf-c-' + path }, [cb, label]);
+      return h('label', { class: 'pfg-check pfg-wide', for: 'pfg-c-' + path }, [cb, label]);
     }
     function section(title, open, kids) {
-      var d = h('details', { class: 'mspf-section' }, [h('summary', { text: title })].concat(kids));
+      var d = h('details', { class: 'pfg-section' }, [h('summary', { text: title })].concat(kids));
       if (open) d.setAttribute('open', '');
       return d;
     }
@@ -93,13 +93,13 @@
     /* ---------- sections ---------- */
     var banner = h('div', { 'aria-live': 'polite' });
     var summaryErr = h('div');
-    var previewEl = h('pre', { class: 'mspf-pre', tabindex: '0', 'aria-label': 'XML preview' });
+    var previewEl = h('pre', { class: 'pfg-pre', tabindex: '0', 'aria-label': 'XML preview' });
     var lintEl = h('div');
-    var totalEl = h('div', { class: 'mspf-total' });
+    var totalEl = h('div', { class: 'pfg-total' });
     var recipsEl = h('div');
     var releasesEl = h('div');
 
-    var basics = section('Basics', true, [h('div', { class: 'mspf-grid' }, [
+    var basics = section('Basics', true, [h('div', { class: 'pfg-grid' }, [
       field('Name / title', 'title', { hint: 'Your label, studio or business name.' }),
       field('Author', 'author', { hint: 'Shown as the publisher in podcast apps.' }),
       field('Description', 'description', { textarea: true, wide: true }),
@@ -115,11 +115,11 @@
 
     var slugField = null, identityKids = [];
     if (hosted && !hosted.id) {
-      slugField = h('div', { class: 'mspf-field' }, []);
-      var si = h('input', { type: 'text', id: 'mspf-f-slug', autocomplete: 'off', spellcheck: 'false', placeholder: 'my-label' });
+      slugField = h('div', { class: 'pfg-field' }, []);
+      var si = h('input', { type: 'text', id: 'pfg-f-slug', autocomplete: 'off', spellcheck: 'false', placeholder: 'my-label' });
       si.value = slug;
-      var serr = h('div', { class: 'mspf-error', id: 'mspf-f-slug-err' });
-      var urlOut = h('div', { class: 'mspf-hint mspf-mono' });
+      var serr = h('div', { class: 'pfg-error', id: 'pfg-f-slug-err' });
+      var urlOut = h('div', { class: 'pfg-hint pfg-mono' });
       si.addEventListener('input', function () {
         slug = si.value.trim().toLowerCase();
         syncHostedIdentity();
@@ -128,14 +128,14 @@
         serr.textContent = slugMsg;
         changed();
       });
-      slugField.appendChild(h('label', { for: 'mspf-f-slug', text: 'Feed name (web address)' }));
+      slugField.appendChild(h('label', { for: 'pfg-f-slug', text: 'Feed name (web address)' }));
       slugField.appendChild(si); slugField.appendChild(serr); slugField.appendChild(urlOut);
-      slugField.appendChild(h('div', { class: 'mspf-hint', text: 'This cannot be changed later, and the address can never be reused if you delete the feed.' }));
+      slugField.appendChild(h('div', { class: 'pfg-hint', text: 'This cannot be changed later, and the address can never be reused if you delete the feed.' }));
       fields.slug = { wrap: slugField, err: serr, input: si };
       identityKids.push(slugField);
     } else if (hosted) {
-      identityKids.push(h('div', { class: 'mspf-field mspf-wide' }, [h('span', { class: 'mspf-label', text: 'Feed URL' }), h('div', { class: 'mspf-mono', text: hosted.url })]));
-      identityKids.push(h('div', { class: 'mspf-field mspf-wide' }, [h('span', { class: 'mspf-label', text: 'Feed GUID' }), h('div', { class: 'mspf-mono', text: m.guid })]));
+      identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [h('span', { class: 'pfg-label', text: 'Feed URL' }), h('div', { class: 'pfg-mono', text: hosted.url })]));
+      identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [h('span', { class: 'pfg-label', text: 'Feed GUID' }), h('div', { class: 'pfg-mono', text: m.guid })]));
     } else {
       identityKids.push(field('Feed URL (where you will host it)', 'feedUrl', {
         type: 'url', placeholder: 'https://example.com/publisher.xml', wide: true,
@@ -153,16 +153,16 @@
     identityKids.push(field('Your npub (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' }));
     identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
     identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
-    var identity = section('Identity and links', true, [h('div', { class: 'mspf-grid' }, identityKids)]);
+    var identity = section('Identity and links', true, [h('div', { class: 'pfg-grid' }, identityKids)]);
 
     /* payments */
     function renderRecipients() {
       clear(recipsEl);
       m.value.recipients.forEach(function (r, i) {
         var base = 'value.recipients.' + i;
-        var item = h('div', { class: 'mspf-item' }, [
-          h('div', { class: 'mspf-item-head' }, [h('strong', { text: 'Recipient ' + (i + 1) }), btn('Remove', 'mspf-btn-small mspf-btn-danger', function () { m.value.recipients.splice(i, 1); renderRecipients(); changed(); })]),
-          h('div', { class: 'mspf-grid' }, [
+        var item = h('div', { class: 'pfg-item' }, [
+          h('div', { class: 'pfg-item-head' }, [h('strong', { text: 'Recipient ' + (i + 1) }), btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { m.value.recipients.splice(i, 1); renderRecipients(); changed(); })]),
+          h('div', { class: 'pfg-grid' }, [
             field('Name', base + '.name'),
             field('Type', base + '.type', { select: ['lnaddress', 'node'], onchange: function () { renderRecipients(); } }),
             field(r.type === 'node' ? 'Node public key (66 hex)' : 'Lightning address', base + '.address', { placeholder: r.type === 'node' ? '' : 'name@domain.com' }),
@@ -174,8 +174,8 @@
         recipsEl.appendChild(item);
       });
       if (m.value.recipients.length) platform.forEach(function (p) {
-        recipsEl.appendChild(h('div', { class: 'mspf-item mspf-locked' }, [h('div', { class: 'mspf-item-head' }, [
-          h('strong', { text: p.name }), h('span', { class: 'mspf-badge', text: p.split + '% (platform, fixed)' }),
+        recipsEl.appendChild(h('div', { class: 'pfg-item pfg-locked' }, [h('div', { class: 'pfg-item-head' }, [
+          h('strong', { text: p.name }), h('span', { class: 'pfg-badge', text: p.split + '% (platform, fixed)' }),
         ])]));
       });
       updateTotal();
@@ -183,15 +183,15 @@
     function updateTotal() {
       var t = 0; m.value.recipients.forEach(function (r) { t += parseInt(r.split, 10) || 0; });
       var need = 100 - pTotal;
-      if (!m.value.recipients.length) { totalEl.textContent = 'No payment recipients: your feed will have no payment block. This section is optional.'; totalEl.className = 'mspf-total'; return; }
+      if (!m.value.recipients.length) { totalEl.textContent = 'No payment recipients: your feed will have no payment block. This section is optional.'; totalEl.className = 'pfg-total'; return; }
       totalEl.textContent = 'Your recipients total ' + t + '% of ' + need + '%' + (pTotal ? ' (the platform takes ' + pTotal + '%)' : '') + '.';
-      totalEl.className = 'mspf-total ' + (t === need ? 'mspf-good' : 'mspf-bad');
+      totalEl.className = 'pfg-total ' + (t === need ? 'pfg-good' : 'pfg-bad');
     }
     var payments = section('Payments', false, [
-      h('p', { class: 'mspf-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),
-      h('div', { class: 'mspf-grid' }, [field('Payment method', 'value.method', { select: ['lnaddress', 'keysend'] }), field('Suggested amount', 'value.suggested', { hint: 'Plain decimal, for example 0.000033333.' })]),
+      h('p', { class: 'pfg-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),
+      h('div', { class: 'pfg-grid' }, [field('Payment method', 'value.method', { select: ['lnaddress', 'keysend'] }), field('Suggested amount', 'value.suggested', { hint: 'Plain decimal, for example 0.000033333.' })]),
       recipsEl, totalEl,
-      h('div', { class: 'mspf-row' }, [btn('Add recipient', 'mspf-btn-small', function () {
+      h('div', { class: 'pfg-row' }, [btn('Add recipient', 'pfg-btn-small', function () {
         if (m.value.recipients.length >= 10) return;
         m.value.recipients.push(Core.emptyRecipient(0)); renderRecipients(); changed();
       })]),
@@ -206,9 +206,9 @@
     function roleChips(r) {
       var all = (cfg.relTokens || []).slice();
       (r.rel || []).forEach(function (t) { if (all.indexOf(t) < 0) all.push(t); });
-      var box = h('div', { class: 'mspf-chips', role: 'group', 'aria-label': 'Roles' });
+      var box = h('div', { class: 'pfg-chips', role: 'group', 'aria-label': 'Roles' });
       all.forEach(function (t) {
-        var c = h('button', { type: 'button', class: 'mspf-chip', 'aria-pressed': r.rel.indexOf(t) >= 0 ? 'true' : 'false', text: t });
+        var c = h('button', { type: 'button', class: 'pfg-chip', 'aria-pressed': r.rel.indexOf(t) >= 0 ? 'true' : 'false', text: t });
         c.addEventListener('click', function () {
           var ix = r.rel.indexOf(t);
           if (ix >= 0) r.rel.splice(ix, 1); else r.rel.push(t);
@@ -228,10 +228,10 @@
       return null;
     }
     function snippetBox(r) {
-      if (!m.guid) return h('p', { class: 'mspf-hint', text: 'Set your feed URL and GUID to get the text for the release owner.' });
+      if (!m.guid) return h('p', { class: 'pfg-hint', text: 'Set your feed URL and GUID to get the text for the release owner.' });
       var txt = Core.snippetFor({ guid: m.guid, feedUrl: m.feedUrl }, r.rel);
-      var b = btn('Copy text', 'mspf-btn-small', function () { copyText(txt, function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy text'; }, 1500); }); });
-      return h('div', {}, [h('div', { class: 'mspf-label', text: 'Text for the release owner to add to their feed' }), h('pre', { class: 'mspf-snippet', text: txt }), b]);
+      var b = btn('Copy text', 'pfg-btn-small', function () { copyText(txt, function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy text'; }, 1500); }); });
+      return h('div', {}, [h('div', { class: 'pfg-label', text: 'Text for the release owner to add to their feed' }), h('pre', { class: 'pfg-snippet', text: txt }), b]);
     }
     function refreshReleaseHelp(r) {
       var el = r._helpEl; if (!el) return;
@@ -244,16 +244,16 @@
     function isPopulated(r) { return Core.isUuid(r.feedGuid || '') && Core.isHttpsUrl(r.feedUrl || ''); }
     function renderReleases() {
       clear(releasesEl);
-      if (!m.releases.length) releasesEl.appendChild(h('p', { class: 'mspf-hint', text: 'No releases yet. Add the albums, singles or shows you are involved in.' }));
+      if (!m.releases.length) releasesEl.appendChild(h('p', { class: 'pfg-hint', text: 'No releases yet. Add the albums, singles or shows you are involved in.' }));
       m.releases.forEach(function (r, i) {
         var base = 'releases.' + i;
         r.rel = r.rel || [];
         var helpEl = h('div'); Object.defineProperty(r, '_helpEl', { value: helpEl, enumerable: false, configurable: true, writable: true });
         var pop = isPopulated(r);
-        var pasteTa = h('textarea', { rows: 3, class: 'mspf-xml', placeholder: 'Paste the release feed address (https://…) or its XML', 'aria-label': 'Release feed address or XML' });
+        var pasteTa = h('textarea', { rows: 3, class: 'pfg-xml', placeholder: 'Paste the release feed address (https://…) or its XML', 'aria-label': 'Release feed address or XML' });
         var pasteMsg = h('div', { 'aria-live': 'polite' });
         var st0 = ui.get(r); if (st0 && st0.msg) pasteMsg.appendChild(note(st0.msg[0], st0.msg[1]));
-        var searchIn = h('input', { type: 'search', id: 'mspf-s-' + i, placeholder: 'Search Music Index by album, track or artist', autocomplete: 'off', 'aria-label': 'Search Music Index' });
+        var searchIn = h('input', { type: 'search', id: 'pfg-s-' + i, placeholder: 'Search Music Index by album, track or artist', autocomplete: 'off', 'aria-label': 'Search Music Index' });
         var searchOut = h('div', { 'aria-live': 'polite' });
         function say(kind, text) { var st = ui.get(r) || {}; st.msg = text ? [kind, text] : null; ui.set(r, st); clear(pasteMsg); if (text) pasteMsg.appendChild(note(kind, text)); }
         function post(url, body) {
@@ -289,10 +289,10 @@
             clear(searchOut);
             var list = d.results || [];
             if (!list.length) { searchOut.appendChild(note('warn', 'No releases found. Try other words, or paste the feed below.')); return; }
-            var ul = h('div', { class: 'mspf-results', role: 'list' });
+            var ul = h('div', { class: 'pfg-results', role: 'list' });
             list.forEach(function (x) {
-              ul.appendChild(h('button', { type: 'button', class: 'mspf-result', role: 'listitem', onclick: function () { pick(x); } }, [
-                h('strong', { text: x.title }), h('span', { class: 'mspf-hint', text: x.artist ? ' · ' + x.artist : '' }),
+              ul.appendChild(h('button', { type: 'button', class: 'pfg-result', role: 'listitem', onclick: function () { pick(x); } }, [
+                h('strong', { text: x.title }), h('span', { class: 'pfg-hint', text: x.artist ? ' · ' + x.artist : '' }),
               ]));
             });
             searchOut.appendChild(ul);
@@ -309,57 +309,57 @@
           if (x.feedUrl) { renderReleases(); changed(); readFeed(x.feedUrl); } else { renderReleases(); changed(); }
         }
         searchIn.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); runSearch(); } });
-        var item = h('div', { class: 'mspf-item' }, [
-          h('div', { class: 'mspf-item-head' }, [
+        var item = h('div', { class: 'pfg-item' }, [
+          h('div', { class: 'pfg-item-head' }, [
             h('strong', { text: r.title || 'Release ' + (i + 1) }),
-            i > 0 ? btn('Up', 'mspf-btn-small', function () { m.releases.splice(i - 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
-            i < m.releases.length - 1 ? btn('Down', 'mspf-btn-small', function () { m.releases.splice(i + 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
-            btn('Remove', 'mspf-btn-small mspf-btn-danger', function () { ui.delete(r); m.releases.splice(i, 1); renderReleases(); changed(); }),
+            i > 0 ? btn('Up', 'pfg-btn-small', function () { m.releases.splice(i - 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
+            i < m.releases.length - 1 ? btn('Down', 'pfg-btn-small', function () { m.releases.splice(i + 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
+            btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { ui.delete(r); m.releases.splice(i, 1); renderReleases(); changed(); }),
           ]),
           h('div', { hidden: pop }, [
-            h('div', { class: 'mspf-row' }, [searchIn, btn('Search', 'mspf-btn-small', runSearch)]),
+            h('div', { class: 'pfg-row' }, [searchIn, btn('Search', 'pfg-btn-small', runSearch)]),
             searchOut,
             pasteTa,
-            h('div', { class: 'mspf-row', style: 'margin:6px 0 10px' }, [btn('Read feed', 'mspf-btn-small', function () { readFeed(pasteTa.value); })]),
+            h('div', { class: 'pfg-row', style: 'margin:6px 0 10px' }, [btn('Read feed', 'pfg-btn-small', function () { readFeed(pasteTa.value); })]),
             pasteMsg,
           ]),
-          h('div', { class: 'mspf-grid', hidden: !pop }, [
+          h('div', { class: 'pfg-grid', hidden: !pop }, [
             field('Title', base + '.title', { readonly: true }),
             field('Type', base + '.medium', { select: cfg.mediums || ['music'], readonly: true }),
             field('Feed GUID', base + '.feedGuid', { wide: true, readonly: true }),
             field('Feed URL', base + '.feedUrl', { type: 'url', wide: true, readonly: true }),
             field('Cover image URL', base + '.feedImg', { type: 'url', wide: true, readonly: true }),
           ]),
-          h('div', { class: 'mspf-field', hidden: !pop }, [h('span', { class: 'mspf-label', text: 'Your role on this release' }), roleChips(r), h('div', { class: 'mspf-hint', text: 'Pick every role that applies. The release feed must list the same roles.' }), h('div', { class: 'mspf-error', id: 'mspf-rel-err-' + i })]),
+          h('div', { class: 'pfg-field', hidden: !pop }, [h('span', { class: 'pfg-label', text: 'Your role on this release' }), roleChips(r), h('div', { class: 'pfg-hint', text: 'Pick every role that applies. The release feed must list the same roles.' }), h('div', { class: 'pfg-error', id: 'pfg-rel-err-' + i })]),
           h('div', { hidden: !pop }, [helpEl]),
         ]);
-        fields[base + '.rel'] = { wrap: item, err: item.querySelector('#mspf-rel-err-' + i) };
+        fields[base + '.rel'] = { wrap: item, err: item.querySelector('#pfg-rel-err-' + i) };
         releasesEl.appendChild(item);
         refreshReleaseHelp(r);
       });
     }
     var releases = section('Releases', true, [
-      h('p', { class: 'mspf-hint', text: 'Albums, singles and shows you published or worked on. Each one is confirmed when its own feed links back to this feed.' }),
+      h('p', { class: 'pfg-hint', text: 'Albums, singles and shows you published or worked on. Each one is confirmed when its own feed links back to this feed.' }),
       releasesEl,
-      h('div', { class: 'mspf-row' }, [btn('Add release', 'mspf-btn-primary mspf-btn-small', function () {
+      h('div', { class: 'pfg-row' }, [btn('Add release', 'pfg-btn-primary pfg-btn-small', function () {
         m.releases.push({ feedGuid: '', feedUrl: '', medium: 'music', title: '', feedImg: '', rel: [], attrs: {} });
         renderReleases(); changed();
       })]),
     ]);
 
     /* preview + actions */
-    var actions = h('div', { class: 'mspf-row' });
+    var actions = h('div', { class: 'pfg-row' });
     var saveBtn, dlBtn, cpBtn;
     if (hosted) {
-      saveBtn = btn(hosted.id ? 'Save changes' : 'Save and publish', 'mspf-btn-primary', save);
+      saveBtn = btn(hosted.id ? 'Save changes' : 'Save and publish', 'pfg-btn-primary', save);
       actions.appendChild(saveBtn);
     } else {
-      dlBtn = btn('Download XML', 'mspf-btn-primary', download);
+      dlBtn = btn('Download XML', 'pfg-btn-primary', download);
       cpBtn = btn('Copy XML', '', function () { var r = build(); if (r) copyText(r.xml, function () { cpBtn.textContent = 'Copied'; setTimeout(function () { cpBtn.textContent = 'Copy XML'; }, 1500); }); });
       actions.appendChild(dlBtn); actions.appendChild(cpBtn);
     }
     actions.appendChild(btn(hosted ? 'Back to my feeds' : 'Start over', '', function () { if (!hosted || window.confirm('Leave without saving?')) ctx.back(); }));
-    var preview = section('Preview', false, [h('p', { class: 'mspf-hint', text: 'This is the exact file that will be produced.' }), previewEl]);
+    var preview = section('Preview', false, [h('p', { class: 'pfg-hint', text: 'This is the exact file that will be produced.' }), previewEl]);
 
     /* notes from import */
     var kept = [];
@@ -377,12 +377,12 @@
         }
         acc.push(e); return acc;
       }, []);
-      Object.keys(fields).forEach(function (k) { var f = fields[k]; if (f.err) f.err.textContent = ''; if (f.wrap) f.wrap.classList.remove('mspf-invalid'); });
+      Object.keys(fields).forEach(function (k) { var f = fields[k]; if (f.err) f.err.textContent = ''; if (f.wrap) f.wrap.classList.remove('pfg-invalid'); });
       if (fields.slug) fields.slug.err.textContent = slugMsg;
       var loose = [];
       errs.forEach(function (e) {
         var f = fields[e.path];
-        if (f && f.err && !f.err.textContent) { f.err.textContent = e.message; f.wrap.classList.add('mspf-invalid'); } else loose.push(e);
+        if (f && f.err && !f.err.textContent) { f.err.textContent = e.message; f.wrap.classList.add('pfg-invalid'); } else loose.push(e);
       });
       clear(summaryErr);
       if (loose.length) summaryErr.appendChild(note('bad', h('ul', {}, loose.map(function (e) { return h('li', { text: e.message }); }))));
@@ -440,7 +440,7 @@
       }).catch(function (e) {
         if (e.errors && e.errors.length) { showErrors(e.errors); setBanner('bad', e.message); }
         else if (e.status === 401 || /sign in again|not connected/i.test(e.message)) {
-          setBanner('warn', h('span', {}, [e.message + ' ', btn('Sign in', 'mspf-btn-small', function () { ctx.needSignIn(function () { setBanner('ok', 'Signed in. Press save again.'); }); })]));
+          setBanner('warn', h('span', {}, [e.message + ' ', btn('Sign in', 'pfg-btn-small', function () { ctx.needSignIn(function () { setBanner('ok', 'Signed in. Press save again.'); }); })]));
         } else setBanner('bad', e.message);
       }).then(function () { saving = false; saveBtn.disabled = false; });
     }
@@ -455,5 +455,5 @@
     renderRecipients(); renderReleases(); refresh();
   }
 
-  window.MSPFEditor = { render: render };
+  window.PFGEditor = { render: render };
 })();

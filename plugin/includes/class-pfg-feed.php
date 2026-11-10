@@ -1,16 +1,16 @@
 <?php
 /**
  * Feed data model: normalising and validating what a client submits.
- * The JavaScript twin of this lives in assets/js/mspf-core.js and must stay in step.
+ * The JavaScript twin of this lives in assets/js/pfg-core.js and must stay in step.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Feed {
+class PFG_Feed {
 
 	/** Podcasting 2.0 namespace used to derive feed GUIDs (UUIDv5). */
 	const GUID_NAMESPACE = 'ead4c236-bf58-58c6-a2c6-a6b28d128cb6';
@@ -207,9 +207,9 @@ class MSPF_Feed {
 		$npub = self::line( self::get( $in, 'npub' ) );
 		if ( '' !== $npub ) {
 			if ( preg_match( '/^[0-9a-fA-F]{64}$/', $npub ) ) {
-				$npub = MSPF_Nostr::npub_encode( strtolower( $npub ) );
+				$npub = PFG_Nostr::npub_encode( strtolower( $npub ) );
 			}
-			if ( ! $npub || false === MSPF_Nostr::npub_decode( $npub ) ) {
+			if ( ! $npub || false === PFG_Nostr::npub_decode( $npub ) ) {
 				self::err( $errors, 'npub', 'That is not a valid npub (checksum failed). Never paste an nsec.' );
 				$npub = self::line( self::get( $in, 'npub' ) );
 			}

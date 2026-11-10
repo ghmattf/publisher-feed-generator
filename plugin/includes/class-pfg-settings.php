@@ -2,16 +2,16 @@
 /**
  * Plugin settings: defaults, access and sanitising.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Settings {
+class PFG_Settings {
 
-	const OPTION = 'mspf_settings';
+	const OPTION = 'pfg_settings';
 
 	/**
 	 * Default settings.

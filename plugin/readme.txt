@@ -1,4 +1,4 @@
-=== MSP Publisher Feeds ===
+=== Publisher Feed Generator ===
 Contributors: phafe
 Tags: podcasting 2.0, rss, publisher feed, nostr, music
 Requires at least: 5.8
@@ -11,7 +11,7 @@ A page where labels, studios, engineers, hosts and artists build Podcasting 2.0 
 
 == Description ==
 
-Add the shortcode `[msp_feed_generator]` to any page.
+Add the shortcode `[publisher_feed_generator]` to any page.
 
 Anonymous mode (no login, nothing stored on your server):
 * Create a publisher feed from scratch, or paste the XML of an existing publisher feed to edit it.
@@ -32,7 +32,7 @@ Only publisher feeds are created. Albums and tracks are not.
 == Installation ==
 
 1. Upload the plugin folder to wp-content/plugins and activate it.
-2. Add `[msp_feed_generator]` to a page.
+2. Add `[publisher_feed_generator]` to a page.
 3. Review Settings > Publisher Feeds. Check the platform payment recipient (default: Podcastindex.org, 1%) before going live.
 
 Requirements for hosted mode: HTTPS, and the PHP GMP extension (used to verify Nostr signatures). Without GMP the page still works in anonymous mode.

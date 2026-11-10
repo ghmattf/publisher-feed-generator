@@ -6,14 +6,14 @@
  *
  * The server never holds or sees a private key; it only verifies signatures.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Nostr {
+class PFG_Nostr {
 
 	const KIND_HTTP_AUTH = 27235;
 	const AUTH_WINDOW    = 60; // seconds either side of "now".
@@ -293,7 +293,7 @@ class MSPF_Nostr {
 	 * @return array|WP_Error The event (typed) on success.
 	 */
 	public static function verify_event( $event ) {
-		$bad = new WP_Error( 'mspf_bad_event', 'Invalid Nostr event.', array( 'status' => 401 ) );
+		$bad = new WP_Error( 'pfg_bad_event', 'Invalid Nostr event.', array( 'status' => 401 ) );
 		if ( ! is_array( $event ) ) {
 			return $bad;
 		}
@@ -373,7 +373,7 @@ class MSPF_Nostr {
 			return $event;
 		}
 		$fail = static function ( $msg ) {
-			return new WP_Error( 'mspf_bad_auth', $msg, array( 'status' => 401 ) );
+			return new WP_Error( 'pfg_bad_auth', $msg, array( 'status' => 401 ) );
 		};
 		if ( self::KIND_HTTP_AUTH !== $event['kind'] ) {
 			return $fail( 'Wrong event kind.' );

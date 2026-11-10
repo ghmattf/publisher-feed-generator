@@ -1,13 +1,13 @@
 /*!
- * MSP Publisher Feeds - core logic (no UI, no network).
- * Mirrors includes/class-mspf-feed.php and class-mspf-xml.php. Keep them in step:
+ * Publisher Feed Generator - core logic (no UI, no network).
+ * Mirrors includes/class-pfg-feed.php and class-pfg-xml.php. Keep them in step:
  * the same input must give byte-identical XML and the same error list in both.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     module.exports = factory();
   } else {
-    root.MSPFCore = factory();
+    root.PFGCore = factory();
   }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
