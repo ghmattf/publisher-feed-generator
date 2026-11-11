@@ -22,6 +22,7 @@ const click = t => $$('button').find(b => b.textContent === t).click();
 const tick = () => new Promise(r => setTimeout(r, 20));
 
 ok($$('.pfg-card').length === 3, 'start screen shows three cards');
+ok($$('.pfg-card')[0].querySelector('h3').textContent === 'Hosted feeds' && $$('.pfg-card')[0].querySelector('button').textContent === 'Sign in', 'Nostr sign-in card is the first option');
 click('Start'); ok(opened && opened.model.value.recipients.length === 0 && !opened.hosted, 'new feed opens editor (no payment rows by default, anonymous)');
 opened.saveDraft({ title: 'Draft T' }); opened.back();
 ok($('.pfg-note') && /Draft T/.test($('.pfg-note').textContent) === false || true, 'draft banner path ran');
@@ -37,6 +38,7 @@ $('#pfg-import-xml').value = fs.readFileSync('feeds/phafe_like.xml', 'utf8');
 click('Import'); ok(opened.model.title === 'Phafe' && opened.importNotes.length > 0, 'publisher XML imported, notes passed to editor');
 opened.back();
 click('Sign in'); ok($('.pfg-overlay') && $('#pfg-bunker'), 'sign-in window opens with bunker field');
+ok($('.pfg-overlay').classList.contains('pfg-app') && $('.pfg-overlay').parentNode === w.document.body, 'sign-in overlay is outside #pfg-app and carries .pfg-app (so the colour variables apply)');
 $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
 ok(!$('.pfg-overlay'), 'sign-in window closes after login');
 ok(/Hosted|Your hosted feeds/.test($('#pfg-app').textContent) && /acme/.test($('#pfg-app').textContent), 'hosted list shown with feed');

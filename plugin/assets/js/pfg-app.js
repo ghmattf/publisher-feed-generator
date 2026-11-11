@@ -89,18 +89,7 @@
       ])));
     }
     wrap.appendChild(h('p', { text: 'Build a Podcasting 2.0 publisher feed for your label, studio, host or artist page. Download it and host it yourself, or sign in and we will host it for you.' }));
-    var cards = h('div', { class: 'pfg-cards' }, [
-      h('div', { class: 'pfg-card' }, [
-        h('h3', { text: 'Create a new feed' }),
-        h('p', { text: 'Start from scratch. No account needed. Download the XML when you are done.' }),
-        btn('Start', 'pfg-btn-primary', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.applyPlatformToExports ? cfg.platform : [] }), hosted: null }); }),
-      ]),
-      h('div', { class: 'pfg-card' }, [
-        h('h3', { text: 'Edit an existing feed' }),
-        h('p', { text: 'Paste the XML of a publisher feed you already have, change it, and download the result.' }),
-        btn('Paste XML', '', showImport),
-      ]),
-    ]);
+    var cards = h('div', { class: 'pfg-cards' });
     if (hostingOn) {
       var s = Host.getSession();
       cards.appendChild(h('div', { class: 'pfg-card' }, [
@@ -111,6 +100,16 @@
     } else if (cfg.hostingNeedsGmp) {
       wrap.appendChild(h('p', { class: 'pfg-hint', text: 'Hosting is unavailable on this server right now. You can still create and download feeds.' }));
     }
+    cards.appendChild(h('div', { class: 'pfg-card' }, [
+      h('h3', { text: 'Create a new feed' }),
+      h('p', { text: 'Start from scratch. No account needed. Download the XML when you are done.' }),
+      btn('Start', 'pfg-btn-primary', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.applyPlatformToExports ? cfg.platform : [] }), hosted: null }); }),
+    ]));
+    cards.appendChild(h('div', { class: 'pfg-card' }, [
+      h('h3', { text: 'Edit an existing feed' }),
+      h('p', { text: 'Paste the XML of a publisher feed you already have, change it, and download the result.' }),
+      btn('Paste XML', '', showImport),
+    ]));
     wrap.appendChild(cards);
     mount(wrap);
   }
@@ -221,7 +220,8 @@
     var attempt = null, closed = false;
     var status = h('div', { 'aria-live': 'polite' });
     var panel = h('div');
-    var overlay = h('div', { class: 'pfg-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Sign in' });
+    // The overlay is attached to <body>, outside #pfg-app, so it needs the app class to get the colour variables and base styles.
+    var overlay = h('div', { class: 'pfg-app pfg-overlay' + (root && root.classList.contains('pfg-light') ? ' pfg-light' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Sign in' });
     var modal = h('div', { class: 'pfg-modal' });
     overlay.appendChild(modal);
 

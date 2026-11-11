@@ -123,7 +123,8 @@
 }
 
 /* modal */
-.pfg-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 24px 16px; }
+/* .pfg-overlay also carries .pfg-app (it sits outside #pfg-app), so cancel that class's centring and width cap. */
+.pfg-overlay { max-width: none; margin: 0; position: fixed; inset: 0; z-index: 100000; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 24px 16px; }
 .pfg-modal { background: var(--pfg-bg); color: var(--pfg-text); border: 1px solid var(--pfg-border); border-radius: 12px; width: 100%; max-width: 520px; padding: 20px; }
 .pfg-qr { display: block; width: 220px; max-width: 100%; margin: 8px auto; background: #fff; padding: 6px; border-radius: 6px; }
 .pfg-qr svg { width: 100%; height: auto; display: block; }
