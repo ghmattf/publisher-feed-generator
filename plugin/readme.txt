@@ -19,10 +19,12 @@ Anonymous mode (no login, nothing stored on your server):
 * Payments are optional. With no payment recipients the feed simply has no payment block.
 * Search Music Index (api.musicindex.org) for a release, or paste a release feed's https address (or its XML), and the details are filled in for you. Lookups run on your server, need no account and are rate limited.
 * Download or copy the XML. Drafts are kept in the visitor's browser only.
+* "Get your npub" fills the npub field by asking a signer app for its public key. Nothing is saved on your server.
 
 Hosted mode (optional):
 * Sign in with a Nostr remote signer (NIP-46: bunker:// link or QR code). Your private key never reaches the server.
 * Feeds are written to wp-content/uploads/rssfeed/publishers/{name}/{name}.xml and can be edited later.
+* A new feed is prefilled from your Nostr profile (name, description, website, image, Lightning address). Only empty fields are filled and you can change everything.
 * Changing payment recipients or deleting a feed asks the signer for a fresh signature (NIP-98).
 * Hosted accounts are stored in their own table, keyed by public key. They are not WordPress users.
 * Deleted feeds keep their name and GUID reserved so they cannot be taken over.

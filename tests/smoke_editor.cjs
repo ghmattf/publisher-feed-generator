@@ -140,5 +140,49 @@ ok(!sent && /feed name/i.test($('#pfg-f-slug-err').textContent), 'saving without
 set('#pfg-f-slug', 'acme-records'); await tick(); click('Save and publish'); await tick();
 ok(sent && sent.slug === 'acme-records' && sent.feed.guid === w.PFGCore.guidForUrl(cfg.feedBaseUrl + 'acme-records/acme-records.xml'), 'hosted create sends slug and derived guid');
 ok(/Published at/.test($('#c').textContent), 'success message shown');
+
+// --- new hosted feed: prefill from the signed-in Nostr profile
+const NPUB = 'npub1slfkmxz8w9mskmpxm5y9zngz46fp97mfn2c82wpkxjyxktejaq9sqwd4ng', PK = 'a'.repeat(64);
+const profile = { display_name: 'Acme Records', name: 'acme', about: 'We make <b>music</b>.\nValue for value.', website: 'http://acme.example', picture: 'http://acme.example/logo.png', lud16: 'acme@getalby.com', lud06: 'LNURL1XYZ' };
+const mkHost = (p, delay) => ({ getSession: () => ({ pubkey: PK, npub: NPUB }), fetchProfile: () => new Promise(r => setTimeout(() => r(p), delay || 0)), createFeed: async () => ({}) });
+const renderNew = (host, extra) => { $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), Object.assign({ cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.platform }), hosted: { id: null }, host, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear }, extra || {})); };
+renderNew(mkHost(profile)); await tick();
+ok($('#pfg-f-title').value === 'Acme Records' && $('#pfg-f-author').value === 'Acme Records', 'profile name fills Name / title and Author');
+ok($('#pfg-f-description').value === 'We make <b>music</b>.\nValue for value.', 'profile about fills Description (as plain text)');
+ok($('#pfg-f-link').value === 'http://acme.example' && $('#pfg-f-image').value === 'http://acme.example/logo.png', 'profile website and picture fill Website and Image URL (http allowed)');
+ok($('#pfg-f-npub').value === NPUB, 'signed-in npub fills Your npub');
+ok($('#pfg-f-value-recipients-0-address').value === 'acme@getalby.com' && $('#pfg-f-value-recipients-0-split').value === '99' && $('#pfg-f-value-recipients-0-name').value === 'Acme Records', 'lud16 becomes a lnaddress payment recipient taking the non-platform share (99)');
+ok($$('details').find(d => /Payments/.test(d.textContent.slice(0, 20))).hasAttribute('open'), 'Payments section opened when a Lightning address was filled');
+ok(/Filled in from your Nostr profile/.test($('.pfg-note-ok').textContent), 'banner says what was filled');
+ok(!/lud06|LNURL/i.test($('#c').textContent), 'lud06/LNURL is ignored');
+// typed values are never overwritten, even if the profile arrives later
+renderNew(mkHost(profile, 150)); set('#pfg-f-title', 'My Own Title'); set('#pfg-f-link', 'https://mine.example'); await tick();
+ok($('#pfg-f-title').value === 'My Own Title' && $('#pfg-f-link').value === 'https://mine.example' && $('#pfg-f-author').value === 'Acme Records', 'fields the user already typed are kept; empty ones still filled');
+// not for existing feeds, not anonymous
+let calls = 0; const spy = Object.assign(mkHost(profile), { fetchProfile: () => { calls++; return Promise.resolve(profile); } });
+renderNew(spy, { hosted: { id: 7, slug: 'x', status: 'published', url: 'https://phafe.com/x' } }); await tick();
+ok(calls === 0 && $('#pfg-f-title').value === '', 'existing hosted feed is not prefilled');
+$('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, host: spy, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear }); await tick();
+ok(calls === 0, 'anonymous mode never looks up a profile');
+// no profile found / empty profile
+renderNew(mkHost(null)); await tick();
+ok($('#pfg-f-npub').value === NPUB && /No Nostr profile was found/.test($('#c').textContent), 'no profile: npub still filled, clear message shown');
+// hostile profile content
+renderNew(mkHost({ name: 'x'.repeat(500), website: 'javascript:alert(1)', picture: 'data:image/png;base64,AAAA', about: 'y'.repeat(5000), lud16: 'not an address' })); await tick();
+ok($('#pfg-f-title').value.length === 200 && $('#pfg-f-link').value === '' && $('#pfg-f-image').value === '' && $('#pfg-f-description').value.length === 4000 && $$('.pfg-item').length === 0, 'oversized values clipped; javascript:/data: URLs and bad lightning address ignored');
+
+// --- "Get your npub" button
+const getBtn = () => $$('button').find(b => b.textContent === 'Get your npub');
+ok(getBtn() && getBtn().parentNode.previousSibling === $('#pfg-f-npub'), '"Get your npub" button sits directly after the npub field');
+let asked = 0;
+$('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, host: null, getNpub: cb => { asked++; setTimeout(() => cb(NPUB), 10); }, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+getBtn().click(); await tick();
+ok(asked === 1 && $('#pfg-f-npub').value === NPUB && /from your signer/.test($('#c').textContent), 'anonymous: button asks the signer and fills the npub');
+set('#pfg-f-npub', ''); $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, host: { getSession: () => ({ npub: NPUB }) }, getNpub: () => { asked++; }, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+getBtn().click(); await tick();
+ok(asked === 1 && $('#pfg-f-npub').value === NPUB && /signed-in account/.test($('#c').textContent), 'signed in: button fills from the session without opening the signer');
+$('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, host: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+getBtn().click(); await tick();
+ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').textContent), 'no signer available: helpful message instead of a dead button');
 console.log(fails ? fails + ' FAILURES' : 'editor smoke test passed'); process.exit(fails ? 1 : 0);
 })();

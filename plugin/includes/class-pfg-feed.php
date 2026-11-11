@@ -86,6 +86,15 @@ class PFG_Feed {
 		return is_array( $p ) && ! empty( $p['host'] ) && empty( $p['user'] ) && empty( $p['pass'] );
 	}
 
+	/** Website and Image accept http:// as well as https:// (everything else stays https-only). */
+	public static function is_http_url( $u ) {
+		if ( strlen( $u ) > 2048 || ! preg_match( '#^https?://[^\s<>"\']+$#i', $u ) ) {
+			return false;
+		}
+		$p = wp_parse_url( $u );
+		return is_array( $p ) && ! empty( $p['host'] ) && empty( $p['user'] ) && empty( $p['pass'] );
+	}
+
 	public static function is_uuid( $s ) {
 		return (bool) preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $s );
 	}
@@ -148,8 +157,8 @@ class PFG_Feed {
 		}
 
 		$m['link'] = self::line( self::get( $in, 'link' ) );
-		if ( '' !== $m['link'] && ! self::is_https_url( $m['link'] ) ) {
-			self::err( $errors, 'link', 'Website must be an https:// URL.' );
+		if ( '' !== $m['link'] && ! self::is_http_url( $m['link'] ) ) {
+			self::err( $errors, 'link', 'Website must be an http:// or https:// URL.' );
 		}
 
 		$m['language'] = strtolower( self::line( self::get( $in, 'language' ) ) );
@@ -161,8 +170,8 @@ class PFG_Feed {
 		}
 
 		$m['image'] = self::line( self::get( $in, 'image' ) );
-		if ( '' !== $m['image'] && ! self::is_https_url( $m['image'] ) ) {
-			self::err( $errors, 'image', 'Image must be an https:// URL.' );
+		if ( '' !== $m['image'] && ! self::is_http_url( $m['image'] ) ) {
+			self::err( $errors, 'image', 'Image must be an http:// or https:// URL.' );
 		}
 
 		$m['category'] = self::line( self::get( $in, 'category' ) );

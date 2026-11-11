@@ -104,7 +104,7 @@
       field('Author', 'author', { hint: 'Shown as the publisher in podcast apps.' }),
       field('Description', 'description', { textarea: true, wide: true }),
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
-      field('Image URL (square, https)', 'image', { type: 'url', placeholder: 'https://' }),
+      field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
       field('Language', 'language', { hint: 'For example en, en-au.' }),
       field('Category', 'category', { hint: 'iTunes category, for example Music.' }),
       field('Keywords', 'keywords', { hint: 'Comma separated.' }),
@@ -151,6 +151,16 @@
       fields.guid.autoGuid = !m.guid;
     }
     identityKids.push(field('Your npub (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' }));
+    // "Get your npub": from the signed-in account, or by asking a signer for its public key (nothing is saved).
+    var npubStatus = h('span', { class: 'pfg-hint', 'aria-live': 'polite' });
+    function setNpub(npub) { m.npub = npub; fields.npub.input.value = npub; changed(); }
+    function getNpub() {
+      var s = ctx.host && ctx.host.getSession ? ctx.host.getSession() : null;
+      if (s && s.npub) { setNpub(s.npub); npubStatus.textContent = 'Filled in from your signed-in account.'; return; }
+      if (ctx.getNpub) { ctx.getNpub(function (npub) { setNpub(npub); npubStatus.textContent = 'Filled in from your signer.'; }); return; }
+      npubStatus.textContent = 'This page cannot connect to a signer. Copy your npub (it starts with npub1) from your Nostr app and paste it above.';
+    }
+    fields.npub.wrap.insertBefore(h('div', { class: 'pfg-row', style: 'margin-top:6px' }, [btn('Get your npub', 'pfg-btn-small', getNpub), npubStatus]), fields.npub.input.nextSibling);
     identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
     identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
     var identity = section('Identity and links', true, [h('div', { class: 'pfg-grid' }, identityKids)]);
@@ -453,6 +463,44 @@
     kept.forEach(function (n) { container.appendChild(n); });
     [banner, summaryErr, basics, identity, payments, releases, lintEl, preview, actions].forEach(function (n) { container.appendChild(n); });
     renderRecipients(); renderReleases(); refresh();
+
+    /* ---------- new hosted feed: start from the signed-in Nostr profile ---------- */
+    function fillIfEmpty(path, value) {
+      var f = fields[path], cur = getPath(m, path);
+      if (!value || !f || (cur !== undefined && cur !== null && String(cur).trim() !== '')) return false;
+      setPath(m, path, value); f.input.value = value;
+      return true;
+    }
+    function prefillFromNostr() {
+      var s = ctx.host.getSession ? ctx.host.getSession() : null;
+      if (!s) return;
+      var gotNpub = s.npub ? fillIfEmpty('npub', s.npub) : false;
+      if (gotNpub) changed();
+      if (!ctx.host.fetchProfile) return;
+      setBanner('', 'Looking up your Nostr profile to fill in the form…');
+      var mine = banner.firstChild;
+      ctx.host.fetchProfile(s.pubkey).then(function (profile) {
+        if (container.isConnected === false) return; // the user has already left this screen
+        var f = Core.profileToFields(profile), filled = [];
+        if (fillIfEmpty('title', f.name)) filled.push('name');
+        if (fillIfEmpty('author', f.name) && filled.indexOf('name') < 0) filled.push('name');
+        if (fillIfEmpty('description', f.about)) filled.push('description');
+        if (fillIfEmpty('link', f.website)) filled.push('website');
+        if (fillIfEmpty('image', f.picture)) filled.push('image');
+        if (f.lud16 && m.value.recipients.length === 0) {
+          m.value.recipients.push({ name: f.name || 'Publisher', address: f.lud16, split: 100 - pTotal, type: 'lnaddress' });
+          renderRecipients(); payments.setAttribute('open', '');
+          filled.push('Lightning address (see Payments)');
+        }
+        if (profile && gotNpub) filled.push('npub');
+        changed();
+        if (banner.firstChild !== mine) return; // something more important is showing (for example a save result)
+        if (!profile) setBanner('', 'No Nostr profile was found on the usual relays, so only your npub was filled in. Fill in the rest by hand.');
+        else if (filled.length) setBanner('ok', 'Filled in from your Nostr profile: ' + filled.join(', ') + '. Check everything and change what you like.');
+        else setBanner('', 'Your Nostr profile had nothing new to fill in.');
+      });
+    }
+    if (hosted && !hosted.id && ctx.host) prefillFromNostr();
   }
 
   window.PFGEditor = { render: render };

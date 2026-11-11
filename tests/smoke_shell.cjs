@@ -9,9 +9,9 @@ w.Element.prototype.scrollIntoView = () => {}; w.scrollTo = () => {};
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; };
 // fake nostr + hosting
 w.PFGNostr = {};
-let sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
+let forgot = 0, sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
 w.PFGHosting = { init: () => true, on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
-  listFeeds: async () => listed, connectBunker: async () => 'pk', login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
+  listFeeds: async () => listed, connectBunker: async () => 'pk', npubOf: pk => 'npub1for' + pk, forgetSigner: () => { forgot++; }, login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
   startNostrConnect: () => ({ uri: 'nostrconnect://x', qr: '<svg></svg>', done: new Promise(() => {}), cancel() {} }) };
 w.eval(fs.readFileSync(P + 'pfg-core.js', 'utf8'));
 let opened = null;
@@ -24,6 +24,14 @@ const tick = () => new Promise(r => setTimeout(r, 20));
 ok($$('.pfg-card').length === 3, 'start screen shows three cards');
 ok($$('.pfg-card')[0].querySelector('h3').textContent === 'Hosted feeds' && $$('.pfg-card')[0].querySelector('button').textContent === 'Sign in', 'Nostr sign-in card is the first option');
 click('Start'); ok(opened && opened.model.value.recipients.length === 0 && !opened.hosted, 'new feed opens editor (no payment rows by default, anonymous)');
+// "Get your npub": signer is asked for the public key only (no hosted session), then forgotten
+ok(typeof opened.getNpub === 'function', 'editor receives a getNpub helper when a signer is available');
+let gotNpub = null; opened.getNpub(n => { gotNpub = n; });
+ok($('.pfg-overlay') && /Get your npub/.test($('.pfg-overlay h2').textContent) && $('.pfg-overlay').getAttribute('aria-label') === 'Get your npub' && /not signed in/i.test($('.pfg-overlay').textContent), 'npub-only window opens with its own title and explanation');
+$('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
+ok(gotNpub === 'npub1forpk' && sess === null && forgot === 1 && !$('.pfg-overlay'), 'npub returned, no hosted session created, signer forgotten, window closed');
+opened.getNpub(() => { gotNpub = 'cancelled-should-not-fire'; }); click('Cancel'); await tick();
+ok(gotNpub === 'npub1forpk' && !$('.pfg-overlay'), 'cancelling the npub window does not call back');
 opened.saveDraft({ title: 'Draft T' }); opened.back();
 ok($('.pfg-note') && /Draft T/.test($('.pfg-note').textContent) === false || true, 'draft banner path ran');
 ok(w.localStorage.getItem('pfg_draft_v1').includes('Draft T'), 'draft autosaved to localStorage');

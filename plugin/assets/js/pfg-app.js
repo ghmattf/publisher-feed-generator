@@ -17,7 +17,8 @@
 
   var Core = window.PFGCore;
   var Host = window.PFGHosting;
-  var hostingOn = !!(cfg.hostingAvailable && window.PFGNostr && Host && Host.init(cfg));
+  var signerOn = !!(window.PFGNostr && Host && Host.init(cfg)); // signer connection works without hosting
+  var hostingOn = !!(cfg.hostingAvailable && signerOn);
   var DRAFT_KEY = 'pfg_draft_v1';
 
   /* ---------------- helpers ---------------- */
@@ -153,6 +154,8 @@
       saveDraft: function (m) { if (!opts.hosted) draftStore.save(m); },
       clearDraft: draftStore.clear,
       needSignIn: function (then) { openLogin(then); },
+      // Ask a signer for the public key only (no hosted session). Calls back with the npub.
+      getNpub: signerOn ? function (then) { openLogin(then, { npubOnly: true }); } : null,
       back: function () { if (opts.hosted) showHostedList(); else showStart(); },
       h: h, btn: btn, note: note, clear: clear,
     });
@@ -216,12 +219,14 @@
   }
 
   /* ---------------- sign-in window ---------------- */
-  function openLogin(after) {
+  function openLogin(after, opts) {
+    opts = opts || {};
+    var npubOnly = !!opts.npubOnly; // read the public key only: no hosted session, signer forgotten afterwards
     var attempt = null, closed = false;
     var status = h('div', { 'aria-live': 'polite' });
     var panel = h('div');
     // The overlay is attached to <body>, outside #pfg-app, so it needs the app class to get the colour variables and base styles.
-    var overlay = h('div', { class: 'pfg-app pfg-overlay' + (root && root.classList.contains('pfg-light') ? ' pfg-light' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Sign in' });
+    var overlay = h('div', { class: 'pfg-app pfg-overlay' + (root && root.classList.contains('pfg-light') ? ' pfg-light' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': npubOnly ? 'Get your npub' : 'Sign in' });
     var modal = h('div', { class: 'pfg-modal' });
     overlay.appendChild(modal);
 
@@ -236,8 +241,15 @@
 
     function finish(connectPromise) {
       status.replaceChildren(note('', 'Waiting for your signer to approve…'));
-      connectPromise.then(function () { return Host.login(); }).then(function () {
+      connectPromise.then(function (pk) { return npubOnly ? pk : Host.login(); }).then(function (res) {
         if (closed) return;
+        if (npubOnly) {
+          var npub = Host.npubOf(res);
+          Host.forgetSigner();
+          close();
+          if (typeof after === 'function') after(npub);
+          return;
+        }
         close(); renderBar();
         if (typeof after === 'function') after();
       }).catch(function (e) {
@@ -281,8 +293,10 @@
     function sel(t) { [tPaste, tQr].forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); }); }
     tabs.appendChild(tPaste); tabs.appendChild(tQr);
 
-    modal.appendChild(h('h2', { text: 'Sign in with Nostr' }));
-    modal.appendChild(h('p', { class: 'pfg-hint', text: 'Your private key stays in your signer app. This site never sees it.' }));
+    modal.appendChild(h('h2', { text: npubOnly ? 'Get your npub' : 'Sign in with Nostr' }));
+    modal.appendChild(h('p', { class: 'pfg-hint', text: npubOnly
+      ? 'Connect your signer app so we can read your public key (npub). You are not signed in and nothing is saved on this site. Your private key stays in your signer app.'
+      : 'Your private key stays in your signer app. This site never sees it.' }));
     modal.appendChild(tabs);
     modal.appendChild(panel);
     modal.appendChild(status);

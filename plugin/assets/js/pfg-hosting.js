@@ -250,6 +250,39 @@
     emit('session', null);
   }
 
+  /* ---------------- Nostr profile (read only, no signing) ---------------- */
+  // Relays that usually hold profiles. The site's signer relays (Settings) are tried too.
+  var PROFILE_RELAYS = ['wss://purplepag.es', 'wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+
+  function profileRelays() {
+    var all = (cfg && cfg.relays ? cfg.relays : []).concat(PROFILE_RELAYS), seen = {}, out = [];
+    all.forEach(function (u) { if (typeof u === 'string' && /^wss:\/\//i.test(u) && !seen[u]) { seen[u] = true; out.push(u); } });
+    return out.slice(0, 8);
+  }
+
+  /**
+   * Fetch the newest profile (kind 0) for a public key (hex) straight from relays.
+   * Resolves with the parsed profile object, or null if none was found in time. Never rejects.
+   */
+  async function fetchProfile(pubkeyHex) {
+    if (!pool || !/^[0-9a-f]{64}$/i.test(String(pubkeyHex || ''))) return null;
+    var timer;
+    try {
+      var lookup = pool.get(profileRelays(), { kinds: [0], authors: [pubkeyHex.toLowerCase()] }, { maxWait: 5000 });
+      var timeout = new Promise(function (resolve) { timer = setTimeout(function () { resolve(null); }, 8000); });
+      var ev = await Promise.race([lookup, timeout]);
+      if (!ev || ev.kind !== 0 || String(ev.pubkey).toLowerCase() !== pubkeyHex.toLowerCase()) return null;
+      var content = JSON.parse(ev.content);
+      return content && typeof content === 'object' && !Array.isArray(content) ? content : null;
+    } catch (e) {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function npubOf(pubkeyHex) { return N.nip19.npubEncode(pubkeyHex); }
+
   /* ---------------- feed helpers ---------------- */
   function feedUrl(id) { return cfg.urls.feedTemplate.replace(/\/0$/, '/' + encodeURIComponent(id)); }
 
@@ -259,6 +292,9 @@
     connectBunker: connectBunker,
     startNostrConnect: startNostrConnect,
     hasSigner: hasSigner,
+    fetchProfile: fetchProfile,
+    npubOf: npubOf,
+    forgetSigner: clearSigner,
     login: login,
     resume: resume,
     logout: logout,
