@@ -123,13 +123,14 @@ class PFG_Lookup {
 	 * @return array|WP_Error list of release suggestions.
 	 */
 	public static function search( $q ) {
-		$q = self::str( $q, 100 );
+		// A pasted feed address can be long; a text search stays short.
+		$q = self::str( $q, preg_match( '#^https?://#i', trim( (string) $q ) ) ? 400 : 100 );
 		if ( function_exists( 'mb_strlen' ) ? mb_strlen( $q ) < 2 : strlen( $q ) < 2 ) {
 			return new WP_Error( 'pfg_bad_query', 'Type at least 2 characters.', array( 'status' => 422 ) );
 		}
 		$body = self::mi_get( '/search?q=' . rawurlencode( $q ) . '&limit=20' );
 		if ( null === $body ) {
-			return new WP_Error( 'pfg_mi_down', 'Music Index could not be reached. Try again, or add the release by pasting its feed.', array( 'status' => 502 ) );
+			return new WP_Error( 'pfg_mi_down', 'Music Index could not be reached. Try again, or paste the release feed address in the search box.', array( 'status' => 502 ) );
 		}
 		$seen = array();
 		$out  = array();

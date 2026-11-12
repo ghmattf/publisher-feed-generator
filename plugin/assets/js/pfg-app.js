@@ -104,7 +104,7 @@
     cards.appendChild(h('div', { class: 'pfg-card' }, [
       h('h3', { text: 'Create a new feed' }),
       h('p', { text: 'Start from scratch. No account needed. Download the XML when you are done.' }),
-      btn('Start', 'pfg-btn-primary', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.applyPlatformToExports ? cfg.platform : [] }), hosted: null }); }),
+      btn('Start', 'pfg-btn-primary', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: null }); }),
     ]));
     cards.appendChild(h('div', { class: 'pfg-card' }, [
       h('h3', { text: 'Edit an existing feed' }),
@@ -129,7 +129,7 @@
           clear(out);
           var r = Core.parseXml(ta.value, { DOMParser: window.DOMParser, XMLSerializer: window.XMLSerializer });
           if (r.error) { out.appendChild(note('bad', r.error)); return; }
-          openEditor({ model: r.model, hosted: null, importNotes: r.notes || [] });
+          openEditor({ model: Core.liftSupport(r.model, cfg.platform), hosted: null, importNotes: r.notes || [] });
         }),
         btn('Back', '', showStart),
       ]),
@@ -171,7 +171,7 @@
       var full = feeds.length >= (cfg.limits && cfg.limits.maxFeeds || 3);
       var top = h('div', { class: 'pfg-row' }, [
         btn('New hosted feed', 'pfg-btn-primary', function () {
-          openEditor({ model: Core.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.platform }), hosted: { id: null } });
+          openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: { id: null } });
         }, full ? { disabled: true } : {}),
         btn('Back', '', showStart),
       ]);

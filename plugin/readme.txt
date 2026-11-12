@@ -35,7 +35,7 @@ Only publisher feeds are created. Albums and tracks are not.
 
 1. Upload the plugin folder to wp-content/plugins and activate it.
 2. Add `[publisher_feed_generator]` to a page.
-3. Review Settings > Publisher Feeds. Check the platform payment recipient (default: Podcastindex.org, 1%) before going live.
+3. Review Settings > Publisher Feeds. Check the "Support the developers" recipients (defaults: Phafe.com, musicindex.org, Podcastindex.org, 1% each) before going live.
 
 Requirements for hosted mode: HTTPS, and the PHP GMP extension (used to verify Nostr signatures). Without GMP the page still works in anonymous mode.
 
@@ -45,7 +45,7 @@ If you use Cloudflare, purge the cache for a feed URL after publishing if apps s
 
 * Music Index search fills in the release's GUID, title, image and medium. If the API does not return the release's feed address, the page asks you to paste it.
 
-* Platform recipients are appended to hosted feeds and take their split first; users' own recipients must total 100 minus the platform share. Changing the platform split only affects feeds saved afterwards. Optionally apply it to exports too.
+* "Support the developers" recipients are appended to every feed that has payment recipients. Creators can change each split (0 leaves one out); users' own recipients must total 100 minus the support splits. Changing the settings only affects feeds saved afterwards.
 * Roles follow the podcast-namespace "rel" proposal (podcast-namespace PR 793): a link is confirmed when both feeds point at each other with the same roles. "studio" and "engineer" are extra tokens added in settings.
 * The generated value block uses method="lnaddress" by default (changeable per feed). Check this against the current Podcasting 2.0 spec for your use.
 * The signer connection details are kept in the visitor's sessionStorage so signing keeps working after a page reload. They are cleared on sign out or when the tab closes.

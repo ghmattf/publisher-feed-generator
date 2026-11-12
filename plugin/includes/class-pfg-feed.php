@@ -16,7 +16,7 @@ class PFG_Feed {
 	const GUID_NAMESPACE = 'ead4c236-bf58-58c6-a2c6-a6b28d128cb6';
 
 	public static function builtin_rel_tokens() {
-		return array( 'artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor' );
+		return array( 'artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician' );
 	}
 
 	public static function mediums() {
@@ -310,10 +310,16 @@ class PFG_Feed {
 			$user_total += $row['split'];
 			$recips[]    = $row;
 		}
+		// "Support the developers": the creator chooses a split (0 to 99) for each configured recipient.
+		$support        = self::support_rows( $opts['platform'], self::get( $in, 'support' ), $errors );
 		$platform_total = 0;
-		foreach ( (array) $opts['platform'] as $pr ) {
-			$platform_total += (int) $pr['split'];
+		foreach ( $support as $sr ) {
+			$platform_total += $sr['split'];
 		}
+		if ( $platform_total > 99 ) {
+			self::err( $errors, 'support', 'Support splits must total less than 100%.' );
+		}
+		$m['support'] = $support;
 		// Payments are optional. With no recipients there is no value block at all.
 		if ( $recips && $user_total + $platform_total !== 100 ) {
 			$need = 100 - $platform_total;
@@ -321,7 +327,7 @@ class PFG_Feed {
 				$errors,
 				'value.recipients',
 				$platform_total
-					? sprintf( 'Your recipients must total %d%% (the platform takes %d%%). They currently total %d%%.', $need, $platform_total, $user_total )
+					? sprintf( 'Your recipients must total %d%% (support for the developers takes %d%%). They currently total %d%%.', $need, $platform_total, $user_total )
 					: sprintf( 'Recipient splits must total 100%%. They currently total %d%%.', $user_total )
 			);
 		}
@@ -419,11 +425,87 @@ class PFG_Feed {
 	}
 
 	/**
+	 * The creator's chosen split for each configured support recipient.
+	 * Names, addresses and types always come from the configured list; only the split is theirs (0 to 99).
+	 *
+	 * @param array $platform Configured support recipients (name, address, split, type).
+	 * @param mixed $input    Client rows: [ { address, split } ].
+	 * @param array $errors   Collected errors.
+	 * @return array [ { address, split } ] in the configured order.
+	 */
+	public static function support_rows( $platform, $input, &$errors ) {
+		$input  = is_array( $input ) ? array_values( $input ) : array();
+		$chosen = array();
+		foreach ( $input as $i => $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$key = strtolower( self::line( self::get( $row, 'address' ) ) );
+			if ( '' !== $key && ! isset( $chosen[ $key ] ) ) {
+				$chosen[ $key ] = array( $i, self::get( $row, 'split' ) );
+			}
+		}
+		$rows = array();
+		foreach ( (array) $platform as $pr ) {
+			$split = (int) $pr['split'];
+			$key   = strtolower( $pr['address'] );
+			if ( isset( $chosen[ $key ] ) ) {
+				list( $i, $sp ) = $chosen[ $key ];
+				if ( is_int( $sp ) || ( is_string( $sp ) && preg_match( '/^\d{1,2}$/', trim( $sp ) ) ) ) {
+					$sp = (int) $sp;
+					if ( $sp >= 0 && $sp <= 99 ) {
+						$split = $sp;
+					} else {
+						self::err( $errors, 'support.' . $i . '.split', 'Support split must be a whole number from 0 to 99.' );
+					}
+				} else {
+					self::err( $errors, 'support.' . $i . '.split', 'Support split must be a whole number from 0 to 99.' );
+				}
+			}
+			$rows[] = array( 'address' => $pr['address'], 'split' => $split );
+		}
+		return $rows;
+	}
+
+	/**
+	 * The support recipients that go into the feed: configured name/address/type with the creator's split,
+	 * leaving out any set to 0. Without chosen splits the configured defaults apply.
+	 */
+	public static function active_platform( $platform, $support ) {
+		$by = array();
+		foreach ( is_array( $support ) ? $support : array() as $row ) {
+			if ( is_array( $row ) && isset( $row['address'], $row['split'] ) ) {
+				$by[ strtolower( (string) $row['address'] ) ] = (int) $row['split'];
+			}
+		}
+		$out = array();
+		foreach ( (array) $platform as $pr ) {
+			$key   = strtolower( $pr['address'] );
+			$split = isset( $by[ $key ] ) ? $by[ $key ] : (int) $pr['split'];
+			if ( $split > 0 ) {
+				$pr['split'] = $split;
+				$out[]       = $pr;
+			}
+		}
+		return $out;
+	}
+
+	/**
 	 * The part of the model that controls where money goes (used to decide
 	 * whether an update needs a fresh signature).
 	 */
 	public static function payment_fingerprint( $model ) {
 		$v = isset( $model['value'] ) ? $model['value'] : array();
-		return hash( 'sha256', wp_json_encode( array( isset( $v['method'] ) ? $v['method'] : '', isset( $v['suggested'] ) ? $v['suggested'] : '', isset( $v['recipients'] ) ? $v['recipients'] : array() ) ) );
+		return hash(
+			'sha256',
+			wp_json_encode(
+				array(
+					isset( $v['method'] ) ? $v['method'] : '',
+					isset( $v['suggested'] ) ? $v['suggested'] : '',
+					isset( $v['recipients'] ) ? $v['recipients'] : array(),
+					isset( $model['support'] ) ? $model['support'] : array(), // support splits redirect value too
+				)
+			)
+		);
 	}
 }

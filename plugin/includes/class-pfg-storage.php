@@ -242,7 +242,7 @@ class PFG_Storage {
 	 * Build and publish the XML for a feed row. Returns the XML string or a WP_Error.
 	 */
 	public static function publish( $feed, $model ) {
-		$platform = PFG_Settings::platform_recipients();
+		$platform = PFG_Feed::active_platform( PFG_Settings::platform_recipients(), isset( $model['support'] ) ? $model['support'] : null );
 		$xml      = PFG_Xml::build( $model, $platform, time() );
 		$res      = self::write_file( $feed['slug'], $xml );
 		if ( is_wp_error( $res ) ) {

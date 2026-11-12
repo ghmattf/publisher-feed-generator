@@ -21,16 +21,25 @@ Status: plugin v0.2.0 feature-complete for the agreed scope; all automated check
 - "Save and publish" does **not** send a podping. The plugin has no podping code. Not added (it would be a new feature: needs a Podping account/token and a decision on when to ping).
 - Example reference feeds (live on phafe.com, read-only for us): `Phafe.xml` (publisher), `mezzaforte.xml` (artist publisher), the album feed `some_songs.xml` (GUID 07adf84f-c1fa-47a7-a121-0fb544e859bd). Updating those feeds is out of scope.
 
+## Editor changes (2026-11-12, owner request)
+- **Feed name** is only the file name (`.../<name>/<name>.xml`). It is made from Name / title while the user types (accents removed, `&` becomes "and", max 40, must be a valid name) until the user types their own. Still fixed after saving; a taken name is reported on that field.
+- **Category** and **Language** are drop-down lists (lists in `pfg-core.js`: `CATEGORIES`, `LANGUAGES`). A value from an imported feed that is not in the list is kept as an extra option.
+- **Author** is `itunes:author`, the public creator name shown in apps. **Owner** is `itunes:owner` (name + email), a contact for directories, not shown to listeners.
+- **Support the developers (optional)**: replaces the fixed platform row and the admin option "apply to exports". Shown in **both modes** (owner answer). Each configured recipient has an editable split 0-99 (default 1); 0 leaves it out. Per feed the model stores `support: [{address, split}]`; the server takes name, address and type from Settings only and ignores unknown addresses. User recipients must total 100 minus the support total; support total must stay under 100. Imported feeds keep exactly their own splits (`liftSupport`). With no own recipients there is no value block. Support splits are part of the payment fingerprint (HTTP 428).
+- **Release search**: one search box and the hint "Search by name or paste the feed url above." The paste box and "Read feed" button are gone, so pasting XML into a release is no longer possible. A pasted https address is first looked up in Music Index (exact `feedUrl` match), otherwise the server reads the feed itself. **Assumption, unverified:** the Music Index search API is sent the address as the normal `q` parameter; whether it matches feed addresses is unknown. If it does not, the fallback reads the feed directly, so the result is the same for the user.
+- The **Preview** section is removed. Validation messages still show inline and on Download/Save.
+- Roles **songwriter, composer, musician** added to the main list. **Other roles** (host, author, network, hosting) get their own heading under it. The other feed must list the same role tokens for the link to be confirmed.
+
 ## Release behaviour (latest requests)
-- Payments are **optional**. No recipients = no `podcast:value` block (and no platform recipient). With recipients, splits must total 100 (minus the platform share on hosted feeds).
-- Each release card has two states. Empty: Music Index search, paste box (https address or XML), Read feed. Populated (valid GUID + https feed URL): details shown read-only, only the role chips are editable. To change a release, remove it and add again.
-- Pasting an https address makes the **server** fetch it (`PFG_Lookup::fetch_feed`, `wp_safe_remote_get`). Search calls `https://api.musicindex.org/v1` (`/search`, `/feeds/{guid}`) server-side, cached 1 day per album, rate limited (20 per 5 min per visitor).
+- Payments are **optional**. No recipients = no `podcast:value` block (and no support recipients). With recipients, splits must total 100 minus the support splits.
+- Each release card has two states. Empty: one search box (name, or https feed address). Populated (valid GUID + https feed URL): details shown read-only, only the role chips are editable. To change a release, remove it and add again.
+- A pasted https address in the search box makes the **server** fetch it (after a Music Index lookup) (`PFG_Lookup::fetch_feed`, `wp_safe_remote_get`). Search calls `https://api.musicindex.org/v1` (`/search`, `/feeds/{guid}`) server-side, cached 1 day per album, rate limited (20 per 5 min per visitor).
 
 ## Security model (summary)
 HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`; NIP-98 events (kind 27235, tags u/method/nonce, payload hash when there is a body, within 60 s, nonce single use). Fresh signature in `X-PFG-Auth` is demanded (HTTP 428) for payment-recipient changes and deletes. Feeds are written atomically under uploads with a realpath check; deleted feeds become tombstones so slugs/GUIDs can't be reused. Hosting needs PHP GMP and HTTPS.
 
 ## Assumptions to verify (not confirmed)
-1. Platform recipient default is Podcastindex.org / `podcastindex@getalby.com` / 1%. Owner must review in Settings > Publisher Feeds. A change only affects feeds saved afterwards.
+1. Default support recipients: Phafe.com (`phafe@phafe.com`), musicindex.org (`heycitizen@getalby.com`), Podcastindex.org (`podcastindex@getalby.com`), 1% each, all `lnaddress`. Owner must review in Settings > Publisher Feeds. A change only affects feeds saved afterwards.
 2. Music Index detail fields assumed from the `v4v-musiclink-pro` code: search hits have `entity_type`, `entity_id`, `feed_guid`; `/feeds/{guid}` has `title`, `release_artist`, `image_url`. `feed_url` / `url` / `medium` are **guesses**; if absent, the UI asks the user to paste the feed address. Check against the real API.
 3. The NIP-46 client key is kept in `sessionStorage` so signing works after a reload (XSS would expose it).
 4. Cloudflare may cache hosted XML; a purge may be needed after publishing.

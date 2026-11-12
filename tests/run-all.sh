@@ -11,6 +11,7 @@ step "JS builder vs PHP builder parity" bash -c "node run_js.cjs >/dev/null && p
 step "Import/round-trip of pasted feeds + link checking" node test_import.cjs
 step "Nostr profile mapping + relay lookup" node test_profile.cjs
 step "Browser extension (NIP-07) sign-in" node test_extension.cjs
+step "Editor helpers (feed name, roles, support splits)" node test_editor_features.cjs
 step "App shell (jsdom)" node smoke_shell.cjs
 step "Editor (jsdom)" node smoke_editor.cjs
 step "REST/auth/storage integration (real PHP, sqlite, real signatures)" php integ.php

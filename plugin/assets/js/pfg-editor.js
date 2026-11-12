@@ -23,12 +23,14 @@
     m.releases = m.releases || [];
     m.value = m.value || { method: 'lnaddress', suggested: '', recipients: [] };
     m.funding = m.funding || { url: '', text: '' };
-    var platform = (hosted || cfg.applyPlatformToExports) ? (cfg.platform || []) : [];
-    var pTotal = Core.platformTotal(platform);
+    var platform = cfg.platform || []; // configured "Support the developers" recipients; the creator chooses each split (m.support)
+    m.support = Core.ensureSupport(m.support, platform);
+    function pTotal() { return Core.platformTotal(Core.activePlatform(platform, m.support)); }
     var slug = hosted && hosted.slug ? hosted.slug : '';
     var fields = {};      // path -> {wrap, err}
     var ui = new Map();   // release object -> {status, info, open}
     var timer = null, saving = false, slugMsg = '';
+    var slugAuto = !!(hosted && !hosted.id); // the feed name follows the title until the user types their own
 
     /* ---------- model <-> options ---------- */
     function hostedUrl() { return cfg.feedBaseUrl + slug + '/' + slug + '.xml'; }
@@ -52,8 +54,13 @@
       var val = getPath(m, path);
       var input;
       if (o.select) {
-        input = h('select', { id: id }, o.select.map(function (opt) { return h('option', { value: opt, text: opt }); }));
-        input.value = val || o.select[0];
+        var sopts = o.select.map(function (opt) { return typeof opt === 'string' ? { value: opt, label: opt } : opt; });
+        var cur = val === undefined || val === null ? '' : String(val);
+        var hit = sopts.filter(function (x) { return x.value.toLowerCase() === cur.toLowerCase(); })[0];
+        // A value the list does not know (for example from an imported feed) stays selectable instead of being lost.
+        if (o.keepUnknown && cur !== '' && !hit) { hit = { value: cur, label: cur + ' (current value)' }; sopts.push(hit); }
+        input = h('select', { id: id }, sopts.map(function (opt) { return h('option', { value: opt.value, text: opt.label }); }));
+        input.value = hit ? hit.value : sopts[0].value;
       } else if (o.textarea) {
         input = h('textarea', { id: id, rows: o.rows || 4 });
         input.value = val || '';
@@ -93,44 +100,46 @@
     /* ---------- sections ---------- */
     var banner = h('div', { 'aria-live': 'polite' });
     var summaryErr = h('div');
-    var previewEl = h('pre', { class: 'pfg-pre', tabindex: '0', 'aria-label': 'XML preview' });
     var lintEl = h('div');
     var totalEl = h('div', { class: 'pfg-total' });
     var recipsEl = h('div');
     var releasesEl = h('div');
 
     var basics = section('Basics', true, [h('div', { class: 'pfg-grid' }, [
-      field('Name / title', 'title', { hint: 'Your label, studio or business name.' }),
+      field('Name / title', 'title', { hint: 'Your label, studio or business name.', onchange: function () { autoSlug(); } }),
       field('Author', 'author', { hint: 'Shown as the publisher in podcast apps.' }),
       field('Description', 'description', { textarea: true, wide: true }),
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
       field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
-      field('Language', 'language', { hint: 'For example en, en-au.' }),
-      field('Category', 'category', { hint: 'iTunes category, for example Music.' }),
+      field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
+      field('Category', 'category', { select: [{ value: '', label: '(none)' }].concat(Core.CATEGORIES.map(function (c) { return { value: c, label: c }; })), keepUnknown: true, hint: 'Where podcast directories list your feed.' }),
       field('Keywords', 'keywords', { hint: 'Comma separated.' }),
       field('Owner name', 'ownerName'),
       field('Owner email', 'ownerEmail', { type: 'email' }),
       check('Contains explicit content', 'explicit'),
     ])]);
 
-    var slugField = null, identityKids = [];
+    var slugField = null, identityKids = [], applySlug = null;
+    function autoSlug() { if (slugAuto && applySlug) applySlug(Core.slugify(m.title)); }
     if (hosted && !hosted.id) {
       slugField = h('div', { class: 'pfg-field' }, []);
       var si = h('input', { type: 'text', id: 'pfg-f-slug', autocomplete: 'off', spellcheck: 'false', placeholder: 'my-label' });
       si.value = slug;
       var serr = h('div', { class: 'pfg-error', id: 'pfg-f-slug-err' });
       var urlOut = h('div', { class: 'pfg-hint pfg-mono' });
-      si.addEventListener('input', function () {
+      function slugChanged() {
         slug = si.value.trim().toLowerCase();
         syncHostedIdentity();
         urlOut.textContent = m.feedUrl ? 'Your feed will be at ' + m.feedUrl : '';
         slugMsg = slug && !SLUG_RE.test(slug) ? 'Use 3 to 40 lowercase letters, numbers, "-" or "_", starting with a letter or number.' : '';
         serr.textContent = slugMsg;
         changed();
-      });
+      }
+      si.addEventListener('input', function () { slugAuto = si.value.trim() === ''; slugChanged(); }); // typing your own name stops the automatic one; clearing it brings it back
+      applySlug = function (s) { si.value = s; slugChanged(); };
       slugField.appendChild(h('label', { for: 'pfg-f-slug', text: 'Feed name (web address)' }));
       slugField.appendChild(si); slugField.appendChild(serr); slugField.appendChild(urlOut);
-      slugField.appendChild(h('div', { class: 'pfg-hint', text: 'This cannot be changed later, and the address can never be reused if you delete the feed.' }));
+      slugField.appendChild(h('div', { class: 'pfg-hint', text: 'Made from your name as you type; change it if you like. After you save it cannot be changed, and the address can never be reused if you delete the feed.' }));
       fields.slug = { wrap: slugField, err: serr, input: si };
       identityKids.push(slugField);
     } else if (hosted) {
@@ -183,19 +192,36 @@
         ]);
         recipsEl.appendChild(item);
       });
-      if (m.value.recipients.length) platform.forEach(function (p) {
-        recipsEl.appendChild(h('div', { class: 'pfg-item pfg-locked' }, [h('div', { class: 'pfg-item-head' }, [
-          h('strong', { text: p.name }), h('span', { class: 'pfg-badge', text: p.split + '% (platform, fixed)' }),
-        ])]));
-      });
       updateTotal();
     }
     function updateTotal() {
       var t = 0; m.value.recipients.forEach(function (r) { t += parseInt(r.split, 10) || 0; });
-      var need = 100 - pTotal;
+      var need = 100 - pTotal();
       if (!m.value.recipients.length) { totalEl.textContent = 'No payment recipients: your feed will have no payment block. This section is optional.'; totalEl.className = 'pfg-total'; return; }
-      totalEl.textContent = 'Your recipients total ' + t + '% of ' + need + '%' + (pTotal ? ' (the platform takes ' + pTotal + '%)' : '') + '.';
+      totalEl.textContent = 'Your recipients total ' + t + '% of ' + need + '%' + (pTotal() ? ' (support for the developers takes ' + pTotal() + '%)' : '') + '.';
       totalEl.className = 'pfg-total ' + (t === need ? 'pfg-good' : 'pfg-bad');
+    }
+    /* ---------- "Support the developers (optional)": editable split per configured recipient ---------- */
+    var supportEl = h('div', { class: 'pfg-support' });
+    function renderSupport() {
+      clear(supportEl);
+      if (!platform.length) return;
+      supportEl.appendChild(h('h4', { class: 'pfg-subhead', text: 'Support the developers (optional)' }));
+      supportEl.appendChild(h('p', { class: 'pfg-hint', text: 'These projects each get a small share of what is paid to your feed. Change a share, or set it to 0 to leave one out. They only apply once you have added your own payment recipient above.' }));
+      m.support.forEach(function (row, i) {
+        var p = platform.filter(function (x) { return String(x.address).toLowerCase() === String(row.address).toLowerCase(); })[0] || { name: row.address, address: row.address };
+        var id = 'pfg-support-' + i;
+        var inp = h('input', { id: id, type: 'number', min: '0', max: '99', step: '1', style: 'width:5em', 'aria-describedby': id + '-err' });
+        inp.value = row.split;
+        var err = h('div', { class: 'pfg-error', id: id + '-err' });
+        inp.addEventListener('input', function () { row.split = inp.value === '' ? '' : parseInt(inp.value, 10); updateTotal(); changed(); });
+        var wrap = h('div', { class: 'pfg-support-row' }, [h('div', { class: 'pfg-item-head' }, [
+          h('label', { for: id }, [h('strong', { text: p.name }), ' ', h('span', { class: 'pfg-hint pfg-mono', text: p.address })]),
+          h('span', {}, [inp, ' %']),
+        ]), err]);
+        fields['support.' + i + '.split'] = { wrap: wrap, err: err, input: inp };
+        supportEl.appendChild(wrap);
+      });
     }
     var payments = section('Payments', false, [
       h('p', { class: 'pfg-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),
@@ -205,6 +231,7 @@
         if (m.value.recipients.length >= 10) return;
         m.value.recipients.push(Core.emptyRecipient(0)); renderRecipients(); changed();
       })]),
+      supportEl,
     ]);
     if (hosted) payments.insertBefore(note('', 'Changing who gets paid needs a fresh approval from your signer when you save.'), payments.children[1]);
 
@@ -216,18 +243,24 @@
     function roleChips(r) {
       var all = (cfg.relTokens || []).slice();
       (r.rel || []).forEach(function (t) { if (all.indexOf(t) < 0) all.push(t); });
-      var box = h('div', { class: 'pfg-chips', role: 'group', 'aria-label': 'Roles' });
-      all.forEach(function (t) {
-        var c = h('button', { type: 'button', class: 'pfg-chip', 'aria-pressed': r.rel.indexOf(t) >= 0 ? 'true' : 'false', text: t });
-        c.addEventListener('click', function () {
-          var ix = r.rel.indexOf(t);
-          if (ix >= 0) r.rel.splice(ix, 1); else r.rel.push(t);
-          c.setAttribute('aria-pressed', ix >= 0 ? 'false' : 'true');
-          refreshReleaseHelp(r); changed();
+      var groups = Core.splitRoles(all);
+      function chipBox(tokens, label) {
+        var box = h('div', { class: 'pfg-chips', role: 'group', 'aria-label': label });
+        tokens.forEach(function (t) {
+          var c = h('button', { type: 'button', class: 'pfg-chip', 'aria-pressed': r.rel.indexOf(t) >= 0 ? 'true' : 'false', text: t });
+          c.addEventListener('click', function () {
+            var ix = r.rel.indexOf(t);
+            if (ix >= 0) r.rel.splice(ix, 1); else r.rel.push(t);
+            c.setAttribute('aria-pressed', ix >= 0 ? 'false' : 'true');
+            refreshReleaseHelp(r); changed();
+          });
+          box.appendChild(c);
         });
-        box.appendChild(c);
-      });
-      return box;
+        return box;
+      }
+      var wrap = h('div', {}, [chipBox(groups.main, 'Roles')]);
+      if (groups.other.length) { wrap.appendChild(h('div', { class: 'pfg-subhead', text: 'Other roles' })); wrap.appendChild(chipBox(groups.other, 'Other roles')); }
+      return wrap;
     }
     function statusNote(r) {
       var st = ui.get(r) || {}, info = st.info;
@@ -260,26 +293,22 @@
         r.rel = r.rel || [];
         var helpEl = h('div'); Object.defineProperty(r, '_helpEl', { value: helpEl, enumerable: false, configurable: true, writable: true });
         var pop = isPopulated(r);
-        var pasteTa = h('textarea', { rows: 3, class: 'pfg-xml', placeholder: 'Paste the release feed address (https://…) or its XML', 'aria-label': 'Release feed address or XML' });
         var pasteMsg = h('div', { 'aria-live': 'polite' });
         var st0 = ui.get(r); if (st0 && st0.msg) pasteMsg.appendChild(note(st0.msg[0], st0.msg[1]));
-        var searchIn = h('input', { type: 'search', id: 'pfg-s-' + i, placeholder: 'Search Music Index by album, track or artist', autocomplete: 'off', 'aria-label': 'Search Music Index' });
+        var searchIn = h('input', { type: 'search', id: 'pfg-s-' + i, placeholder: 'Search Music Index by album, track or artist, or paste a feed address', autocomplete: 'off', 'aria-label': 'Search Music Index by name, or paste a feed address' });
         var searchOut = h('div', { 'aria-live': 'polite' });
         function say(kind, text) { var st = ui.get(r) || {}; st.msg = text ? [kind, text] : null; ui.set(r, st); clear(pasteMsg); if (text) pasteMsg.appendChild(note(kind, text)); }
         function post(url, body) {
           return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) })
             .then(function (res) { return res.json().catch(function () { return null; }).then(function (d) { if (!res.ok) throw new Error((d && d.message) || 'Request failed (' + res.status + ').'); return d; }); });
         }
-        /** Read a feed (URL fetched by the server, or pasted XML), fill the release in and check the link back. */
+        /** Read a release feed from its https address (fetched by the server), fill the release in and check the link back. */
         function readFeed(text) {
           text = String(text || '').trim();
-          if (!text) { say('bad', 'Paste a feed address or its XML first.'); return Promise.resolve(); }
-          var isUrl = /^https?:\/\/\S+$/i.test(text);
-          var getXml = isUrl
-            ? (/^https:\/\//i.test(text) ? post(cfg.urls.lookupFeed, { url: text }).then(function (d) { return d.xml; }) : Promise.reject(new Error('Feed addresses must start with https://.')))
-            : Promise.resolve(text);
-          say('', isUrl ? 'Fetching the feed…' : 'Reading…');
-          return getXml.then(function (xml) {
+          if (!/^https:\/\/\S+$/i.test(text)) { say('bad', 'Feed addresses must start with https://.'); return Promise.resolve(); }
+          var isUrl = true;
+          say('', 'Fetching the feed…');
+          return post(cfg.urls.lookupFeed, { url: text }).then(function (d) { return d.xml; }).then(function (xml) {
             var info = Core.inspectReleaseFeed(xml, { DOMParser: window.DOMParser, XMLSerializer: window.XMLSerializer }, m.guid, r.rel);
             if (info.error) throw new Error(info.error);
             if (info.guid) r.feedGuid = info.guid;
@@ -287,18 +316,27 @@
             if (info.feedUrl) r.feedUrl = info.feedUrl; else if (isUrl) r.feedUrl = text;
             if (info.feedImg) r.feedImg = info.feedImg;
             if (info.medium && (cfg.mediums || []).indexOf(info.medium) >= 0) r.medium = info.medium;
-            ui.set(r, { info: info, status: info.status, xml: xml, msg: (!info.feedUrl && !isUrl) ? ['warn', 'That feed does not state its own address (atom:link rel="self"), so it cannot be added from pasted XML. Paste the feed\'s https address instead.'] : null });
+            ui.set(r, { info: info, status: info.status, xml: xml, msg: null });
             renderReleases(); changed();
           }).catch(function (e) { say('bad', e.message); });
         }
+        function sameUrl(a, b) { return String(a || '').trim().replace(/\/+$/, '').toLowerCase() === String(b || '').trim().replace(/\/+$/, '').toLowerCase(); }
         function runSearch() {
           var q = searchIn.value.trim(); clear(searchOut);
+          var isUrl = /^https?:\/\/\S+$/i.test(q);
+          if (isUrl && !/^https:\/\//i.test(q)) { searchOut.appendChild(note('warn', 'Feed addresses must start with https://.')); return; }
           if (q.length < 2) { searchOut.appendChild(note('warn', 'Type at least 2 characters.')); return; }
-          searchOut.appendChild(note('', 'Searching…'));
+          searchOut.appendChild(note('', isUrl ? 'Looking up that feed address in Music Index…' : 'Searching…'));
           post(cfg.urls.lookupSearch, { q: q }).then(function (d) {
             clear(searchOut);
             var list = d.results || [];
-            if (!list.length) { searchOut.appendChild(note('warn', 'No releases found. Try other words, or paste the feed below.')); return; }
+            if (isUrl) {
+              // A feed address: use the Music Index release whose feed address matches exactly, otherwise read the feed itself.
+              var exact = list.filter(function (x) { return sameUrl(x.feedUrl, q); })[0];
+              if (exact) { pick(exact); return; }
+              readFeed(q); return;
+            }
+            if (!list.length) { searchOut.appendChild(note('warn', 'No releases found. Try other words, or paste the feed address instead.')); return; }
             var ul = h('div', { class: 'pfg-results', role: 'list' });
             list.forEach(function (x) {
               ul.appendChild(h('button', { type: 'button', class: 'pfg-result', role: 'listitem', onclick: function () { pick(x); } }, [
@@ -306,7 +344,11 @@
               ]));
             });
             searchOut.appendChild(ul);
-          }).catch(function (e) { clear(searchOut); searchOut.appendChild(note('bad', e.message)); });
+          }).catch(function (e) {
+            clear(searchOut);
+            if (isUrl) { readFeed(q); return; } // Music Index could not be asked: read the feed directly
+            searchOut.appendChild(note('bad', e.message));
+          });
         }
         function pick(x) {
           var dupe = m.releases.some(function (o) { return o !== r && o.feedGuid && o.feedGuid.toLowerCase() === x.guid.toLowerCase(); });
@@ -315,7 +357,7 @@
           if (x.image) r.feedImg = x.image;
           if (x.feedUrl) r.feedUrl = x.feedUrl;
           if (x.medium && (cfg.mediums || []).indexOf(x.medium) >= 0) r.medium = x.medium;
-          ui.set(r, { msg: x.feedUrl ? null : ['warn', 'Music Index did not give this release\'s feed address. Paste the feed\'s https address below to finish adding it.'] });
+          ui.set(r, { msg: x.feedUrl ? null : ['warn', 'Music Index did not give this release\'s feed address. Paste the feed\'s https address in the search box to finish adding it.'] });
           if (x.feedUrl) { renderReleases(); changed(); readFeed(x.feedUrl); } else { renderReleases(); changed(); }
         }
         searchIn.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); runSearch(); } });
@@ -328,9 +370,8 @@
           ]),
           h('div', { hidden: pop }, [
             h('div', { class: 'pfg-row' }, [searchIn, btn('Search', 'pfg-btn-small', runSearch)]),
+            h('div', { class: 'pfg-hint', text: 'Search by name or paste the feed url above.' }),
             searchOut,
-            pasteTa,
-            h('div', { class: 'pfg-row', style: 'margin:6px 0 10px' }, [btn('Read feed', 'pfg-btn-small', function () { readFeed(pasteTa.value); })]),
             pasteMsg,
           ]),
           h('div', { class: 'pfg-grid', hidden: !pop }, [
@@ -357,7 +398,7 @@
       })]),
     ]);
 
-    /* preview + actions */
+    /* actions */
     var actions = h('div', { class: 'pfg-row' });
     var saveBtn, dlBtn, cpBtn;
     if (hosted) {
@@ -369,7 +410,6 @@
       actions.appendChild(dlBtn); actions.appendChild(cpBtn);
     }
     actions.appendChild(btn(hosted ? 'Back to my feeds' : 'Start over', '', function () { if (!hosted || window.confirm('Leave without saving?')) ctx.back(); }));
-    var preview = section('Preview', false, [h('p', { class: 'pfg-hint', text: 'This is the exact file that will be produced.' }), previewEl]);
 
     /* notes from import */
     var kept = [];
@@ -382,7 +422,7 @@
       errs = errs.reduce(function (acc, e) {
         var mt = /^releases\.(\d+)\./.exec(e.path);
         if (mt && m.releases[+mt[1]] && !isPopulated(m.releases[+mt[1]])) {
-          if (!told[mt[1]]) { told[mt[1]] = true; acc.push({ path: 'releases.' + mt[1], message: 'Release ' + (+mt[1] + 1) + ' is not filled in yet. Search Music Index or read its feed, or remove it.' }); }
+          if (!told[mt[1]]) { told[mt[1]] = true; acc.push({ path: 'releases.' + mt[1], message: 'Release ' + (+mt[1] + 1) + ' is not filled in yet. Search Music Index or paste its feed address, or remove it.' }); }
           return acc;
         }
         acc.push(e); return acc;
@@ -405,7 +445,7 @@
         if (first && first.input && first.input.focus) first.input.focus();
         return null;
       }
-      return { model: r.model, xml: Core.buildXml(r.model, platform, Date.now()) };
+      return { model: r.model, xml: Core.buildXml(r.model, Core.activePlatform(platform, r.model.support), Date.now()) };
     }
     function refresh() {
       var r = clean();
@@ -414,8 +454,6 @@
       clear(lintEl);
       var w = Core.lint(r.model);
       if (w.length) lintEl.appendChild(note('warn', h('ul', {}, w.map(function (t) { return h('li', { text: t }); }))));
-      if (!r.errors.length) previewEl.textContent = Core.buildXml(r.model, platform, Date.now());
-      else previewEl.textContent = 'Fix the highlighted problems to see the preview.';
       if (!hosted) ctx.saveDraft(m);
     }
     function changed() { clearTimeout(timer); timer = setTimeout(refresh, 250); }
@@ -448,7 +486,10 @@
         if (res.status === 'published') setBanner('ok', ['Published at ', h('a', { href: res.url, target: '_blank', rel: 'noopener', text: res.url })]);
         else setBanner('warn', 'Saved. This feed is waiting for review and is not public yet.');
       }).catch(function (e) {
-        if (e.errors && e.errors.length) { showErrors(e.errors); setBanner('bad', e.message); }
+        if (e.status === 409 && fields.slug) {
+          slugMsg = 'That feed name is already taken. Please choose another.'; slugAuto = false;
+          fields.slug.err.textContent = slugMsg; setBanner('bad', slugMsg); fields.slug.input.focus();
+        } else if (e.errors && e.errors.length) { showErrors(e.errors); setBanner('bad', e.message); }
         else if (e.status === 401 || /sign in again|not connected/i.test(e.message)) {
           setBanner('warn', h('span', {}, [e.message + ' ', btn('Sign in', 'pfg-btn-small', function () { ctx.needSignIn(function () { setBanner('ok', 'Signed in. Press save again.'); }); })]));
         } else setBanner('bad', e.message);
@@ -461,8 +502,8 @@
     container.appendChild(h('h2', { text: hosted ? (hosted.id ? 'Edit hosted feed' : 'New hosted feed') : 'Feed editor' }));
     if (hosted && hosted.status && hosted.status !== 'published') container.appendChild(note('warn', 'Status: ' + hosted.status + '. This feed is not public.'));
     kept.forEach(function (n) { container.appendChild(n); });
-    [banner, summaryErr, basics, identity, payments, releases, lintEl, preview, actions].forEach(function (n) { container.appendChild(n); });
-    renderRecipients(); renderReleases(); refresh();
+    [banner, summaryErr, basics, identity, payments, releases, lintEl, actions].forEach(function (n) { container.appendChild(n); });
+    renderRecipients(); renderSupport(); renderReleases(); autoSlug(); refresh();
 
     /* ---------- new hosted feed: start from the signed-in Nostr profile ---------- */
     function fillIfEmpty(path, value) {
@@ -488,11 +529,12 @@
         if (fillIfEmpty('link', f.website)) filled.push('website');
         if (fillIfEmpty('image', f.picture)) filled.push('image');
         if (f.lud16 && m.value.recipients.length === 0) {
-          m.value.recipients.push({ name: f.name || 'Publisher', address: f.lud16, split: 100 - pTotal, type: 'lnaddress' });
+          m.value.recipients.push({ name: f.name || 'Publisher', address: f.lud16, split: 100 - pTotal(), type: 'lnaddress' });
           renderRecipients(); payments.setAttribute('open', '');
           filled.push('Lightning address (see Payments)');
         }
         if (profile && gotNpub) filled.push('npub');
+        autoSlug();
         changed();
         if (banner.firstChild !== mine) return; // something more important is showing (for example a save result)
         if (!profile) setBanner('', 'No Nostr profile was found on the usual relays, so only your npub was filled in. Fill in the rest by hand.');

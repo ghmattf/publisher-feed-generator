@@ -163,7 +163,6 @@ class PFG_Rest {
 			'feedBaseUrl'            => trailingslashit( $u['baseurl'] ) . $sub . '/',
 			'relays'                 => array_values( (array) PFG_Settings::get( 'relays' ) ),
 			'platform'               => array_values( PFG_Settings::platform_recipients() ),
-			'applyPlatformToExports' => (bool) PFG_Settings::get( 'apply_platform_to_exports' ),
 			'defaults'               => array(
 				'suggested' => (string) PFG_Settings::get( 'default_suggested' ),
 				'method'    => (string) PFG_Settings::get( 'default_value_method' ),
