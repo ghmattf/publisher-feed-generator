@@ -1,0 +1,29 @@
+# Creates a GitHub release (and tag) whenever main has a plugin version that has not been released yet.
+# The version is read from the "Version:" header of plugin/publisher-feed-generator.php.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release if this version has none
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^ \* Version:[[:space:]]*//p' plugin/publisher-feed-generator.php | head -n1 | tr -d '[:space:]')
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Could not read a version (got '$version')"; exit 1; }
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then echo "$tag already released"; exit 0; fi
+          mkdir -p stage && cp -r plugin stage/publisher-feed-generator
+          (cd stage && zip -qr ../publisher-feed-generator.zip publisher-feed-generator)
+          gh release create "$tag" publisher-feed-generator.zip --target "$GITHUB_SHA" --title "$version" --generate-notes
