@@ -1,9 +1,9 @@
 # Decisions, assumptions and open items
 
-Status: plugin v0.3.0 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). Not yet run on a real WordPress site, with a real signer app, or against the live Music Index API.
+Status: plugin v0.3.1 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). Not yet run on a real WordPress site, with a real signer app, or against the live Music Index API.
 
 ## Product decisions (stated by the owner)
-- Versioning: the plugin is at **0.3.0** (0.3.0 on 2026-11-13; 0.2.0 was decided 2026-11-12, replacing an earlier 1.0.0 string that was never tagged or released). Major version changes (including moving to 1.0.0) need the owner's explicit approval. Features and fixes before that are minor/patch bumps (0.3.0, 0.2.1).
+- Versioning: the plugin is at **0.3.1** (0.3.0 on 2026-11-13; 0.2.0 was decided 2026-11-12, replacing an earlier 1.0.0 string that was never tagged or released). Major version changes (including moving to 1.0.0) need the owner's explicit approval. Features and fixes before that are minor/patch bumps (0.3.0, 0.2.1).
 - Publisher feeds only (`podcast:medium` publisher). Not albums or tracks.
 - Two modes. Anonymous: create, paste-XML import, edit, export, no login. Hosted: Nostr login (browser extension via NIP-07, or remote signer via NIP-46), feeds hosted on phafe.com.
 - Import is by **pasted XML only** for whole feeds. No URL import. Importing into hosting is not an option.
