@@ -1,16 +1,16 @@
 <?php
 /**
- * Builds the publisher-feed XML. Mirrored by buildXml() in assets/js/mspf-core.js;
+ * Builds the publisher-feed XML. Mirrored by buildXml() in assets/js/pfg-core.js;
  * both must produce byte-identical output for the same input.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Xml {
+class PFG_Xml {
 
 	const NS_PODCAST = 'https://podcastindex.org/namespace/1.0';
 	const NS_ITUNES  = 'http://www.itunes.com/dtds/podcast-1.0.dtd';

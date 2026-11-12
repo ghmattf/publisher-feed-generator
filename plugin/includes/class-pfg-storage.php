@@ -2,14 +2,14 @@
 /**
  * Database access and feed-file writing for hosted feeds.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Storage {
+class PFG_Storage {
 
 	/** Slugs that can never be claimed. */
 	public static function reserved_slugs() {
@@ -31,7 +31,7 @@ class MSPF_Storage {
 	/* ------------------------------------------------------------------ */
 
 	private static function subdir() {
-		return trim( (string) MSPF_Settings::get( 'feed_subdir' ), '/' );
+		return trim( (string) PFG_Settings::get( 'feed_subdir' ), '/' );
 	}
 
 	public static function feed_url( $slug ) {
@@ -62,28 +62,28 @@ class MSPF_Storage {
 	public static function write_file( $slug, $xml ) {
 		$p = self::feed_path( $slug );
 		if ( ! $p ) {
-			return new WP_Error( 'mspf_path', 'Invalid feed path.', array( 'status' => 400 ) );
+			return new WP_Error( 'pfg_path', 'Invalid feed path.', array( 'status' => 400 ) );
 		}
 		if ( ! wp_mkdir_p( $p['dir'] ) ) {
-			return new WP_Error( 'mspf_mkdir', 'The server could not create the feed folder.', array( 'status' => 500 ) );
+			return new WP_Error( 'pfg_mkdir', 'The server could not create the feed folder.', array( 'status' => 500 ) );
 		}
 		$real_dir  = realpath( $p['dir'] );
 		$real_base = realpath( $p['base'] );
 		if ( false === $real_dir || false === $real_base || 0 !== strpos( wp_normalize_path( $real_dir ) . '/', wp_normalize_path( $real_base ) . '/' ) ) {
-			return new WP_Error( 'mspf_path', 'Invalid feed path.', array( 'status' => 400 ) );
+			return new WP_Error( 'pfg_path', 'Invalid feed path.', array( 'status' => 400 ) );
 		}
-		$tmp = tempnam( $real_dir, '.mspf' );
+		$tmp = tempnam( $real_dir, '.pfg' );
 		if ( false === $tmp ) {
-			return new WP_Error( 'mspf_write', 'The server could not write the feed file.', array( 'status' => 500 ) );
+			return new WP_Error( 'pfg_write', 'The server could not write the feed file.', array( 'status' => 500 ) );
 		}
 		if ( false === file_put_contents( $tmp, $xml ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions
 			@unlink( $tmp ); // phpcs:ignore
-			return new WP_Error( 'mspf_write', 'The server could not write the feed file.', array( 'status' => 500 ) );
+			return new WP_Error( 'pfg_write', 'The server could not write the feed file.', array( 'status' => 500 ) );
 		}
 		@chmod( $tmp, 0644 ); // phpcs:ignore
 		if ( ! @rename( $tmp, $real_dir . '/' . $slug . '.xml' ) ) { // phpcs:ignore
 			@unlink( $tmp ); // phpcs:ignore
-			return new WP_Error( 'mspf_write', 'The server could not write the feed file.', array( 'status' => 500 ) );
+			return new WP_Error( 'pfg_write', 'The server could not write the feed file.', array( 'status' => 500 ) );
 		}
 		return true;
 	}
@@ -101,19 +101,19 @@ class MSPF_Storage {
 
 	public static function get_account_by_pubkey( $pubkey ) {
 		global $wpdb;
-		$t = MSPF_Installer::table( 'accounts' );
+		$t = PFG_Installer::table( 'accounts' );
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t} WHERE pubkey = %s", $pubkey ), ARRAY_A ); // phpcs:ignore
 	}
 
 	public static function get_account( $id ) {
 		global $wpdb;
-		$t = MSPF_Installer::table( 'accounts' );
+		$t = PFG_Installer::table( 'accounts' );
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t} WHERE id = %d", $id ), ARRAY_A ); // phpcs:ignore
 	}
 
 	public static function touch_account( $pubkey ) {
 		global $wpdb;
-		$t   = MSPF_Installer::table( 'accounts' );
+		$t   = PFG_Installer::table( 'accounts' );
 		$now = time();
 		$acc = self::get_account_by_pubkey( $pubkey );
 		if ( ! $acc ) {
@@ -135,7 +135,7 @@ class MSPF_Storage {
 
 	public static function set_account_status( $id, $status ) {
 		global $wpdb;
-		$wpdb->update( MSPF_Installer::table( 'accounts' ), array( 'status' => $status ), array( 'id' => (int) $id ), array( '%s' ), array( '%d' ) );
+		$wpdb->update( PFG_Installer::table( 'accounts' ), array( 'status' => $status ), array( 'id' => (int) $id ), array( '%s' ), array( '%d' ) );
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -144,32 +144,32 @@ class MSPF_Storage {
 
 	public static function get_feed( $id ) {
 		global $wpdb;
-		$t = MSPF_Installer::table( 'feeds' );
+		$t = PFG_Installer::table( 'feeds' );
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t} WHERE id = %d", $id ), ARRAY_A ); // phpcs:ignore
 	}
 
 	public static function slug_or_guid_taken( $slug, $guid ) {
 		global $wpdb;
-		$t = MSPF_Installer::table( 'feeds' );
+		$t = PFG_Installer::table( 'feeds' );
 		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t} WHERE slug = %s OR guid = %s", $slug, $guid ) ) > 0; // phpcs:ignore
 	}
 
 	public static function count_feeds_for_account( $account_id ) {
 		global $wpdb;
-		$t = MSPF_Installer::table( 'feeds' );
+		$t = PFG_Installer::table( 'feeds' );
 		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t} WHERE account_id = %d AND status <> 'deleted'", $account_id ) ); // phpcs:ignore
 	}
 
 	public static function list_feeds_for_account( $account_id ) {
 		global $wpdb;
-		$t = MSPF_Installer::table( 'feeds' );
+		$t = PFG_Installer::table( 'feeds' );
 		return $wpdb->get_results( $wpdb->prepare( "SELECT id, slug, guid, title, status, created_at, updated_at FROM {$t} WHERE account_id = %d AND status <> 'deleted' ORDER BY id ASC", $account_id ), ARRAY_A ); // phpcs:ignore
 	}
 
 	public static function list_all_feeds() {
 		global $wpdb;
-		$f = MSPF_Installer::table( 'feeds' );
-		$a = MSPF_Installer::table( 'accounts' );
+		$f = PFG_Installer::table( 'feeds' );
+		$a = PFG_Installer::table( 'accounts' );
 		return $wpdb->get_results( "SELECT f.id, f.slug, f.guid, f.title, f.status, f.created_at, f.updated_at, f.account_id, a.pubkey, a.status AS account_status FROM {$f} f LEFT JOIN {$a} a ON a.id = f.account_id ORDER BY f.id DESC LIMIT 500", ARRAY_A ); // phpcs:ignore
 	}
 
@@ -177,7 +177,7 @@ class MSPF_Storage {
 		global $wpdb;
 		$now = time();
 		$ok  = $wpdb->insert(
-			MSPF_Installer::table( 'feeds' ),
+			PFG_Installer::table( 'feeds' ),
 			array(
 				'account_id' => $account_id,
 				'slug'       => $slug,
@@ -196,7 +196,7 @@ class MSPF_Storage {
 	public static function update_feed_data( $id, $model ) {
 		global $wpdb;
 		return false !== $wpdb->update(
-			MSPF_Installer::table( 'feeds' ),
+			PFG_Installer::table( 'feeds' ),
 			array(
 				'title'      => mb_substr( $model['title'], 0, 200 ),
 				'data'       => wp_json_encode( $model ),
@@ -210,7 +210,7 @@ class MSPF_Storage {
 
 	public static function set_feed_status( $id, $status ) {
 		global $wpdb;
-		$wpdb->update( MSPF_Installer::table( 'feeds' ), array( 'status' => $status, 'updated_at' => time() ), array( 'id' => (int) $id ), array( '%s', '%d' ), array( '%d' ) );
+		$wpdb->update( PFG_Installer::table( 'feeds' ), array( 'status' => $status, 'updated_at' => time() ), array( 'id' => (int) $id ), array( '%s', '%d' ), array( '%d' ) );
 	}
 
 	/**
@@ -220,7 +220,7 @@ class MSPF_Storage {
 		global $wpdb;
 		self::delete_file( $feed['slug'] );
 		$wpdb->update(
-			MSPF_Installer::table( 'feeds' ),
+			PFG_Installer::table( 'feeds' ),
 			array(
 				'status'     => 'deleted',
 				'data'       => '{}',
@@ -242,8 +242,8 @@ class MSPF_Storage {
 	 * Build and publish the XML for a feed row. Returns the XML string or a WP_Error.
 	 */
 	public static function publish( $feed, $model ) {
-		$platform = MSPF_Settings::platform_recipients();
-		$xml      = MSPF_Xml::build( $model, $platform, time() );
+		$platform = PFG_Settings::platform_recipients();
+		$xml      = PFG_Xml::build( $model, $platform, time() );
 		$res      = self::write_file( $feed['slug'], $xml );
 		if ( is_wp_error( $res ) ) {
 			return $res;

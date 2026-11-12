@@ -1,13 +1,13 @@
 /*!
- * MSP Publisher Feeds - core logic (no UI, no network).
- * Mirrors includes/class-mspf-feed.php and class-mspf-xml.php. Keep them in step:
+ * Publisher Feed Generator - core logic (no UI, no network).
+ * Mirrors includes/class-pfg-feed.php and class-pfg-xml.php. Keep them in step:
  * the same input must give byte-identical XML and the same error list in both.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
     module.exports = factory();
   } else {
-    root.MSPFCore = factory();
+    root.PFGCore = factory();
   }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
@@ -182,11 +182,43 @@
       return !!p.hostname && !p.username && !p.password;
     } catch (e) { return false; }
   }
+  /** Website and Image accept http:// as well as https:// (everything else stays https-only). */
+  function isHttpUrl(u) {
+    if (u.length > 2048 || !/^https?:\/\/[^\s<>"']+$/i.test(u)) return false;
+    try {
+      var p = new URL(u);
+      return !!p.hostname && !p.username && !p.password;
+    } catch (e) { return false; }
+  }
   function isUuid(s) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s); }
 
   /* ---------------------------------------------------------------- */
   /* Normalise + validate                                              */
   /* ---------------------------------------------------------------- */
+
+  /**
+   * Turn a Nostr profile (kind 0 content, untrusted) into values for a new feed form.
+   * Returns only what is usable: strings are trimmed and cut to the feed limits, URLs must be
+   * http(s), and the lightning address must look like name@domain (lud06/LNURL is ignored).
+   * Pure function, client only (not part of the PHP/JS output parity).
+   */
+  function profileToFields(profile) {
+    var out = { name: '', about: '', website: '', picture: '', lud16: '' };
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return out;
+    function str(k) { return typeof profile[k] === 'string' ? profile[k] : ''; }
+    function clip(s, n) { var a = Array.from(s); return a.length > n ? a.slice(0, n).join('') : s; }
+    out.name = clip(line(str('display_name') || str('displayName') || str('name')), 200);
+    if (out.name === '') out.name = clip(line(str('name')), 200);
+    out.about = clip(text(str('about')), 4000);
+    var site = line(str('website'));
+    if (site !== '' && !/^[a-z][a-z0-9+.-]*:/i.test(site) && /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}([\/?#]\S*)?$/i.test(site)) site = 'https://' + site; // bare "example.com"
+    if (site !== '' && isHttpUrl(site)) out.website = site;
+    var pic = line(str('picture'));
+    if (pic !== '' && isHttpUrl(pic)) out.picture = pic;
+    var ln = line(str('lud16'));
+    if (/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(ln)) out.lud16 = ln;
+    return out;
+  }
 
   function emptyRecipient(split) {
     return { name: '', address: '', split: split || 0, type: 'lnaddress' };
@@ -235,14 +267,14 @@
     else if (len(m.description) > 4000) err('description', 'Description is too long (4000 characters max).');
 
     m.link = line(get(input, 'link'));
-    if (m.link !== '' && !isHttpsUrl(m.link)) err('link', 'Website must be an https:// URL.');
+    if (m.link !== '' && !isHttpUrl(m.link)) err('link', 'Website must be an http:// or https:// URL.');
 
     m.language = line(get(input, 'language')).toLowerCase();
     if (m.language === '') m.language = 'en';
     if (!/^[a-z]{2,3}(-[a-z0-9]{2,8}){0,2}$/.test(m.language)) err('language', 'Language must be a code such as "en" or "en-au".');
 
     m.image = line(get(input, 'image'));
-    if (m.image !== '' && !isHttpsUrl(m.image)) err('image', 'Image must be an https:// URL.');
+    if (m.image !== '' && !isHttpUrl(m.image)) err('image', 'Image must be an http:// or https:// URL.');
 
     m.category = line(get(input, 'category'));
     if (len(m.category) > 100) err('category', 'Category is too long.');
@@ -644,6 +676,6 @@
     uuid5: uuid5, guidForUrl: guidForUrl, npubEncode: npubEncode, npubDecode: npubDecode,
     emptyModel: emptyModel, emptyRecipient: emptyRecipient, platformTotal: platformTotal,
     normalize: normalize, lint: lint, buildXml: buildXml, parseXml: parseXml, inspectReleaseFeed: inspectReleaseFeed, snippetFor: snippetFor,
-    line: line, text: text, isHttpsUrl: isHttpsUrl, isUuid: isUuid, len: len,
+    line: line, text: text, isHttpsUrl: isHttpsUrl, isHttpUrl: isHttpUrl, profileToFields: profileToFields, isUuid: isUuid, len: len,
   };
 });

@@ -8,7 +8,7 @@ for (let i = 0; i < 24; i++) {
   const ev = finalizeEvent({
     kind: i % 3 === 0 ? 27235 : 1,
     created_at: 1700000000 + i * 977,
-    tags: i % 2 ? [['u', 'https://example.com/wp-json/mspf/v1/auth/login?x=1&y=é'], ['method', 'POST'], ['nonce', 'ab'.repeat(16)]] : [],
+    tags: i % 2 ? [['u', 'https://example.com/wp-json/pfg/v1/auth/login?x=1&y=é'], ['method', 'POST'], ['nonce', 'ab'.repeat(16)]] : [],
     content: contents[i % contents.length],
   }, sk);
   out.events.push({ event: ev, valid: true });

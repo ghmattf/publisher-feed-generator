@@ -1,4 +1,4 @@
-=== MSP Publisher Feeds ===
+=== Publisher Feed Generator ===
 Contributors: phafe
 Tags: podcasting 2.0, rss, publisher feed, nostr, music
 Requires at least: 5.8
@@ -11,7 +11,7 @@ A page where labels, studios, engineers, hosts and artists build Podcasting 2.0 
 
 == Description ==
 
-Add the shortcode `[msp_feed_generator]` to any page.
+Add the shortcode `[publisher_feed_generator]` to any page.
 
 Anonymous mode (no login, nothing stored on your server):
 * Create a publisher feed from scratch, or paste the XML of an existing publisher feed to edit it.
@@ -19,10 +19,12 @@ Anonymous mode (no login, nothing stored on your server):
 * Payments are optional. With no payment recipients the feed simply has no payment block.
 * Search Music Index (api.musicindex.org) for a release, or paste a release feed's https address (or its XML), and the details are filled in for you. Lookups run on your server, need no account and are rate limited.
 * Download or copy the XML. Drafts are kept in the visitor's browser only.
+* "Get your npub" fills the npub field by asking a signer app for its public key. Nothing is saved on your server.
 
 Hosted mode (optional):
-* Sign in with a Nostr remote signer (NIP-46: bunker:// link or QR code). Your private key never reaches the server.
+* Sign in with a Nostr browser extension (NIP-07, for example Alby or nos2x) or a remote signer (NIP-46: bunker:// link or QR code). Your private key never reaches the server.
 * Feeds are written to wp-content/uploads/rssfeed/publishers/{name}/{name}.xml and can be edited later.
+* A new feed is prefilled from your Nostr profile (name, description, website, image, Lightning address). Only empty fields are filled and you can change everything.
 * Changing payment recipients or deleting a feed asks the signer for a fresh signature (NIP-98).
 * Hosted accounts are stored in their own table, keyed by public key. They are not WordPress users.
 * Deleted feeds keep their name and GUID reserved so they cannot be taken over.
@@ -32,7 +34,7 @@ Only publisher feeds are created. Albums and tracks are not.
 == Installation ==
 
 1. Upload the plugin folder to wp-content/plugins and activate it.
-2. Add `[msp_feed_generator]` to a page.
+2. Add `[publisher_feed_generator]` to a page.
 3. Review Settings > Publisher Feeds. Check the platform payment recipient (default: Podcastindex.org, 1%) before going live.
 
 Requirements for hosted mode: HTTPS, and the PHP GMP extension (used to verify Nostr signatures). Without GMP the page still works in anonymous mode.

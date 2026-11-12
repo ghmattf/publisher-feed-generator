@@ -1,20 +1,20 @@
 <?php
 require __DIR__ . '/wpenv.php';
 $fails = 0; function ok($c, $m){ global $fails; echo ($c ? 'ok  : ' : 'FAIL: ') . $m . "\n"; if (!$c) $fails++; }
-$B = 'https://phafe.com/wp-json/mspf/v1';
+$B = 'https://phafe.com/wp-json/pfg/v1';
 function sign($sk, $url, $method, $nonce, $body = '', $ts = ''){ return json_decode(shell_exec('node ' . escapeshellarg(__DIR__ . '/sign.cjs') . ' ' . implode(' ', array_map('escapeshellarg', [$sk, $url, $method, $nonce, $body, $ts]))), true); }
-function nonce(){ return MSPF_Auth::issue_nonce()['nonce']; }
+function nonce(){ return PFG_Auth::issue_nonce()['nonce']; }
 // route table mirrors register_routes
 function call($method, $route, $body = null, $headers = []){
-  MSPF_Auth::$session = null;
-  $req = new WP_REST_Request($method, '/mspf/v1' . $route, $body, $headers);
+  PFG_Auth::$session = null;
+  $req = new WP_REST_Request($method, '/pfg/v1' . $route, $body, $headers);
   $id = null; if (preg_match('#^/me/feeds/(\d+)$#', $route, $m)) { $id = $m[1]; $req['id'] = $id; }
   $perm = in_array($route, ['/auth/nonce', '/auth/login'], true) ? 'perm_hosting' : (strpos($route, '/lookup/') === 0 ? 'perm_lookup' : 'perm_session');
-  $p = MSPF_Rest::$perm($req); if (is_wp_error($p)) return $p;
+  $p = PFG_Rest::$perm($req); if (is_wp_error($p)) return $p;
   $map = ['POST /auth/nonce' => 'route_nonce', 'POST /auth/login' => 'route_login', 'POST /auth/logout' => 'route_logout', 'GET /me' => 'route_me', 'POST /lookup/feed' => 'route_lookup_feed', 'POST /lookup/search' => 'route_lookup_search', 'GET /me/feeds' => 'route_list', 'POST /me/feeds' => 'route_create'];
   $k = $method . ' ' . ($id ? '/me/feeds' : $route); 
   if ($id) $h = ['GET' => 'route_get', 'PUT' => 'route_update', 'DELETE' => 'route_delete'][$method]; else $h = $map[$k];
-  return MSPF_Rest::$h($req);
+  return PFG_Rest::$h($req);
 }
 function code($r){ return is_wp_error($r) ? ($r->data['status'] ?? 0) : $r->status; }
 function data($r){ return is_wp_error($r) ? null : $r->data; }
@@ -33,16 +33,16 @@ $n = nonce(); ok(code(call('POST', '/auth/login', ['event' => sign($skA, "$B/aut
 $n = nonce(); $bad = sign($skA, "$B/auth/login", 'POST', $n); $bad['sig'] = str_repeat('0', 128); ok(code(call('POST', '/auth/login', ['event' => $bad])) >= 400, 'bad signature rejected');
 $n = nonce(); ok(code(call('POST', '/auth/login', ['event' => sign($skA, "$B/auth/login", 'GET', $n)])) >= 400, 'event with wrong method rejected');
 // session cookie: only the hash is stored, so plant a known token for the test
-global $wpdb; $tok = bin2hex(random_bytes(32)); $wpdb->query("UPDATE wp_mspf_sessions SET token_hash = '" . hash('sha256', $tok) . "' WHERE account_id = 1"); $_COOKIE['mspf_session'] = $tok;
-$H = ['X-MSPF-CSRF' => $csrf];
+global $wpdb; $tok = bin2hex(random_bytes(32)); $wpdb->query("UPDATE wp_pfg_sessions SET token_hash = '" . hash('sha256', $tok) . "' WHERE account_id = 1"); $_COOKIE['pfg_session'] = $tok;
+$H = ['X-PFG-CSRF' => $csrf];
 ok(code(call('GET', '/me')) === 200, 'GET /me with session cookie');
-$csrf = data(call('GET', '/me'))['csrf']; $H = ['X-MSPF-CSRF' => $csrf];
+$csrf = data(call('GET', '/me'))['csrf']; $H = ['X-PFG-CSRF' => $csrf];
 ok(code(call('GET', '/me/feeds')) === 200 && data(call('GET', '/me/feeds')) === [], 'empty feed list');
 
 // ---- create
 function feed($over = []){ return array_replace_recursive(['title' => 'Acme Records', 'author' => 'Acme', 'description' => 'We make records.', 'link' => 'https://acme.example', 'language' => 'en', 'category' => 'Music', 'value' => ['method' => 'lnaddress', 'suggested' => '0.000033333', 'recipients' => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => 99, 'type' => 'lnaddress']]], 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://phafe.com/x/some_songs.xml', 'medium' => 'music', 'title' => 'Some Songs', 'rel' => ['label', 'studio']]]], $over); }
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()])) === 403, 'create without CSRF header -> 403');
-ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], ['X-MSPF-CSRF' => str_repeat('a', 48)])) === 403, 'create with wrong CSRF -> 403');
+ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], ['X-PFG-CSRF' => str_repeat('a', 48)])) === 403, 'create with wrong CSRF -> 403');
 ok(code(call('POST', '/me/feeds', 'slug=x', $H + ['Content-Type' => 'application/x-www-form-urlencoded'])) === 415, 'form-encoded body rejected (415)');
 foreach (['../etc', 'ab', 'Acme Records', 'admin', 'x/../y', str_repeat('a', 41)] as $bs) ok(code(call('POST', '/me/feeds', ['slug' => $bs, 'feed' => feed()], $H)) === 422, "bad/reserved slug refused: $bs");
 $r = call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H); ok(code($r) === 201, 'create hosted feed -> 201 (' . (is_wp_error($r) ? $r->message : '') . ')');
@@ -50,7 +50,7 @@ $f = data($r); $path = $GLOBALS['__up'] . '/rssfeed/publishers/acme-records/acme
 ok(file_exists($path), 'XML written to uploads/rssfeed/publishers/acme-records/');
 $xml = file_get_contents($path);
 ok(strpos($xml, '<podcast:medium>publisher</podcast:medium>') !== false && strpos($xml, 'podcastindex@getalby.com') !== false && strpos($xml, 'split="99"') !== false && strpos($xml, 'split="1"') !== false, 'file is a publisher feed with user (99) and platform (1) recipients');
-ok(strpos($xml, 'https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . MSPF_Feed::guid_for_url('https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml')) !== false, 'self URL and derived GUID in file');
+ok(strpos($xml, 'https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . PFG_Feed::guid_for_url('https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml')) !== false, 'self URL and derived GUID in file');
 $d = new DOMDocument(); ok($d->loadXML($xml), 'published XML is well-formed');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H)) === 409, 'duplicate slug -> 409');
 $r = call('POST', '/me/feeds', ['slug' => 'bad-split', 'feed' => feed(['value' => ['recipients' => [['split' => 50]]]])], $H); ok(code($r) === 422 && !empty($r->data['errors']), 'splits not totalling 99 -> 422 with errors');
@@ -68,29 +68,29 @@ $body = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Ev
 $r = call('PUT', "/me/feeds/$id", $body, $H); ok(code($r) === 428, 'changing a payment recipient -> 428 fresh signature required');
 ok(strpos(file_get_contents($path), 'evil@x.com') === false, 'file NOT changed after 428');
 $ev = sign($skA, $url, 'PUT', nonce(), $body); $auth = base64_encode(json_encode($ev));
-$r = call('PUT', "/me/feeds/$id", $body, $H + ['X-MSPF-Auth' => $auth]); ok(code($r) === 200, 'payment change with fresh signature accepted');
+$r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => $auth]); ok(code($r) === 200, 'payment change with fresh signature accepted');
 ok(strpos(file_get_contents($path), 'evil@x.com') !== false, 'file updated with new recipient');
 $body2 = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Other', 'address' => 'o@x.com', 'split' => 99, 'type' => 'lnaddress']]]])]);
-$r = call('PUT', "/me/feeds/$id", $body2, $H + ['X-MSPF-Auth' => $auth]); ok(code($r) >= 400, 'old signature cannot be replayed on a different body');
-$ev = sign($skA, $url, 'PUT', nonce(), $body2); $r = call('PUT', "/me/feeds/$id", $body2, $H + ['X-MSPF-Auth' => base64_encode(json_encode($ev))]); $okA = code($r) === 200;
-$r = call('PUT', "/me/feeds/$id", $body, $H + ['X-MSPF-Auth' => base64_encode(json_encode(sign($skA, $url, 'PUT', 'ab' . str_repeat('0', 30), $body)))]); ok(code($r) === 428, 'made-up (never issued) nonce rejected');
-$evB = sign($skB, $url, 'PUT', nonce(), $body); $r = call('PUT', "/me/feeds/$id", $body, $H + ['X-MSPF-Auth' => base64_encode(json_encode($evB))]); ok(code($r) >= 400 && code($r) !== 200, 'signature from a different key rejected');
+$r = call('PUT', "/me/feeds/$id", $body2, $H + ['X-PFG-Auth' => $auth]); ok(code($r) >= 400, 'old signature cannot be replayed on a different body');
+$ev = sign($skA, $url, 'PUT', nonce(), $body2); $r = call('PUT', "/me/feeds/$id", $body2, $H + ['X-PFG-Auth' => base64_encode(json_encode($ev))]); $okA = code($r) === 200;
+$r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $url, 'PUT', 'ab' . str_repeat('0', 30), $body)))]); ok(code($r) === 428, 'made-up (never issued) nonce rejected');
+$evB = sign($skB, $url, 'PUT', nonce(), $body); $r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => base64_encode(json_encode($evB))]); ok(code($r) >= 400 && code($r) !== 200, 'signature from a different key rejected');
 $bodyOther = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Z', 'address' => 'z@x.com', 'split' => 99, 'type' => 'lnaddress']]]])]);
-$r = call('PUT', "/me/feeds/$id", $bodyOther, $H + ['X-MSPF-Auth' => base64_encode(json_encode(sign($skA, "$B/me/feeds/999", 'PUT', nonce(), $bodyOther)))]); ok(code($r) >= 400 && code($r) !== 200, 'signature for a different URL rejected');
+$r = call('PUT', "/me/feeds/$id", $bodyOther, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, "$B/me/feeds/999", 'PUT', nonce(), $bodyOther)))]); ok(code($r) >= 400 && code($r) !== 200, 'signature for a different URL rejected');
 
 // ---- another account cannot touch it
 $n = nonce(); $rB = call('POST', '/auth/login', ['event' => sign($skB, "$B/auth/login", 'POST', $n)]); ok(code($rB) === 200, 'second account logs in');
-$tokB = bin2hex(random_bytes(32)); $wpdb->query("UPDATE wp_mspf_sessions SET token_hash = '" . hash('sha256', $tokB) . "' WHERE account_id = 2"); $savedCookie = $_COOKIE['mspf_session']; $_COOKIE['mspf_session'] = $tokB;
-$HB = ['X-MSPF-CSRF' => data(call('GET', '/me'))['csrf']];
+$tokB = bin2hex(random_bytes(32)); $wpdb->query("UPDATE wp_pfg_sessions SET token_hash = '" . hash('sha256', $tokB) . "' WHERE account_id = 2"); $savedCookie = $_COOKIE['pfg_session']; $_COOKIE['pfg_session'] = $tokB;
+$HB = ['X-PFG-CSRF' => data(call('GET', '/me'))['csrf']];
 ok(code(call('GET', "/me/feeds/$id")) === 404, "other account cannot read someone else's feed (404)");
 ok(code(call('PUT', "/me/feeds/$id", ['feed' => feed()], $HB)) === 404, "other account cannot edit someone else's feed");
 ok(code(call('DELETE', "/me/feeds/$id", null, $HB)) === 404, "other account cannot delete someone else's feed");
-$_COOKIE['mspf_session'] = $savedCookie;
+$_COOKIE['pfg_session'] = $savedCookie;
 
 // ---- delete
 ok(code(call('DELETE', "/me/feeds/$id", null, $H)) === 428, 'delete without fresh signature -> 428');
 ok(file_exists($path), 'file still present after refused delete');
-$r = call('DELETE', "/me/feeds/$id", null, $H + ['X-MSPF-Auth' => base64_encode(json_encode(sign($skA, $url, 'DELETE', nonce())))]); ok(code($r) === 200, 'delete with fresh signature');
+$r = call('DELETE', "/me/feeds/$id", null, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $url, 'DELETE', nonce())))]); ok(code($r) === 200, 'delete with fresh signature');
 ok(!file_exists($path) || strpos(file_get_contents($path), 'podcast:medium') === false, 'published file removed or neutralised');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H)) === 409, 'deleted slug cannot be re-registered');
 ok(code(call('GET', "/me/feeds/$id")) === 404, 'deleted feed no longer readable');
@@ -98,7 +98,7 @@ ok(code(call('GET', "/me/feeds/$id")) === 404, 'deleted feed no longer readable'
 
 // ---- payments optional
 $nof = feed(); $nof['value']['recipients'] = [];
-$wpdb->query("UPDATE wp_mspf_feeds SET status='deleted' WHERE slug='inj'");
+$wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='inj'");
 $r2 = call('POST', '/me/feeds', ['slug' => 'no-pay', 'feed' => $nof], $H);
 ok(code($r2) === 201, 'feed with no payment recipients is accepted (' . (is_wp_error($r2) ? $r2->message : '') . ')');
 $npx = @file_get_contents($GLOBALS['__up'] . '/rssfeed/publishers/no-pay/no-pay.xml'); $dn = new DOMDocument();
@@ -138,8 +138,8 @@ ok(code(call('POST', '/lookup/search', ['q' => 'x&limit=999#'])) === 200 && strp
 $GLOBALS['__http'] = fn($u, $a) => new WP_Error('x', 'down'); ok(code(call('POST', '/lookup/search', ['q' => 'anything'])) === 502, 'Music Index down -> 502 with friendly message');
 $GLOBALS['__tr'] = []; $hit429 = false; for ($i = 0; $i < 25; $i++) { if (code(call('POST', '/lookup/search', ['q' => 'abc'])) === 429) { $hit429 = true; break; } } ok($hit429, 'lookups are rate limited (429)');
 
-$_COOKIE['mspf_session'] = $savedCookie; $GLOBALS['__tr'] = [];
+$_COOKIE['pfg_session'] = $savedCookie; $GLOBALS['__tr'] = [];
 // ---- logout, config
 ok(code(call('POST', '/auth/logout', null, $H)) === 200 && code(call('GET', '/me')) === 401, 'logout ends the session');
-$cfg = MSPF_Rest::client_config(); ok(json_encode($cfg) && $cfg['hostingAvailable'] === true && $cfg['urls']['feedTemplate'] === "$B/me/feeds/0" && count($cfg['platform']) === 1, 'client config sane');
+$cfg = PFG_Rest::client_config(); ok(json_encode($cfg) && $cfg['hostingAvailable'] === true && $cfg['urls']['feedTemplate'] === "$B/me/feeds/0" && count($cfg['platform']) === 1, 'client config sane');
 echo $fails ? "\n$fails FAILURES\n" : "\nintegration tests passed\n"; exit($fails ? 1 : 0);

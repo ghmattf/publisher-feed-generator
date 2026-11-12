@@ -1,18 +1,18 @@
 /**
- * MSP Publisher Feeds: hosted-mode client.
+ * Publisher Feed Generator: hosted-mode client.
  *
  * Handles Nostr remote-signer (NIP-46) connection, NIP-98 signing, the cookie
  * session, and calls to the plugin's REST API. Private keys never reach this
  * site: the signer app holds the user's key. This script only holds a throwaway
  * "client key" used to talk to the signer over relays.
  *
- * Exposes window.MSPFHosting.
+ * Exposes window.PFGHosting.
  */
 (function () {
   'use strict';
 
-  var N = window.MSPFNostr;
-  var STORE_KEY = 'mspf_signer';
+  var N = window.PFGNostr;
+  var STORE_KEY = 'pfg_signer';
 
   var cfg = null;
   var pool = null;
@@ -78,6 +78,39 @@
 
   function remember(bp) {
     store({ sk: N.bytesToHex(clientSk), bp: { pubkey: bp.pubkey, relays: bp.relays, secret: bp.secret || null } });
+  }
+
+  /* ---------------- browser extension signer (NIP-07, for example Alby or nos2x) ---------------- */
+  // The extension holds the key and shows its own approval prompts. `window.nostr` is looked up on every call
+  // (never cached) so a reloaded or switched extension is picked up. Only a flag is kept in sessionStorage.
+  function hasExtension() {
+    var n = window.nostr;
+    return !!n && typeof n === 'object' && typeof n.getPublicKey === 'function' && typeof n.signEvent === 'function';
+  }
+
+  function extensionSigner() {
+    return {
+      isExtension: true,
+      getPublicKey: function () { return window.nostr.getPublicKey(); },
+      signEvent: function (template) { return window.nostr.signEvent(template); },
+      close: function () {},
+    };
+  }
+
+  /** Connect to the browser extension. Resolves with the user's pubkey (hex). */
+  async function connectExtension() {
+    clearSigner();
+    if (!hasExtension()) throw new Error('No Nostr browser extension was found on this page. Install one (for example Alby or nos2x), allow it on this site, then reload the page.');
+    var pk;
+    try {
+      pk = await window.nostr.getPublicKey();
+    } catch (e) {
+      throw new Error('Your extension did not share your public key: ' + (e && e.message ? e.message : e));
+    }
+    if (typeof pk !== 'string' || !/^[0-9a-f]{64}$/i.test(pk)) throw new Error('Your extension returned something that is not a public key.');
+    signer = extensionSigner();
+    store({ ext: true });
+    return pk.toLowerCase();
   }
 
   /** Connect using a pasted bunker:// link (or name@domain). Resolves with the user's pubkey (hex). */
@@ -150,6 +183,11 @@
   function restoreSigner() {
     if (signer) return true;
     var s = loadStore();
+    if (s && s.ext === true) {
+      if (!hasExtension()) return false; // the extension is gone or not ready: the user signs in again
+      signer = extensionSigner();
+      return true;
+    }
     if (!s || !s.sk || !s.bp) return false;
     try {
       clientSk = N.hexToBytes(s.sk);
@@ -223,19 +261,19 @@
   async function api(method, url, body) {
     if (!session) throw new Error('Not signed in.');
     var bodyString = body !== undefined && body !== null ? JSON.stringify(body) : null;
-    var headers = { 'X-MSPF-CSRF': session.csrf };
+    var headers = { 'X-PFG-CSRF': session.csrf };
     var r = await rawFetch(method, url, bodyString, headers);
     if (r.res.status === 428) {
       emit('confirm-needed', true);
       try {
         var ev = await signHttpAuth(url, method, bodyString);
-        headers['X-MSPF-Auth'] = b64Json(ev);
+        headers['X-PFG-Auth'] = b64Json(ev);
         r = await rawFetch(method, url, bodyString, headers);
       } finally {
         emit('confirm-needed', false);
       }
     }
-    if (r.res.status === 401 || (r.res.status === 403 && r.data && r.data.code === 'mspf_csrf')) {
+    if (r.res.status === 401 || (r.res.status === 403 && r.data && r.data.code === 'pfg_csrf')) {
       session = null;
       emit('session', null);
     }
@@ -244,21 +282,59 @@
   }
 
   async function logout() {
-    try { if (session) await rawFetch('POST', cfg.urls.logout, null, { 'X-MSPF-CSRF': session.csrf }); } catch (e) { /* ignore */ }
+    try { if (session) await rawFetch('POST', cfg.urls.logout, null, { 'X-PFG-CSRF': session.csrf }); } catch (e) { /* ignore */ }
     session = null;
     clearSigner();
     emit('session', null);
   }
 
+  /* ---------------- Nostr profile (read only, no signing) ---------------- */
+  // Relays that usually hold profiles. The site's signer relays (Settings) are tried too.
+  var PROFILE_RELAYS = ['wss://purplepag.es', 'wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+
+  function profileRelays() {
+    var all = (cfg && cfg.relays ? cfg.relays : []).concat(PROFILE_RELAYS), seen = {}, out = [];
+    all.forEach(function (u) { if (typeof u === 'string' && /^wss:\/\//i.test(u) && !seen[u]) { seen[u] = true; out.push(u); } });
+    return out.slice(0, 8);
+  }
+
+  /**
+   * Fetch the newest profile (kind 0) for a public key (hex) straight from relays.
+   * Resolves with the parsed profile object, or null if none was found in time. Never rejects.
+   */
+  async function fetchProfile(pubkeyHex) {
+    if (!pool || !/^[0-9a-f]{64}$/i.test(String(pubkeyHex || ''))) return null;
+    var timer;
+    try {
+      var lookup = pool.get(profileRelays(), { kinds: [0], authors: [pubkeyHex.toLowerCase()] }, { maxWait: 5000 });
+      var timeout = new Promise(function (resolve) { timer = setTimeout(function () { resolve(null); }, 8000); });
+      var ev = await Promise.race([lookup, timeout]);
+      if (!ev || ev.kind !== 0 || String(ev.pubkey).toLowerCase() !== pubkeyHex.toLowerCase()) return null;
+      var content = JSON.parse(ev.content);
+      return content && typeof content === 'object' && !Array.isArray(content) ? content : null;
+    } catch (e) {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function npubOf(pubkeyHex) { return N.nip19.npubEncode(pubkeyHex); }
+
   /* ---------------- feed helpers ---------------- */
   function feedUrl(id) { return cfg.urls.feedTemplate.replace(/\/0$/, '/' + encodeURIComponent(id)); }
 
-  window.MSPFHosting = {
+  window.PFGHosting = {
     init: init,
     on: on,
     connectBunker: connectBunker,
+    hasExtension: hasExtension,
+    connectExtension: connectExtension,
     startNostrConnect: startNostrConnect,
     hasSigner: hasSigner,
+    fetchProfile: fetchProfile,
+    npubOf: npubOf,
+    forgetSigner: clearSigner,
     login: login,
     resume: resume,
     logout: logout,

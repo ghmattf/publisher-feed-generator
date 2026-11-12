@@ -7,14 +7,14 @@
  * Both run on the server because browsers cannot read other sites' feeds or
  * call third-party APIs freely. Neither needs an account.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Lookup {
+class PFG_Lookup {
 
 	const MI_BASE       = 'https://api.musicindex.org/v1';
 	const MAX_FEED_SIZE = 2097152; // 2 MB.
@@ -30,7 +30,7 @@ class MSPF_Lookup {
 	public static function fetch_feed( $url ) {
 		$url = is_string( $url ) ? trim( $url ) : '';
 		if ( '' === $url || strlen( $url ) > 2000 || ! preg_match( '#^https://[^\s<>"\']+$#i', $url ) ) {
-			return new WP_Error( 'mspf_bad_url', 'Enter a full https:// feed address.', array( 'status' => 422 ) );
+			return new WP_Error( 'pfg_bad_url', 'Enter a full https:// feed address.', array( 'status' => 422 ) );
 		}
 		$res = wp_safe_remote_get(
 			$url,
@@ -45,18 +45,18 @@ class MSPF_Lookup {
 			)
 		);
 		if ( is_wp_error( $res ) ) {
-			return new WP_Error( 'mspf_fetch_failed', 'Could not reach that address. Check the link, or paste the XML instead.', array( 'status' => 502 ) );
+			return new WP_Error( 'pfg_fetch_failed', 'Could not reach that address. Check the link, or paste the XML instead.', array( 'status' => 502 ) );
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		if ( 200 !== $code ) {
-			return new WP_Error( 'mspf_fetch_failed', sprintf( 'That address answered with HTTP %d. Check the link, or paste the XML instead.', $code ), array( 'status' => 502 ) );
+			return new WP_Error( 'pfg_fetch_failed', sprintf( 'That address answered with HTTP %d. Check the link, or paste the XML instead.', $code ), array( 'status' => 502 ) );
 		}
 		$body = (string) wp_remote_retrieve_body( $res );
 		if ( strlen( $body ) > self::MAX_FEED_SIZE ) {
-			return new WP_Error( 'mspf_too_big', 'That feed is too large (2 MB limit).', array( 'status' => 413 ) );
+			return new WP_Error( 'pfg_too_big', 'That feed is too large (2 MB limit).', array( 'status' => 413 ) );
 		}
 		if ( '' === trim( $body ) ) {
-			return new WP_Error( 'mspf_fetch_failed', 'That address returned nothing.', array( 'status' => 502 ) );
+			return new WP_Error( 'pfg_fetch_failed', 'That address returned nothing.', array( 'status' => 502 ) );
 		}
 		return $body;
 	}
@@ -94,7 +94,7 @@ class MSPF_Lookup {
 
 	/** Details for one album/feed GUID (cached). */
 	private static function feed_details( $guid ) {
-		$key    = 'mspf_mi_' . md5( strtolower( $guid ) );
+		$key    = 'pfg_mi_' . md5( strtolower( $guid ) );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) {
 			return $cached;
@@ -125,11 +125,11 @@ class MSPF_Lookup {
 	public static function search( $q ) {
 		$q = self::str( $q, 100 );
 		if ( function_exists( 'mb_strlen' ) ? mb_strlen( $q ) < 2 : strlen( $q ) < 2 ) {
-			return new WP_Error( 'mspf_bad_query', 'Type at least 2 characters.', array( 'status' => 422 ) );
+			return new WP_Error( 'pfg_bad_query', 'Type at least 2 characters.', array( 'status' => 422 ) );
 		}
 		$body = self::mi_get( '/search?q=' . rawurlencode( $q ) . '&limit=20' );
 		if ( null === $body ) {
-			return new WP_Error( 'mspf_mi_down', 'Music Index could not be reached. Try again, or add the release by pasting its feed.', array( 'status' => 502 ) );
+			return new WP_Error( 'pfg_mi_down', 'Music Index could not be reached. Try again, or add the release by pasting its feed.', array( 'status' => 502 ) );
 		}
 		$seen = array();
 		$out  = array();

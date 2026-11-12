@@ -1,16 +1,16 @@
 <?php
 /**
  * Feed data model: normalising and validating what a client submits.
- * The JavaScript twin of this lives in assets/js/mspf-core.js and must stay in step.
+ * The JavaScript twin of this lives in assets/js/pfg-core.js and must stay in step.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Feed {
+class PFG_Feed {
 
 	/** Podcasting 2.0 namespace used to derive feed GUIDs (UUIDv5). */
 	const GUID_NAMESPACE = 'ead4c236-bf58-58c6-a2c6-a6b28d128cb6';
@@ -86,6 +86,15 @@ class MSPF_Feed {
 		return is_array( $p ) && ! empty( $p['host'] ) && empty( $p['user'] ) && empty( $p['pass'] );
 	}
 
+	/** Website and Image accept http:// as well as https:// (everything else stays https-only). */
+	public static function is_http_url( $u ) {
+		if ( strlen( $u ) > 2048 || ! preg_match( '#^https?://[^\s<>"\']+$#i', $u ) ) {
+			return false;
+		}
+		$p = wp_parse_url( $u );
+		return is_array( $p ) && ! empty( $p['host'] ) && empty( $p['user'] ) && empty( $p['pass'] );
+	}
+
 	public static function is_uuid( $s ) {
 		return (bool) preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $s );
 	}
@@ -148,8 +157,8 @@ class MSPF_Feed {
 		}
 
 		$m['link'] = self::line( self::get( $in, 'link' ) );
-		if ( '' !== $m['link'] && ! self::is_https_url( $m['link'] ) ) {
-			self::err( $errors, 'link', 'Website must be an https:// URL.' );
+		if ( '' !== $m['link'] && ! self::is_http_url( $m['link'] ) ) {
+			self::err( $errors, 'link', 'Website must be an http:// or https:// URL.' );
 		}
 
 		$m['language'] = strtolower( self::line( self::get( $in, 'language' ) ) );
@@ -161,8 +170,8 @@ class MSPF_Feed {
 		}
 
 		$m['image'] = self::line( self::get( $in, 'image' ) );
-		if ( '' !== $m['image'] && ! self::is_https_url( $m['image'] ) ) {
-			self::err( $errors, 'image', 'Image must be an https:// URL.' );
+		if ( '' !== $m['image'] && ! self::is_http_url( $m['image'] ) ) {
+			self::err( $errors, 'image', 'Image must be an http:// or https:// URL.' );
 		}
 
 		$m['category'] = self::line( self::get( $in, 'category' ) );
@@ -207,9 +216,9 @@ class MSPF_Feed {
 		$npub = self::line( self::get( $in, 'npub' ) );
 		if ( '' !== $npub ) {
 			if ( preg_match( '/^[0-9a-fA-F]{64}$/', $npub ) ) {
-				$npub = MSPF_Nostr::npub_encode( strtolower( $npub ) );
+				$npub = PFG_Nostr::npub_encode( strtolower( $npub ) );
 			}
-			if ( ! $npub || false === MSPF_Nostr::npub_decode( $npub ) ) {
+			if ( ! $npub || false === PFG_Nostr::npub_decode( $npub ) ) {
 				self::err( $errors, 'npub', 'That is not a valid npub (checksum failed). Never paste an nsec.' );
 				$npub = self::line( self::get( $in, 'npub' ) );
 			}

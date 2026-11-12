@@ -1,0 +1,4 @@
+node_modules/
+tests/out_js.json
+tests/out_php.json
+*.zip

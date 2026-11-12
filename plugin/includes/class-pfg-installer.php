@@ -2,16 +2,16 @@
 /**
  * Database tables and upgrades.
  *
- * @package MSP_Publisher_Feeds
+ * @package Publisher_Feed_Generator
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-class MSPF_Installer {
+class PFG_Installer {
 
-	const DB_VERSION_OPTION = 'mspf_db_version';
+	const DB_VERSION_OPTION = 'pfg_db_version';
 	const DB_VERSION        = '1';
 
 	/**
@@ -22,7 +22,7 @@ class MSPF_Installer {
 	 */
 	public static function table( $name ) {
 		global $wpdb;
-		return $wpdb->prefix . 'mspf_' . $name;
+		return $wpdb->prefix . 'pfg_' . $name;
 	}
 
 	/**
@@ -31,8 +31,8 @@ class MSPF_Installer {
 	public static function activate() {
 		self::create_tables();
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
-		if ( false === get_option( MSPF_Settings::OPTION ) ) {
-			add_option( MSPF_Settings::OPTION, MSPF_Settings::defaults(), '', 'no' );
+		if ( false === get_option( PFG_Settings::OPTION ) ) {
+			add_option( PFG_Settings::OPTION, PFG_Settings::defaults(), '', 'no' );
 		}
 	}
 
@@ -126,6 +126,6 @@ class MSPF_Installer {
 			$wpdb->query( 'DROP TABLE IF EXISTS ' . self::table( $t ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		}
 		delete_option( self::DB_VERSION_OPTION );
-		delete_option( MSPF_Settings::OPTION );
+		delete_option( PFG_Settings::OPTION );
 	}
 }

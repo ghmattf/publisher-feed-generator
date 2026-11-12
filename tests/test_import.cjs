@@ -1,4 +1,4 @@
-const fs = require('fs'), xd = require('../build/node_modules/@xmldom/xmldom'), C = require(__dirname + '/../plugin/assets/js/mspf-core.js');
+const fs = require('fs'), xd = require('../build/node_modules/@xmldom/xmldom'), C = require(__dirname + '/../plugin/assets/js/pfg-core.js');
 const dom = { DOMParser: class { parseFromString(x, t) { return new xd.DOMParser({ onError(l, m) { if (l !== 'warning') throw new Error(m); } }).parseFromString(x, t); } }, XMLSerializer: xd.XMLSerializer };
 let fails = 0; const ok = (c, msg) => { if (!c) { fails++; console.log('FAIL:', msg); } else console.log('ok  :', msg); };
 const read = f => fs.readFileSync('feeds/' + f, 'utf8');
