@@ -99,6 +99,8 @@
 
 /* repeating rows (payments, releases) */
 .pfg-item { background: var(--pfg-bg); border: 1px solid var(--pfg-border); border-radius: var(--pfg-radius); padding: 12px; margin-bottom: 12px; }
+.pfg-support-row { background: var(--pfg-bg); border: 1px solid var(--pfg-border); border-radius: var(--pfg-radius); padding: 8px 12px; margin-bottom: 8px; }
+.pfg-support-row .pfg-item-head { margin-bottom: 0; }
 .pfg-item-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
 .pfg-item-head strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .pfg-item.pfg-locked { background: var(--pfg-surface); border-style: dashed; }
@@ -139,3 +141,4 @@
 .pfg-result:hover, .pfg-result:focus-visible { border-color: var(--pfg-accent); }
 .pfg-app input[type=search] { flex: 1; min-width: 200px; }
 .pfg-app [hidden] { display: none !important; }
+.pfg-subhead { font-weight: 600; font-size: .9em; margin: 12px 0 6px; }

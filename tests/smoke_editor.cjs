@@ -4,7 +4,7 @@ const fs = require('fs'); const P = __dirname + '/../plugin/assets/js/';
 const dom = new JSDOM('<div id="c"></div>', { runScripts: 'outside-only', url: 'https://phafe.com/' });
 const w = dom.window; let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; };
 w.eval(fs.readFileSync(P + 'pfg-core.js', 'utf8')); w.eval(fs.readFileSync(P + 'pfg-editor.js', 'utf8'));
-const cfg = { feedBaseUrl: 'https://phafe.com/wp-content/uploads/rssfeed/publishers/', platform: [{ name: 'Podcastindex.org', address: 'podcastindex@getalby.com', split: 1, type: 'lnaddress' }], applyPlatformToExports: false, defaults: { method: 'lnaddress', suggested: '0.000033333' }, limits: { maxReleases: 200 }, mediums: ['music', 'podcast', 'publisher'], relTokens: ['artist', 'label', 'studio', 'host'] };
+const cfg = { feedBaseUrl: 'https://phafe.com/wp-content/uploads/rssfeed/publishers/', urls: { lookupFeed: 'L/feed', lookupSearch: 'L/search' }, platform: [{ name: 'Phafe.com', address: 'phafe@phafe.com', split: 1, type: 'lnaddress' }, { name: 'musicindex.org', address: 'heycitizen@getalby.com', split: 1, type: 'lnaddress' }, { name: 'Podcastindex.org', address: 'podcastindex@getalby.com', split: 1, type: 'lnaddress' }], defaults: { method: 'lnaddress', suggested: '0.000033333' }, limits: { maxReleases: 200 }, mediums: ['music', 'podcast', 'publisher'], relTokens: ['artist', 'label', 'studio', 'host'] };
 function h(tag, attrs, kids) { const el = w.document.createElement(tag); Object.keys(attrs || {}).forEach(k => { const v = attrs[k]; if (v == null || v === false) return; if (k === 'class') el.className = v; else if (k === 'text') el.textContent = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v === true ? '' : v); }); [].concat(kids === undefined ? [] : kids).forEach(c => { if (c == null || c === false) return; el.appendChild(typeof c === 'string' ? w.document.createTextNode(c) : c); }); return el; }
 const btn = (l, c, f, e) => h('button', Object.assign({ type: 'button', class: 'pfg-btn ' + (c || ''), onclick: f }, e || {}), l);
 const note = (k, c) => h('div', { class: 'pfg-note pfg-note-' + k }, c); const clear = e => { while (e.firstChild) e.removeChild(e.firstChild); };
@@ -20,17 +20,16 @@ w.DOMParser = D.DOMParser; w.XMLSerializer = D.XMLSerializer;
 // --- anonymous, imported feed
 const imp = w.PFGCore.parseXml(fs.readFileSync('feeds/phafe_like.xml', 'utf8'), D);
 let drafts = 0;
-w.PFGEditor.render($('#c'), { cfg, model: imp.model, hosted: null, importNotes: imp.notes, saveDraft: () => drafts++, clearDraft() {}, back() {}, h, btn, note, clear });
+w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.liftSupport(imp.model, cfg.platform), hosted: null, importNotes: imp.notes, saveDraft: () => drafts++, clearDraft() {}, back() {}, h, btn, note, clear });
 await tick();
 ok($('#pfg-f-title').value === 'Phafe' && $('#pfg-f-guid').value === 'a9ce0ee9-fe9f-4495-b7b8-ebae25ff2112', 'imported values shown in the form');
 ok($$('.pfg-item').length === 3 + 2 - 3 + 0 || true, 'rows rendered');
-ok($('.pfg-pre').textContent.includes('<podcast:medium>publisher</podcast:medium>'), 'preview shows XML');
-ok(!$('.pfg-pre').textContent.includes('Podcastindex.org (platform'), 'platform not applied to anonymous export by default');
+ok($$('.pfg-pre').length === 0 && !/^Preview$/m.test($$('summary').map(e => e.textContent).join('\n')), 'there is no Preview section');
 set('#pfg-f-title', ''); await tick();
-ok(/required/i.test($('#pfg-f-title-err').textContent) && /Fix the highlighted/.test($('.pfg-pre').textContent), 'blank title -> inline error, preview blocked');
+ok(/required/i.test($('#pfg-f-title-err').textContent), 'blank title -> inline error');
 click('Download XML'); await tick(); ok(dl.xml === null, 'download refused while invalid');
 set('#pfg-f-title', 'Phafe Records'); set('#pfg-f-value-recipients-0-split', '50'); await tick();
-ok(/total 100%|must total 100/.test($('.pfg-error, .pfg-note-bad, .pfg-total').textContent + $$('.pfg-note-bad').map(e => e.textContent).join('')) , 'split not summing to 100 reported');
+ok(/must total \d+%/.test($$('.pfg-error, .pfg-note-bad, .pfg-total').map(e => e.textContent).join('') + $$('.pfg-note-bad').map(e => e.textContent).join('')) , 'recipient splits not matching the required total are reported');
 set('#pfg-f-value-recipients-0-split', '98'); await tick();
 click('Download XML'); await tick();
 console.log('DBG', dl.name, !!dl.xml, dl.xml&&dl.xml.includes('foo:thing'), dl.xml&&dl.xml.includes('<title>Phafe Records</title>'), $$('.pfg-error').map(e=>e.textContent).filter(Boolean), $$('.pfg-note-bad').map(e=>e.textContent));
@@ -38,8 +37,8 @@ ok(dl.xml && dl.xml.includes('<title>Phafe Records</title>') && dl.xml.includes(
 // release inspection
 const album = fs.readFileSync('feeds/album_music.xml', 'utf8');
 click('Add release'); await tick();
-const ta = $$('textarea[aria-label="Release feed address or XML"]').pop(); ta.value = album;
-$$('button').filter(b => b.textContent === 'Read feed').pop().click(); await tick();
+w.fetch = async (url, opts) => ({ ok: true, status: 200, json: async () => url === 'L/search' ? { results: [] } : { xml: album } });
+const si0 = $$('input[type=search]').pop(); si0.value = 'https://phafe.com/x/some_songs.xml'; $$('button').filter(b => b.textContent === 'Search').pop().click(); await tick();
 const idx = $$('.pfg-item').length;
 ok($$('input').some(i => i.value === '07adf84f-c1fa-47a7-a121-0fb544e859bd'), 'release feed GUID filled from pasted XML');
 ok(/does not link back|different roles|Confirmed/.test($('#c').textContent), 'link status note shown');
@@ -60,9 +59,8 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   set('#pfg-f-title', 'No Pay'); set('#pfg-f-description', 'D'); set('#pfg-f-slug', 'no-pay-label'); await tick();
   click('Save and publish'); await tick();
   ok(s2 && s2.feed.value.recipients.length === 0, 'feed with no payments saves (client sends no recipients)');
-  ok(!$('.pfg-pre').textContent.includes('podcast:value'), 'preview has no payment block when no recipients');
   click('Add recipient'); await tick(); click('Save changes'); await tick();
-  ok(/total/i.test($('#c').textContent) && /99%/.test($('#c').textContent), 'once a recipient is added, totals are enforced again');
+  ok(/total/i.test($('#c').textContent) && /97%/.test($('#c').textContent), 'once a recipient is added, totals are enforced again (97% with the default support)');
 }
 // --- release URL + Music Index search
 {
@@ -77,15 +75,17 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg: cfg2, model: m0, hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
   click('Add release'); await tick();
-  const ta2 = () => $$('textarea[aria-label="Release feed address or XML"]').pop();
-  ta2().value = 'https://phafe.com/x/some_songs.xml'; $$('button').filter(b => b.textContent === 'Read feed').pop().click(); await tick();
+  const doSearch = q => { const e = $$('input[type=search]').pop(); e.value = q; $$('button').filter(b => b.textContent === 'Search').pop().click(); return tick(); };
+  ok($$('textarea[aria-label*="feed address"]').length === 0 && !$$('button').some(b => b.textContent === 'Read feed') && /Search by name or paste the feed url above\./.test($('#c').textContent) && $$('input[type=search]').length === 1, 'one search box with the new hint; no paste box or Read feed button');
+  await doSearch('https://phafe.com/x/some_songs.xml');
+  ok(calls.some(c => c[0] === 'L/search' && c[1].q === 'https://phafe.com/x/some_songs.xml'), 'a feed address is looked up in Music Index first');
   ok(calls.some(c => c[0] === 'L/feed' && c[1].url === 'https://phafe.com/x/some_songs.xml'), 'release URL is sent to the server fetch endpoint');
   ok($$('input').some(i => i.value === '07adf84f-c1fa-47a7-a121-0fb544e859bd') && !/not a valid xml/i.test($('#c').textContent), 'URL paste fills the release, no XML error');
   click('Add release'); await tick();
-  const ta3 = $$('textarea[aria-label="Release feed address or XML"]').pop(); ta3.value = 'https://bad.example/x.xml'; $$('button').filter(b => b.textContent === 'Read feed').pop().click(); await tick();
+  await doSearch('https://bad.example/x.xml');
   ok(/Could not reach that address/.test($('#c').textContent), 'server fetch error shown to the user');
-  const ta4 = $$('textarea[aria-label="Release feed address or XML"]').pop(); ta4.value = 'http://insecure.example/x.xml'; $$('button').filter(b => b.textContent === 'Read feed').pop().click(); await tick();
-  ok(/https:\/\//.test($('#c').textContent) && !calls.some(c => c[1].url && c[1].url.startsWith('http://')), 'http:// address refused without calling the server');
+  await doSearch('http://insecure.example/x.xml');
+  ok(/https:\/\//.test($('#c').textContent) && !calls.some(c => (c[1].url || c[1].q || '').startsWith('http://')), 'http:// address refused without calling the server');
   // search
   click('Add release'); await tick();
   const si = $$('input[type=search]').pop(); si.value = 'some'; $$('button').filter(b => b.textContent === 'Search').pop().click(); await tick();
@@ -106,12 +106,12 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   const hiddenOf = el => { for (let e = el; e && e !== card(); e = e.parentElement) if (e.hasAttribute('hidden')) return true; return false; };
   let c = card();
   ok(c.querySelector('.pfg-item-head strong').textContent === 'Release 1' && [...c.querySelectorAll('.pfg-item-head button')].map(b => b.textContent).join() === 'Remove', 'header (title + buttons) shown on an empty release');
-  ok(!hiddenOf(c.querySelector('input[type=search]')) && !hiddenOf([...c.querySelectorAll('button')].find(b => b.textContent === 'Read feed')), 'empty release: search, paste box and Read feed are visible');
-  ok(hiddenOf(c.querySelector('[id$="-feedGuid"]')) && hiddenOf(c.querySelector('.pfg-chip')) && c.querySelector('.pfg-snippet') ? hiddenOf(c.querySelector('.pfg-snippet')) : true, 'empty release: everything below Read feed is hidden');
-  c.querySelector('textarea').value = album; [...c.querySelectorAll('button')].find(b => b.textContent === 'Read feed').click(); await tick();
+  ok(!hiddenOf(c.querySelector('input[type=search]')) && !c.querySelector('textarea') && ![...c.querySelectorAll('button')].some(b => b.textContent === 'Read feed'), 'empty release: only the search box is shown');
+  ok(hiddenOf(c.querySelector('[id$="-feedGuid"]')) && hiddenOf(c.querySelector('.pfg-chip')) && c.querySelector('.pfg-snippet') ? hiddenOf(c.querySelector('.pfg-snippet')) : true, 'empty release: everything below the search box is hidden');
+  c.querySelector('input[type=search]').value = 'https://phafe.com/x/some_songs.xml'; [...c.querySelectorAll('button')].find(b => b.textContent === 'Search').click(); await tick();
   c = card();
   ok(c.querySelector('.pfg-item-head strong').textContent === 'Some Songs' && c.querySelectorAll('.pfg-item-head button').length >= 1, 'header (title + buttons) still shown after populating');
-  ok(hiddenOf(c.querySelector('input[type=search]')) && hiddenOf(c.querySelector('textarea')) && hiddenOf([...c.querySelectorAll('button')].find(b => b.textContent === 'Read feed')), 'populated: search, paste box and Read feed are hidden');
+  ok(hiddenOf(c.querySelector('input[type=search]')), 'populated: the search box is hidden');
   ok(!hiddenOf(c.querySelector('[id$="-feedGuid"]')) && !hiddenOf(c.querySelector('.pfg-chip')) && !hiddenOf(c.querySelector('.pfg-snippet')), 'populated: details, roles and owner text are visible');
   const ro = ['title', 'medium', 'feedGuid', 'feedUrl', 'feedImg'].map(k => c.querySelector('[id$="-' + k + '"]'));
   ok(ro.every(e => e.hasAttribute('readonly')) && ro[1].hasAttribute('disabled'), 'populated: all release details are read-only');
@@ -129,15 +129,21 @@ let sent = null;
 const host = { createFeed: async (slug, feed) => { sent = { slug, feed }; return { id: 9, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }; }, updateFeed: async () => ({}) };
 w.document.querySelector('#c').innerHTML = '';
 w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.platform }), hosted: { id: null }, host, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
-ok(/optional/i.test($('.pfg-total').textContent) && $$('.pfg-locked').length === 0, 'payments empty and optional by default');
+ok(/optional/i.test($('.pfg-total').textContent), 'payments empty and optional by default');
 click('Add recipient'); await tick();
-ok($$('.pfg-locked').length === 1 && /1%/.test($('.pfg-locked').textContent), 'platform recipient shown locked once recipients exist');
-ok(/99% \(the platform takes 1%\)|of 99%/.test($('.pfg-total').textContent), 'recipient total target is 99%');
-set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '99');
+ok($('.pfg-subhead').textContent === 'Support the developers (optional)' && $$('.pfg-locked').length === 0, 'support heading shown, nothing locked');
+ok([0, 1, 2].map(i => $('#pfg-support-' + i)).every(e => e && e.value === '1' && !e.disabled && !e.readOnly) && /Phafe\.com[\s\S]*musicindex\.org[\s\S]*Podcastindex\.org/.test($('.pfg-support').textContent), 'three support recipients (Phafe.com, musicindex.org, Podcastindex.org) default to an editable 1%');
+ok(/97%/.test($('.pfg-total').textContent) && /takes 3%/.test($('.pfg-total').textContent), 'recipient total target is 97%');
+set('#pfg-support-1', '0'); await tick(); ok(/of 98%/.test($('.pfg-total').textContent), 'setting a support share to 0 raises the target to 98%');
+set('#pfg-support-1', '1'); await tick();
+set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '97');
+ok($('#pfg-f-slug').value === 'acme', 'feed name made from the title as it is typed');
+set('#pfg-f-slug', '');
 click('Save and publish'); await tick();
 console.log('DBG2', !!sent, $('#pfg-f-slug-err').textContent, $$('.pfg-note').map(e=>e.textContent));
 ok(!sent && /feed name/i.test($('#pfg-f-slug-err').textContent), 'saving without a feed name is blocked');
 set('#pfg-f-slug', 'acme-records'); await tick(); click('Save and publish'); await tick();
+ok(sent && Array.isArray(sent.feed.support) && sent.feed.support.length === 3 && sent.feed.support.every(x => x.split === 1), 'support splits are sent with the feed');
 ok(sent && sent.slug === 'acme-records' && sent.feed.guid === w.PFGCore.guidForUrl(cfg.feedBaseUrl + 'acme-records/acme-records.xml'), 'hosted create sends slug and derived guid');
 ok(/Published at/.test($('#c').textContent), 'success message shown');
 
@@ -151,7 +157,7 @@ ok($('#pfg-f-title').value === 'Acme Records' && $('#pfg-f-author').value === 'A
 ok($('#pfg-f-description').value === 'We make <b>music</b>.\nValue for value.', 'profile about fills Description (as plain text)');
 ok($('#pfg-f-link').value === 'http://acme.example' && $('#pfg-f-image').value === 'http://acme.example/logo.png', 'profile website and picture fill Website and Image URL (http allowed)');
 ok($('#pfg-f-npub').value === NPUB, 'signed-in npub fills Your npub');
-ok($('#pfg-f-value-recipients-0-address').value === 'acme@getalby.com' && $('#pfg-f-value-recipients-0-split').value === '99' && $('#pfg-f-value-recipients-0-name').value === 'Acme Records', 'lud16 becomes a lnaddress payment recipient taking the non-platform share (99)');
+ok($('#pfg-f-value-recipients-0-address').value === 'acme@getalby.com' && $('#pfg-f-value-recipients-0-split').value === '97' && $('#pfg-f-value-recipients-0-name').value === 'Acme Records', 'lud16 becomes a lnaddress payment recipient taking the non-support share (97)');
 ok($$('details').find(d => /Payments/.test(d.textContent.slice(0, 20))).hasAttribute('open'), 'Payments section opened when a Lightning address was filled');
 ok(/Filled in from your Nostr profile/.test($('.pfg-note-ok').textContent), 'banner says what was filled');
 ok(!/lud06|LNURL/i.test($('#c').textContent), 'lud06/LNURL is ignored');

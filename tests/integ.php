@@ -40,7 +40,7 @@ $csrf = data(call('GET', '/me'))['csrf']; $H = ['X-PFG-CSRF' => $csrf];
 ok(code(call('GET', '/me/feeds')) === 200 && data(call('GET', '/me/feeds')) === [], 'empty feed list');
 
 // ---- create
-function feed($over = []){ return array_replace_recursive(['title' => 'Acme Records', 'author' => 'Acme', 'description' => 'We make records.', 'link' => 'https://acme.example', 'language' => 'en', 'category' => 'Music', 'value' => ['method' => 'lnaddress', 'suggested' => '0.000033333', 'recipients' => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => 99, 'type' => 'lnaddress']]], 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://phafe.com/x/some_songs.xml', 'medium' => 'music', 'title' => 'Some Songs', 'rel' => ['label', 'studio']]]], $over); }
+function feed($over = []){ return array_replace_recursive(['title' => 'Acme Records', 'author' => 'Acme', 'description' => 'We make records.', 'link' => 'https://acme.example', 'language' => 'en', 'category' => 'Music', 'value' => ['method' => 'lnaddress', 'suggested' => '0.000033333', 'recipients' => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => 97, 'type' => 'lnaddress']]], 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://phafe.com/x/some_songs.xml', 'medium' => 'music', 'title' => 'Some Songs', 'rel' => ['label', 'studio']]]], $over); }
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()])) === 403, 'create without CSRF header -> 403');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], ['X-PFG-CSRF' => str_repeat('a', 48)])) === 403, 'create with wrong CSRF -> 403');
 ok(code(call('POST', '/me/feeds', 'slug=x', $H + ['Content-Type' => 'application/x-www-form-urlencoded'])) === 415, 'form-encoded body rejected (415)');
@@ -49,11 +49,11 @@ $r = call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H)
 $f = data($r); $path = $GLOBALS['__up'] . '/rssfeed/publishers/acme-records/acme-records.xml';
 ok(file_exists($path), 'XML written to uploads/rssfeed/publishers/acme-records/');
 $xml = file_get_contents($path);
-ok(strpos($xml, '<podcast:medium>publisher</podcast:medium>') !== false && strpos($xml, 'podcastindex@getalby.com') !== false && strpos($xml, 'split="99"') !== false && strpos($xml, 'split="1"') !== false, 'file is a publisher feed with user (99) and platform (1) recipients');
+ok(strpos($xml, '<podcast:medium>publisher</podcast:medium>') !== false && strpos($xml, 'phafe@phafe.com') !== false && strpos($xml, 'heycitizen@getalby.com') !== false && strpos($xml, 'podcastindex@getalby.com') !== false && strpos($xml, 'split="97"') !== false && substr_count($xml, 'split="1"') === 3, 'file is a publisher feed with the user (97) and three support (1 each) recipients');
 ok(strpos($xml, 'https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . PFG_Feed::guid_for_url('https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml')) !== false, 'self URL and derived GUID in file');
 $d = new DOMDocument(); ok($d->loadXML($xml), 'published XML is well-formed');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H)) === 409, 'duplicate slug -> 409');
-$r = call('POST', '/me/feeds', ['slug' => 'bad-split', 'feed' => feed(['value' => ['recipients' => [['split' => 50]]]])], $H); ok(code($r) === 422 && !empty($r->data['errors']), 'splits not totalling 99 -> 422 with errors');
+$r = call('POST', '/me/feeds', ['slug' => 'bad-split', 'feed' => feed(['value' => ['recipients' => [['split' => 50]]]])], $H); ok(code($r) === 422 && !empty($r->data['errors']), 'splits not totalling 97 -> 422 with errors');
 ok(!file_exists($GLOBALS['__up'] . '/rssfeed/publishers/bad-split'), 'nothing written for an invalid feed');
 $r = call('POST', '/me/feeds', ['slug' => 'inj', 'feed' => feed(['title' => "<script>x</script> & \"q\"", 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://x.example/a.xml', 'rel' => ['label'], 'attrs' => ['onload' => 'evil']]]])], $H);
 $ix = @file_get_contents($GLOBALS['__up'] . '/rssfeed/publishers/inj/inj.xml'); $dd = new DOMDocument(); ok($ix && $dd->loadXML($ix) && strpos($ix, '<script>') === false && strpos($ix, 'onload') === false, 'markup in title escaped and unknown attributes dropped in hosted output');
@@ -64,18 +64,24 @@ ok(code(call('POST', '/me/feeds', ['slug' => 'fourth-one', 'feed' => feed()], $H
 $id = $f['id']; $url = "$B/me/feeds/$id";
 $r = call('PUT', "/me/feeds/$id", ['feed' => feed(['title' => 'Acme Renamed'])], $H); ok(code($r) === 200, 'edit title without a fresh signature works');
 ok(strpos(file_get_contents($path), 'Acme Renamed') !== false, 'published file updated');
-$body = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Evil', 'address' => 'evil@x.com', 'split' => 99, 'type' => 'lnaddress']]]])]);
+$body = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Evil', 'address' => 'evil@x.com', 'split' => 97, 'type' => 'lnaddress']]]])]);
 $r = call('PUT', "/me/feeds/$id", $body, $H); ok(code($r) === 428, 'changing a payment recipient -> 428 fresh signature required');
 ok(strpos(file_get_contents($path), 'evil@x.com') === false, 'file NOT changed after 428');
 $ev = sign($skA, $url, 'PUT', nonce(), $body); $auth = base64_encode(json_encode($ev));
 $r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => $auth]); ok(code($r) === 200, 'payment change with fresh signature accepted');
 ok(strpos(file_get_contents($path), 'evil@x.com') !== false, 'file updated with new recipient');
-$body2 = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Other', 'address' => 'o@x.com', 'split' => 99, 'type' => 'lnaddress']]]])]);
+$body2 = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Other', 'address' => 'o@x.com', 'split' => 97, 'type' => 'lnaddress']]]])]);
 $r = call('PUT', "/me/feeds/$id", $body2, $H + ['X-PFG-Auth' => $auth]); ok(code($r) >= 400, 'old signature cannot be replayed on a different body');
 $ev = sign($skA, $url, 'PUT', nonce(), $body2); $r = call('PUT', "/me/feeds/$id", $body2, $H + ['X-PFG-Auth' => base64_encode(json_encode($ev))]); $okA = code($r) === 200;
+// support split changes redirect value too, so they need a fresh signature as well
+$bodyS = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Other', 'address' => 'o@x.com', 'split' => 96, 'type' => 'lnaddress']]]]) + ['support' => [['address' => 'phafe@phafe.com', 'split' => 2], ['address' => 'heycitizen@getalby.com', 'split' => 1], ['address' => 'podcastindex@getalby.com', 'split' => 1]]]]);
+$r = call('PUT', "/me/feeds/$id", $bodyS, $H); ok(code($r) === 428, 'changing a support split -> 428 fresh signature required');
+ok(strpos(file_get_contents($path), 'phafe@phafe.com" split="2"') === false, 'file NOT changed after 428 (support split)');
+$r = call('PUT', "/me/feeds/$id", $bodyS, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $url, 'PUT', nonce(), $bodyS)))]); ok(code($r) === 200, 'support split change with fresh signature accepted');
+ok(strpos(file_get_contents($path), 'phafe@phafe.com" split="2"') !== false, 'file updated with the new support split');
 $r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $url, 'PUT', 'ab' . str_repeat('0', 30), $body)))]); ok(code($r) === 428, 'made-up (never issued) nonce rejected');
 $evB = sign($skB, $url, 'PUT', nonce(), $body); $r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => base64_encode(json_encode($evB))]); ok(code($r) >= 400 && code($r) !== 200, 'signature from a different key rejected');
-$bodyOther = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Z', 'address' => 'z@x.com', 'split' => 99, 'type' => 'lnaddress']]]])]);
+$bodyOther = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Z', 'address' => 'z@x.com', 'split' => 97, 'type' => 'lnaddress']]]])]);
 $r = call('PUT', "/me/feeds/$id", $bodyOther, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, "$B/me/feeds/999", 'PUT', nonce(), $bodyOther)))]); ok(code($r) >= 400 && code($r) !== 200, 'signature for a different URL rejected');
 
 // ---- another account cannot touch it
@@ -105,6 +111,34 @@ $npx = @file_get_contents($GLOBALS['__up'] . '/rssfeed/publishers/no-pay/no-pay.
 ok($npx && $dn->loadXML($npx) && strpos($npx, 'podcast:value') === false, 'no-payments feed has no value block (and no platform recipient)');
 $half = feed(); $half['value']['recipients'] = [['name' => 'A', 'address' => 'a@x.com', 'split' => 50, 'type' => 'lnaddress']];
 ok(code(call('PUT', '/me/feeds/' . data($r2)['id'], ['feed' => $half], $H)) === 422, 'if recipients are given, totals are still enforced');
+
+// ---- "Support the developers": creator-chosen splits (name/address/type stay under the site's control)
+$no = new ReflectionMethod('PFG_Rest', 'norm_opts'); $no->setAccessible(true);
+$po = $no->invoke(null, 'sup-test', PFG_Feed::guid_for_url(PFG_Storage::feed_url('sup-test')));
+$mk = function ($recip, $support = null) { $f = feed(['value' => ['recipients' => $recip]]); if (null !== $support) { $f['support'] = $support; } return $f; };
+$rc = fn($sp) => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => $sp, 'type' => 'lnaddress']];
+$res = PFG_Feed::normalize($mk($rc(97)), $po);
+ok(!$res['errors'] && array_column($res['model']['support'], 'split') === [1, 1, 1] && array_column($res['model']['support'], 'address') === ['phafe@phafe.com', 'heycitizen@getalby.com', 'podcastindex@getalby.com'], 'no support rows sent: configured defaults (1, 1, 1) apply');
+$res = PFG_Feed::normalize($mk($rc(94), [['address' => 'phafe@phafe.com', 'split' => 0], ['address' => 'HEYCITIZEN@getalby.com', 'split' => '5'], ['address' => 'podcastindex@getalby.com', 'split' => 1]]), $po);
+ok(!$res['errors'] && array_column($res['model']['support'], 'split') === [0, 5, 1], 'creator splits applied (0, 5 as text, 1); address match is case-insensitive');
+$ap = PFG_Feed::active_platform($po['platform'], $res['model']['support']);
+ok(array_column($ap, 'address') === ['heycitizen@getalby.com', 'podcastindex@getalby.com'] && array_column($ap, 'split') === [5, 1] && $ap[0]['name'] === 'musicindex.org', 'a split of 0 leaves that recipient out; names come from the site settings');
+$xml0 = PFG_Xml::build($res['model'], $ap, 1700000000); ok(strpos($xml0, 'phafe@phafe.com') === false && strpos($xml0, 'name="musicindex.org" address="heycitizen@getalby.com" split="5"') !== false && strpos($xml0, 'split="94"') !== false, 'XML has the creator split and omits the 0 recipient');
+$res = PFG_Feed::normalize($mk($rc(97), [['address' => 'evil@x.com', 'split' => 50, 'name' => 'Evil', 'type' => 'node']]), $po);
+ok(!$res['errors'] && array_column($res['model']['support'], 'address') === ['phafe@phafe.com', 'heycitizen@getalby.com', 'podcastindex@getalby.com'] && array_column($res['model']['support'], 'split') === [1, 1, 1] && strpos(json_encode($res['model']), 'evil@x.com') === false, 'an address the site did not configure is ignored (cannot add or change a payee)');
+foreach ([100, -1, 'x', 1.5, '100', '', null, [1], true] as $bad) {
+	$res = PFG_Feed::normalize($mk($rc(97), [['address' => 'phafe@phafe.com', 'split' => $bad]]), $po);
+	ok(!empty($res['errors']) && in_array('support.0.split', array_column($res['errors'], 'path'), true), 'invalid support split refused: ' . json_encode($bad));
+}
+$po2 = $po; $po2['platform'] = [['name' => 'A', 'address' => 'a@x.com', 'split' => 60, 'type' => 'lnaddress'], ['name' => 'B', 'address' => 'b@x.com', 'split' => 60, 'type' => 'lnaddress']];
+$nf2 = $mk($rc(97)); $nf2['value']['recipients'] = [];
+$res = PFG_Feed::normalize($nf2, $po2); ok(in_array('support', array_column($res['errors'], 'path'), true), 'support splits totalling 100 or more are refused');
+$nf = $mk($rc(97), [['address' => 'phafe@phafe.com', 'split' => 50]]); $nf['value']['recipients'] = [];
+$res = PFG_Feed::normalize($nf, $po); $xn = PFG_Xml::build($res['model'], PFG_Feed::active_platform($po['platform'], $res['model']['support']), 1700000000);
+ok(!$res['errors'] && strpos($xn, 'podcast:value') === false, 'no own recipients: no value block, whatever the support splits');
+$fp = fn($m) => PFG_Feed::payment_fingerprint($m);
+$a = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $b = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $c = PFG_Feed::normalize($mk($rc(96), [['address' => 'phafe@phafe.com', 'split' => 2]]), $po)['model'];
+ok($fp($a) === $fp($b) && $fp($a) !== $fp($c), 'payment fingerprint changes when a support split changes');
 
 // ---- lookups (no session needed)
 $_COOKIE = [];
@@ -141,5 +175,5 @@ $GLOBALS['__tr'] = []; $hit429 = false; for ($i = 0; $i < 25; $i++) { if (code(c
 $_COOKIE['pfg_session'] = $savedCookie; $GLOBALS['__tr'] = [];
 // ---- logout, config
 ok(code(call('POST', '/auth/logout', null, $H)) === 200 && code(call('GET', '/me')) === 401, 'logout ends the session');
-$cfg = PFG_Rest::client_config(); ok(json_encode($cfg) && $cfg['hostingAvailable'] === true && $cfg['urls']['feedTemplate'] === "$B/me/feeds/0" && count($cfg['platform']) === 1, 'client config sane');
+$cfg = PFG_Rest::client_config(); ok(json_encode($cfg) && $cfg['hostingAvailable'] === true && $cfg['urls']['feedTemplate'] === "$B/me/feeds/0" && count($cfg['platform']) === 3 && !array_key_exists('applyPlatformToExports', $cfg) && $cfg['platform'][0]['address'] === 'phafe@phafe.com' && $cfg['platform'][1]['address'] === 'heycitizen@getalby.com' && $cfg['platform'][2]['address'] === 'podcastindex@getalby.com', 'client config sane (three support recipients in order: Phafe, Music Index, Podcastindex)');
 echo $fails ? "\n$fails FAILURES\n" : "\nintegration tests passed\n"; exit($fails ? 1 : 0);

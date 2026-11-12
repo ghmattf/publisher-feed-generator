@@ -27,9 +27,22 @@ class PFG_Settings {
 			'require_approval'         => 0,
 			'session_hours'            => 24,
 			'relays'                   => array( 'wss://relay.nsec.app', 'wss://relay.damus.io', 'wss://nos.lol' ),
-			// Platform recipients are added to every hosted feed (and optionally to exports).
-			// Review the addresses before going live; an empty list means no platform split.
+			// "Support the developers (optional)": shown to every feed creator with these default splits.
+			// The creator can change each split (0 to 99); name, address and type are fixed here.
+			// Review the addresses before going live; an empty list means no support section.
 			'platform_recipients'      => array(
+				array(
+					'name'    => 'Phafe.com',
+					'address' => 'phafe@phafe.com',
+					'split'   => 1,
+					'type'    => 'lnaddress',
+				),
+				array(
+					'name'    => 'musicindex.org',
+					'address' => 'heycitizen@getalby.com',
+					'split'   => 1,
+					'type'    => 'lnaddress',
+				),
 				array(
 					'name'    => 'Podcastindex.org',
 					'address' => 'podcastindex@getalby.com',
@@ -37,7 +50,6 @@ class PFG_Settings {
 					'type'    => 'lnaddress',
 				),
 			),
-			'apply_platform_to_exports' => 0,
 			'default_suggested'        => '0.000033333',
 			'default_value_method'     => 'lnaddress',
 			'extra_rel_tokens'         => 'studio engineer',
@@ -93,7 +105,6 @@ class PFG_Settings {
 
 		$out['hosting_enabled']           = empty( $in['hosting_enabled'] ) ? 0 : 1;
 		$out['require_approval']          = empty( $in['require_approval'] ) ? 0 : 1;
-		$out['apply_platform_to_exports'] = empty( $in['apply_platform_to_exports'] ) ? 0 : 1;
 		$out['trust_cf_ip']               = empty( $in['trust_cf_ip'] ) ? 0 : 1;
 		$out['delete_data_on_uninstall']  = empty( $in['delete_data_on_uninstall'] ) ? 0 : 1;
 

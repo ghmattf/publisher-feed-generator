@@ -19,7 +19,10 @@
   var STD_NS = { podcast: NS_PODCAST, itunes: NS_ITUNES, atom: NS_ATOM };
   var GUID_NAMESPACE = 'ead4c236-bf58-58c6-a2c6-a6b28d128cb6';
   var MEDIUMS = ['music', 'podcast', 'video', 'film', 'audiobook', 'newsletter', 'blog', 'publisher', 'course'];
-  var BUILTIN_RELS = ['artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor'];
+  var BUILTIN_RELS = ['artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician'];
+  // The role picker shows the roles that fit a release first and these under "Other roles".
+  var OTHER_RELS = ['host', 'author', 'network', 'hosting'];
+  var MAIN_REL_ORDER = ['artist', 'musician', 'songwriter', 'composer', 'producer', 'engineer', 'studio', 'label', 'sponsor'];
   var RESERVED_ATTRS = ['feedGuid', 'feedUrl', 'medium', 'title', 'feedImg', 'rel'];
 
   /* ---------------------------------------------------------------- */
@@ -220,8 +223,112 @@
     return out;
   }
 
+  /** Feed name (web address) made from a title: lowercase letters, digits and "-", 3 to 40 chars, or '' if nothing usable. */
+  function slugify(title) {
+    var t = String(title || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      .replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    t = t.slice(0, 40).replace(/-+$/g, '');
+    return /^[a-z0-9][a-z0-9_-]{2,39}$/.test(t) ? t : '';
+  }
+
+  /** iTunes top-level categories (the feed carries one). */
+  var CATEGORIES = ['Arts', 'Business', 'Comedy', 'Education', 'Fiction', 'Government', 'Health & Fitness', 'History', 'Kids & Family', 'Leisure', 'Music', 'News', 'Religion & Spirituality', 'Science', 'Society & Culture', 'Sports', 'Technology', 'True Crime', 'TV & Film'];
+
+  /** Language codes for the feed's <language> element, English variants first. */
+  var LANGUAGES = [
+    ['en', 'English'], ['en-au', 'English (Australia)'], ['en-ca', 'English (Canada)'], ['en-gb', 'English (United Kingdom)'], ['en-ie', 'English (Ireland)'], ['en-nz', 'English (New Zealand)'], ['en-us', 'English (United States)'], ['en-za', 'English (South Africa)'],
+    ['af', 'Afrikaans'], ['ar', 'Arabic'], ['eu', 'Basque'], ['bn', 'Bengali'], ['bg', 'Bulgarian'], ['ca', 'Catalan'], ['zh', 'Chinese'], ['zh-cn', 'Chinese (Simplified)'], ['zh-tw', 'Chinese (Traditional, Taiwan)'], ['zh-hk', 'Chinese (Hong Kong)'],
+    ['hr', 'Croatian'], ['cs', 'Czech'], ['da', 'Danish'], ['nl', 'Dutch'], ['et', 'Estonian'], ['fil', 'Filipino'], ['fi', 'Finnish'], ['fr', 'French'], ['fr-ca', 'French (Canada)'], ['fr-ch', 'French (Switzerland)'],
+    ['gl', 'Galician'], ['de', 'German'], ['de-at', 'German (Austria)'], ['de-ch', 'German (Switzerland)'], ['el', 'Greek'], ['he', 'Hebrew'], ['hi', 'Hindi'], ['hu', 'Hungarian'], ['is', 'Icelandic'], ['id', 'Indonesian'], ['ga', 'Irish'],
+    ['it', 'Italian'], ['ja', 'Japanese'], ['ko', 'Korean'], ['lv', 'Latvian'], ['lt', 'Lithuanian'], ['ms', 'Malay'], ['mi', 'Maori'], ['no', 'Norwegian'], ['fa', 'Persian'], ['pl', 'Polish'], ['pt', 'Portuguese'], ['pt-br', 'Portuguese (Brazil)'], ['pt-pt', 'Portuguese (Portugal)'],
+    ['ro', 'Romanian'], ['ru', 'Russian'], ['sr', 'Serbian'], ['sk', 'Slovak'], ['sl', 'Slovenian'], ['es', 'Spanish'], ['es-ar', 'Spanish (Argentina)'], ['es-mx', 'Spanish (Mexico)'], ['es-es', 'Spanish (Spain)'], ['es-us', 'Spanish (United States)'],
+    ['sw', 'Swahili'], ['sv', 'Swedish'], ['ta', 'Tamil'], ['te', 'Telugu'], ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['ur', 'Urdu'], ['vi', 'Vietnamese'], ['cy', 'Welsh'],
+  ].map(function (p) { return { value: p[0], label: p[1] + ' (' + p[0] + ')' }; });
+
+  /** Split role tokens for the picker: { main, other }. Unknown or custom tokens go with the main roles. */
+  function splitRoles(tokens) {
+    var main = [], other = [];
+    (tokens || []).forEach(function (t) { if (OTHER_RELS.indexOf(t) >= 0) other.push(t); else main.push(t); });
+    function rank(t) { var i = MAIN_REL_ORDER.indexOf(t); return i < 0 ? MAIN_REL_ORDER.length : i; }
+    var ordered = main.map(function (t, i) { return { t: t, i: i }; }).sort(function (a, b) { return rank(a.t) - rank(b.t) || a.i - b.i; }).map(function (x) { return x.t; });
+    other.sort(function (a, b) { return OTHER_RELS.indexOf(a) - OTHER_RELS.indexOf(b); });
+    return { main: ordered, other: other };
+  }
+
   function emptyRecipient(split) {
     return { name: '', address: '', split: split || 0, type: 'lnaddress' };
+  }
+
+  /**
+   * "Support the developers": the creator's chosen split (0 to 99) for each configured recipient.
+   * Names, addresses and types always come from the configured list. Mirrors PFG_Feed::support_rows.
+   */
+  function supportRows(platform, input, err) {
+    input = Array.isArray(input) ? input : [];
+    var chosen = {};
+    input.forEach(function (row, i) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return;
+      var key = line(get(row, 'address')).toLowerCase();
+      if (key !== '' && !Object.prototype.hasOwnProperty.call(chosen, key)) chosen[key] = { i: i, sp: get(row, 'split') };
+    });
+    return (platform || []).map(function (pr) {
+      var split = parseInt(pr.split, 10) || 0, key = String(pr.address).toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(chosen, key)) {
+        var c = chosen[key], sp = c.sp;
+        if ((typeof sp === 'number' && Number.isInteger(sp)) || (typeof sp === 'string' && /^\d{1,2}$/.test(sp.trim()))) {
+          sp = parseInt(sp, 10);
+          if (sp >= 0 && sp <= 99) split = sp;
+          else err('support.' + c.i + '.split', 'Support split must be a whole number from 0 to 99.');
+        } else {
+          err('support.' + c.i + '.split', 'Support split must be a whole number from 0 to 99.');
+        }
+      }
+      return { address: pr.address, split: split };
+    });
+  }
+
+  /** The recipients that go into the feed: configured name/address/type with the creator's split, leaving out 0. Mirrors PFG_Feed::active_platform. */
+  function activePlatform(platform, support) {
+    var by = {};
+    (Array.isArray(support) ? support : []).forEach(function (row) {
+      if (row && typeof row === 'object' && row.address !== undefined && row.split !== undefined) by[String(row.address).toLowerCase()] = parseInt(row.split, 10) || 0;
+    });
+    var out = [];
+    (platform || []).forEach(function (pr) {
+      var key = String(pr.address).toLowerCase(), split = Object.prototype.hasOwnProperty.call(by, key) ? by[key] : parseInt(pr.split, 10) || 0;
+      if (split > 0) out.push(Object.assign({}, pr, { split: split }));
+    });
+    return out;
+  }
+
+  /** Editor helper: one row per configured recipient, using the stored split when it is a valid 0..99 whole number, else the default. */
+  function ensureSupport(support, platform) {
+    var by = {};
+    (Array.isArray(support) ? support : []).forEach(function (row) { if (row && row.address) by[String(row.address).toLowerCase()] = row.split; });
+    return (platform || []).map(function (pr) {
+      var sp = by[String(pr.address).toLowerCase()], n = typeof sp === 'string' && /^\d{1,2}$/.test(sp.trim()) ? parseInt(sp, 10) : sp;
+      return { address: pr.address, split: Number.isInteger(n) && n >= 0 && n <= 99 ? n : (parseInt(pr.split, 10) || 0) };
+    });
+  }
+
+  /**
+   * An imported feed that already has payment recipients keeps exactly its own split: any recipient that is one of the
+   * configured support recipients becomes that support split, and the others are set to 0. A feed without recipients gets the defaults.
+   * Returns the model (changed in place).
+   */
+  function liftSupport(model, platform) {
+    var recips = model && model.value && Array.isArray(model.value.recipients) ? model.value.recipients : [];
+    if (!recips.length) { model.support = ensureSupport([], platform); return model; }
+    var rows = (platform || []).map(function (pr) { return { address: pr.address, split: 0 }; });
+    var keep = [];
+    recips.forEach(function (r) {
+      var ix = -1;
+      (platform || []).forEach(function (pr, i) { if (ix < 0 && String(pr.address).toLowerCase() === String(r.address).toLowerCase()) ix = i; });
+      var n = parseInt(r.split, 10);
+      if (ix >= 0 && rows[ix].split === 0 && Number.isInteger(n) && n >= 1 && n <= 99) rows[ix].split = n; else keep.push(r);
+    });
+    model.value.recipients = keep; model.support = rows;
+    return model;
   }
 
   function platformTotal(platform) {
@@ -239,6 +346,7 @@
       feedUrl: '', guid: '', npub: '',
       funding: { url: '', text: '' },
       value: { method: d.method || 'lnaddress', suggested: d.suggested || '', recipients: [] },
+      support: [],
       releases: [],
     };
   }
@@ -346,11 +454,15 @@
       userTotal += row.split;
       recips.push(row);
     });
-    var pTotal = platformTotal(opts.platform);
+    // "Support the developers": the creator chooses a split (0 to 99) for each configured recipient.
+    var support = supportRows(opts.platform, get(input, 'support'), err), pTotal = 0;
+    support.forEach(function (s) { pTotal += s.split; });
+    if (pTotal > 99) err('support', 'Support splits must total less than 100%.');
+    m.support = support;
     // Payments are optional. With no recipients there is no value block at all.
     if (recips.length && userTotal + pTotal !== 100) {
       err('value.recipients', pTotal
-        ? 'Your recipients must total ' + (100 - pTotal) + '% (the platform takes ' + pTotal + '%). They currently total ' + userTotal + '%.'
+        ? 'Your recipients must total ' + (100 - pTotal) + '% (support for the developers takes ' + pTotal + '%). They currently total ' + userTotal + '%.'
         : 'Recipient splits must total 100%. They currently total ' + userTotal + '%.');
     }
     m.value = { method: method, suggested: suggested, recipients: recips };
@@ -676,6 +788,6 @@
     uuid5: uuid5, guidForUrl: guidForUrl, npubEncode: npubEncode, npubDecode: npubDecode,
     emptyModel: emptyModel, emptyRecipient: emptyRecipient, platformTotal: platformTotal,
     normalize: normalize, lint: lint, buildXml: buildXml, parseXml: parseXml, inspectReleaseFeed: inspectReleaseFeed, snippetFor: snippetFor,
-    line: line, text: text, isHttpsUrl: isHttpsUrl, isHttpUrl: isHttpUrl, profileToFields: profileToFields, isUuid: isUuid, len: len,
+    line: line, text: text, isHttpsUrl: isHttpsUrl, isHttpUrl: isHttpUrl, profileToFields: profileToFields, supportRows: supportRows, activePlatform: activePlatform, ensureSupport: ensureSupport, liftSupport: liftSupport, slugify: slugify, splitRoles: splitRoles, OTHER_RELS: OTHER_RELS, CATEGORIES: CATEGORIES, LANGUAGES: LANGUAGES, isUuid: isUuid, len: len,
   };
 });

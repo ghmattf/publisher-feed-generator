@@ -21,7 +21,7 @@ A WordPress plugin for phafe.com. One page (shortcode) where labels, studios, en
 2. The server **never holds private keys**. Login and sensitive actions are NIP-98 signed events with a server-issued single-use nonce.
 3. Payment-recipient changes and feed deletion need a **fresh signature** (HTTP 428 flow). Normal edits use the session.
 4. Hosted output is stricter than anonymous output: unknown attributes and preserved extra XML are dropped; only anonymous exports round-trip unknown content.
-5. Platform recipients are appended by the server to hosted feeds and cannot be edited by users.
+5. "Support the developers" recipients (Phafe.com, musicindex.org, Podcastindex.org by default) are set in Settings. Creators may change only each one's split (0 to 99, 0 = leave out), in both modes. Names, addresses and types stay under the site's control: the server ignores any other address. Changing a support split needs a fresh NIP-98 signature (HTTP 428) like any payment change.
 6. Anything fetched from a user-supplied URL goes through `wp_safe_remote_get` (https only, size/redirect limits). Never use plain `wp_remote_get` for user URLs.
 7. Wrap `localStorage`/`sessionStorage` use in try/catch.
 8. Do not add features listed as out of scope in `docs/DECISIONS.md` without asking the owner.

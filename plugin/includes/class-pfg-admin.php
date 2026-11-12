@@ -192,8 +192,7 @@ class PFG_Admin {
 								<?php } ?>
 								</tbody>
 							</table>
-							<p class="description">These recipients are added to every hosted feed and take their split off the top; the feed owner's own recipients share the rest. <strong>Check the addresses carefully before going live.</strong> Changing them only affects feeds saved afterwards. Leave blank for no platform split.</p>
-							<label><input type="checkbox" name="<?php echo esc_attr( self::field_name( 'apply_platform_to_exports' ) ); ?>" value="1" <?php checked( $s['apply_platform_to_exports'] ); ?> /> Also add them to feeds people export and host themselves</label>
+							<p class="description">Shown to every feed creator (hosted or downloaded) under &ldquo;Support the developers (optional)&rdquo;. The split here is the default; each creator can change it from 0 to 99%, and any set to 0 is left out of their feed. Name, address and type cannot be changed by creators. They only apply once a feed has at least one payment recipient of its own. <strong>Check the addresses carefully before going live.</strong> Changing them only affects feeds saved afterwards. Leave blank for no support section.</p>
 						</td>
 					</tr>
 					<tr>
