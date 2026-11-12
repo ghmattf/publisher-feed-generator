@@ -16,7 +16,7 @@ class PFG_Feed {
 	const GUID_NAMESPACE = 'ead4c236-bf58-58c6-a2c6-a6b28d128cb6';
 
 	public static function builtin_rel_tokens() {
-		return array( 'artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician' );
+		return array( 'artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician', 'studio', 'engineer' );
 	}
 
 	public static function mediums() {

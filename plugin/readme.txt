@@ -46,7 +46,7 @@ If you use Cloudflare, purge the cache for a feed URL after publishing if apps s
 * Music Index search fills in the release's GUID, title, image and medium. If the API does not return the release's feed address, the page asks you to paste it.
 
 * "Support the developers" recipients are appended to every feed that has payment recipients. Creators can change each split (0 leaves one out); users' own recipients must total 100 minus the support splits. Changing the settings only affects feeds saved afterwards.
-* Roles follow the podcast-namespace "rel" proposal (podcast-namespace PR 793): a link is confirmed when both feeds point at each other with the same roles. "studio" and "engineer" are extra tokens added in settings.
+* Roles follow the podcast-namespace "rel" proposal (podcast-namespace PR 793): a link is confirmed when both feeds point at each other with the same roles. "studio" and "engineer" are built in; more can be added in settings.
 * The generated value block uses method="lnaddress" by default (changeable per feed). Check this against the current Podcasting 2.0 spec for your use.
 * The signer connection details are kept in the visitor's sessionStorage so signing keeps working after a page reload. They are cleared on sign out or when the tab closes.
 * Uninstalling removes data only if "Delete accounts, feeds and settings" is ticked. Published XML files are never deleted.

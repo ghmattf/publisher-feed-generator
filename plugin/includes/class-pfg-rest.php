@@ -144,7 +144,7 @@ class PFG_Rest {
 	public static function client_config() {
 		$u    = wp_get_upload_dir();
 		$sub  = trim( (string) PFG_Settings::get( 'feed_subdir' ), '/' );
-		$rels = array_merge( PFG_Feed::builtin_rel_tokens(), array_filter( explode( ' ', (string) PFG_Settings::get( 'extra_rel_tokens' ) ) ) );
+		$rels = array_values( array_unique( array_merge( PFG_Feed::builtin_rel_tokens(), array_filter( explode( ' ', (string) PFG_Settings::get( 'extra_rel_tokens' ) ) ) ) ) );
 		return array(
 			'siteName'               => get_bloginfo( 'name' ),
 			'hostingAvailable'       => pfg_hosting_available(),
