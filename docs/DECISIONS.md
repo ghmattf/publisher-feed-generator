@@ -4,9 +4,10 @@ Status at handoff: plugin v1.0.0 feature-complete for the agreed scope; all auto
 
 ## Product decisions (stated by the owner)
 - Publisher feeds only (`podcast:medium` publisher). Not albums or tracks.
-- Two modes. Anonymous: create, paste-XML import, edit, export, no login. Hosted: Nostr remote-signer (NIP-46) login, feeds hosted on phafe.com.
+- Two modes. Anonymous: create, paste-XML import, edit, export, no login. Hosted: Nostr login (browser extension via NIP-07, or remote signer via NIP-46), feeds hosted on phafe.com.
 - Import is by **pasted XML only** for whole feeds. No URL import. Importing into hosting is not an option.
 - The `podcast:txt purpose="npub"` value in a feed does not need to match the login key (a convention for this generator only).
+- Sign-in options (decided 2026-11-12): browser extension (NIP-07, `window.nostr`, for example Alby or nos2x), pasted `bunker://` link, QR code (NIP-46). The extension tab is first and preselected when `window.nostr` is detected, otherwise last (with a "Check again" button). Still Nostr only. `window.nostr` is looked up on every call, never cached, and only a flag (no key) is kept in `sessionStorage`. The server is unchanged: login and fresh signatures are the same NIP-98 events whichever signer produced them.
 - Hosted accounts live in their own table keyed by npub, not WordPress users.
 - No cross-feed approval flow: a label etc. sends the exact text (snippet) to whoever controls the other feed.
 - No non-Nostr login fallback.
@@ -32,7 +33,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 2. Music Index detail fields assumed from the `v4v-musiclink-pro` code: search hits have `entity_type`, `entity_id`, `feed_guid`; `/feeds/{guid}` has `title`, `release_artist`, `image_url`. `feed_url` / `url` / `medium` are **guesses**; if absent, the UI asks the user to paste the feed address. Check against the real API.
 3. The NIP-46 client key is kept in `sessionStorage` so signing works after a reload (XSS would expose it).
 4. Cloudflare may cache hosted XML; a purge may be needed after publishing.
-5. Profile lookup relays are `wss://purplepag.es`, `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net` plus the relays in Settings. Not tested against live relays (only a fake pool); a profile that lives only on other relays will show "No Nostr profile was found". Not configurable in Settings yet.
+5. The extension sign-in is tested only against a fake `window.nostr` that signs with a real key. Real Alby, nos2x and others are untested: check how each handles `signEvent` for kind 27235, per-site permission prompts, and late injection of `window.nostr`.
+6. Profile lookup relays are `wss://purplepag.es`, `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net` plus the relays in Settings. Not tested against live relays (only a fake pool); a profile that lives only on other relays will show "No Nostr profile was found". Not configurable in Settings yet.
 
 ## Open items
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

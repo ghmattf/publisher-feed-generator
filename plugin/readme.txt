@@ -22,7 +22,7 @@ Anonymous mode (no login, nothing stored on your server):
 * "Get your npub" fills the npub field by asking a signer app for its public key. Nothing is saved on your server.
 
 Hosted mode (optional):
-* Sign in with a Nostr remote signer (NIP-46: bunker:// link or QR code). Your private key never reaches the server.
+* Sign in with a Nostr browser extension (NIP-07, for example Alby or nos2x) or a remote signer (NIP-46: bunker:// link or QR code). Your private key never reaches the server.
 * Feeds are written to wp-content/uploads/rssfeed/publishers/{name}/{name}.xml and can be edited later.
 * A new feed is prefilled from your Nostr profile (name, description, website, image, Lightning address). Only empty fields are filled and you can change everything.
 * Changing payment recipients or deleting a feed asks the signer for a fresh signature (NIP-98).

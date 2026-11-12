@@ -80,6 +80,39 @@
     store({ sk: N.bytesToHex(clientSk), bp: { pubkey: bp.pubkey, relays: bp.relays, secret: bp.secret || null } });
   }
 
+  /* ---------------- browser extension signer (NIP-07, for example Alby or nos2x) ---------------- */
+  // The extension holds the key and shows its own approval prompts. `window.nostr` is looked up on every call
+  // (never cached) so a reloaded or switched extension is picked up. Only a flag is kept in sessionStorage.
+  function hasExtension() {
+    var n = window.nostr;
+    return !!n && typeof n === 'object' && typeof n.getPublicKey === 'function' && typeof n.signEvent === 'function';
+  }
+
+  function extensionSigner() {
+    return {
+      isExtension: true,
+      getPublicKey: function () { return window.nostr.getPublicKey(); },
+      signEvent: function (template) { return window.nostr.signEvent(template); },
+      close: function () {},
+    };
+  }
+
+  /** Connect to the browser extension. Resolves with the user's pubkey (hex). */
+  async function connectExtension() {
+    clearSigner();
+    if (!hasExtension()) throw new Error('No Nostr browser extension was found on this page. Install one (for example Alby or nos2x), allow it on this site, then reload the page.');
+    var pk;
+    try {
+      pk = await window.nostr.getPublicKey();
+    } catch (e) {
+      throw new Error('Your extension did not share your public key: ' + (e && e.message ? e.message : e));
+    }
+    if (typeof pk !== 'string' || !/^[0-9a-f]{64}$/i.test(pk)) throw new Error('Your extension returned something that is not a public key.');
+    signer = extensionSigner();
+    store({ ext: true });
+    return pk.toLowerCase();
+  }
+
   /** Connect using a pasted bunker:// link (or name@domain). Resolves with the user's pubkey (hex). */
   async function connectBunker(input) {
     clearSigner();
@@ -150,6 +183,11 @@
   function restoreSigner() {
     if (signer) return true;
     var s = loadStore();
+    if (s && s.ext === true) {
+      if (!hasExtension()) return false; // the extension is gone or not ready: the user signs in again
+      signer = extensionSigner();
+      return true;
+    }
     if (!s || !s.sk || !s.bp) return false;
     try {
       clientSk = N.hexToBytes(s.sk);
@@ -290,6 +328,8 @@
     init: init,
     on: on,
     connectBunker: connectBunker,
+    hasExtension: hasExtension,
+    connectExtension: connectExtension,
     startNostrConnect: startNostrConnect,
     hasSigner: hasSigner,
     fetchProfile: fetchProfile,

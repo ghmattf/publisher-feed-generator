@@ -9,9 +9,9 @@ w.Element.prototype.scrollIntoView = () => {}; w.scrollTo = () => {};
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if (!c) fails++; };
 // fake nostr + hosting
 w.PFGNostr = {};
-let forgot = 0, sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
+let forgot = 0, extPresent = false, extUsed = 0, sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
 w.PFGHosting = { init: () => true, on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
-  listFeeds: async () => listed, connectBunker: async () => 'pk', npubOf: pk => 'npub1for' + pk, forgetSigner: () => { forgot++; }, login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
+  listFeeds: async () => listed, connectBunker: async () => 'pk', hasExtension: () => extPresent, connectExtension: async () => { extUsed++; return 'pk'; }, npubOf: pk => 'npub1for' + pk, forgetSigner: () => { forgot++; }, login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
   startNostrConnect: () => ({ uri: 'nostrconnect://x', qr: '<svg></svg>', done: new Promise(() => {}), cancel() {} }) };
 w.eval(fs.readFileSync(P + 'pfg-core.js', 'utf8'));
 let opened = null;
@@ -32,6 +32,20 @@ $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await t
 ok(gotNpub === 'npub1forpk' && sess === null && forgot === 1 && !$('.pfg-overlay'), 'npub returned, no hosted session created, signer forgotten, window closed');
 opened.getNpub(() => { gotNpub = 'cancelled-should-not-fire'; }); click('Cancel'); await tick();
 ok(gotNpub === 'npub1forpk' && !$('.pfg-overlay'), 'cancelling the npub window does not call back');
+// browser extension (NIP-07) tab
+const tabNames = () => $$('.pfg-overlay .pfg-tab').map(t => t.textContent), selTab = () => $$('.pfg-overlay .pfg-tab').filter(t => t.getAttribute('aria-selected') === 'true').map(t => t.textContent);
+opened.getNpub(() => {}); ok(tabNames().join('|') === 'Paste bunker link|Scan QR code|Browser extension' && selTab().join() === 'Paste bunker link', 'no extension detected: extension tab is last and the bunker tab is preselected');
+click('Browser extension'); ok(/No Nostr browser extension was found/.test($('.pfg-overlay').textContent) && !$$('button').some(b => /with extension/.test(b.textContent)), 'extension tab explains when nothing is detected');
+extPresent = true; click('Check again'); ok($$('button').some(b => b.textContent === 'Get npub from extension'), '"Check again" picks up an extension that appeared late');
+let extNpub = null; click('Get npub from extension'); await tick(); await tick();
+ok(extUsed === 1 && sess === null && !$('.pfg-overlay'), 'npub-only via extension: no hosted session, window closed');
+ok(forgot === 2, 'npub-only via extension: signer forgotten afterwards');
+opened.getNpub(() => {}); ok(tabNames().join('|') === 'Browser extension|Paste bunker link|Scan QR code' && selTab().join() === 'Browser extension', 'extension detected: tab is first and preselected'); click('Cancel');
+extUsed = 0; sess = null; opened.needSignIn(() => {});
+ok(/Sign in with Nostr/.test($('.pfg-overlay h2').textContent) && selTab().join() === 'Browser extension' && /approve the sign-in/.test($('.pfg-overlay').textContent), 'normal sign-in window also offers the extension first');
+click('Sign in with extension'); await tick(); await tick();
+ok(extUsed === 1 && sess && !$('.pfg-overlay'), 'sign in with extension: hosted session created and window closed');
+sess = null; extPresent = false;
 opened.saveDraft({ title: 'Draft T' }); opened.back();
 ok($('.pfg-note') && /Draft T/.test($('.pfg-note').textContent) === false || true, 'draft banner path ran');
 ok(w.localStorage.getItem('pfg_draft_v1').includes('Draft T'), 'draft autosaved to localStorage');

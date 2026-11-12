@@ -239,8 +239,8 @@
     function onKey(ev) { if (ev.key === 'Escape') close(); }
     document.addEventListener('keydown', onKey);
 
-    function finish(connectPromise) {
-      status.replaceChildren(note('', 'Waiting for your signer to approve…'));
+    function finish(connectPromise, waitMsg) {
+      status.replaceChildren(note('', waitMsg || 'Waiting for your signer to approve…'));
       connectPromise.then(function (pk) { return npubOnly ? pk : Host.login(); }).then(function (res) {
         if (closed) return;
         if (npubOnly) {
@@ -263,6 +263,20 @@
       status.replaceChildren(note('warn', ['Your signer needs you to approve this in a browser: ', h('a', { href: url, target: '_blank', rel: 'noopener', text: 'open approval page' })]));
     });
 
+    function tabExtension() {
+      clear(panel);
+      if (Host.hasExtension()) {
+        panel.appendChild(h('p', { text: npubOnly
+          ? 'Use your Nostr browser extension (for example Alby or nos2x). It will ask you to share your public key.'
+          : 'Use your Nostr browser extension (for example Alby or nos2x). It will ask you to approve the sign-in.' }));
+        panel.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [
+          btn(npubOnly ? 'Get npub from extension' : 'Sign in with extension', 'pfg-btn-primary', function () { finish(Host.connectExtension(), 'Waiting for your extension to approve…'); }),
+        ]));
+      } else {
+        panel.appendChild(h('p', { text: 'No Nostr browser extension was found on this page. Install one (for example Alby or nos2x), allow it on this site, then press Check again. You can also use a signer app with the other options.' }));
+        panel.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [btn('Check again', '', function () { tabExtension(); })]));
+      }
+    }
     function tabPaste() {
       var input = h('input', { type: 'text', id: 'pfg-bunker', placeholder: 'bunker://…', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Bunker link' });
       clear(panel);
@@ -288,21 +302,24 @@
     }
 
     var tabs = h('div', { class: 'pfg-tabs', role: 'tablist' });
+    var tExt = btn('Browser extension', 'pfg-tab', function () { sel(tExt); status.replaceChildren(); if (attempt) { attempt.cancel(); attempt = null; } tabExtension(); }, { role: 'tab' });
     var tPaste = btn('Paste bunker link', 'pfg-tab', function () { sel(tPaste); status.replaceChildren(); if (attempt) { attempt.cancel(); attempt = null; } tabPaste(); }, { role: 'tab' });
     var tQr = btn('Scan QR code', 'pfg-tab', function () { sel(tQr); status.replaceChildren(); tabQr(); }, { role: 'tab' });
-    function sel(t) { [tPaste, tQr].forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); }); }
-    tabs.appendChild(tPaste); tabs.appendChild(tQr);
+    function sel(t) { [tExt, tPaste, tQr].forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); }); }
+    // An installed extension is the quickest way in, so it comes first and is preselected; otherwise it is the last option.
+    var extFirst = Host.hasExtension();
+    (extFirst ? [tExt, tPaste, tQr] : [tPaste, tQr, tExt]).forEach(function (t) { tabs.appendChild(t); });
 
     modal.appendChild(h('h2', { text: npubOnly ? 'Get your npub' : 'Sign in with Nostr' }));
     modal.appendChild(h('p', { class: 'pfg-hint', text: npubOnly
-      ? 'Connect your signer app so we can read your public key (npub). You are not signed in and nothing is saved on this site. Your private key stays in your signer app.'
-      : 'Your private key stays in your signer app. This site never sees it.' }));
+      ? 'Connect your signer app or browser extension so we can read your public key (npub). You are not signed in and nothing is saved on this site. Your private key stays in your signer.'
+      : 'Your private key stays in your signer app or browser extension. This site never sees it.' }));
     modal.appendChild(tabs);
     modal.appendChild(panel);
     modal.appendChild(status);
     modal.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:12px' }, [btn('Cancel', '', close)]));
     document.body.appendChild(overlay);
-    sel(tPaste); tabPaste();
+    if (extFirst) { sel(tExt); tabExtension(); } else { sel(tPaste); tabPaste(); }
   }
 
   /* ---------------- start ---------------- */
