@@ -97,7 +97,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
 // --- release card states
 {
   const cfg3 = Object.assign({}, cfg, { urls: { lookupFeed: 'L/feed', lookupSearch: 'L/search' } });
-  w.fetch = async (url, opts) => ({ ok: true, status: 200, json: async () => ({ xml: album }) });
+  w.fetch = async (url, opts) => ({ ok: true, status: 200, json: async () => ({ xml: JSON.parse(opts.body).url === 'https://phafe.com/x/mezza.xml' ? '<rss version="2.0"><channel><title>MezzaForte</title></channel></rss>' : album }) });
   const m3 = w.PFGCore.emptyModel({ defaults: cfg.defaults }); m3.guid = 'a9ce0ee9-fe9f-4495-b7b8-ebae25ff2112'; m3.feedUrl = 'https://phafe.com/Phafe.xml'; m3.title = 'P'; m3.description = 'D';
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg: cfg3, model: m3, hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
@@ -110,9 +110,12 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   ok(hiddenOf(c.querySelector('[id$="-feedGuid"]')) && hiddenOf(c.querySelector('.pfg-chip')) && c.querySelector('.pfg-snippet') ? hiddenOf(c.querySelector('.pfg-snippet')) : true, 'empty release: everything below the search box is hidden');
   c.querySelector('input[type=search]').value = 'https://phafe.com/x/some_songs.xml'; [...c.querySelectorAll('button')].find(b => b.textContent === 'Search').click(); await tick();
   c = card();
-  ok(c.querySelector('.pfg-item-head strong').textContent === 'Some Songs' && c.querySelectorAll('.pfg-item-head button').length >= 1, 'header (title + buttons) still shown after populating');
+  ok(c.querySelector('.pfg-item-head strong').textContent === 'Some Songs by MezzaForte' && c.querySelectorAll('.pfg-item-head button').length >= 1, 'header shows "<title> by <artist>" (artist = publisher feed with rel=artist, read from its feed) with its buttons');
   ok(hiddenOf(c.querySelector('input[type=search]')), 'populated: the search box is hidden');
-  ok(!hiddenOf(c.querySelector('[id$="-feedGuid"]')) && !hiddenOf(c.querySelector('.pfg-chip')) && !hiddenOf(c.querySelector('.pfg-snippet')), 'populated: details, roles and owner text are visible');
+  const tog = () => [...card().querySelectorAll('button')].find(b => /feed details$/.test(b.textContent));
+  ok(hiddenOf(c.querySelector('[id$="-feedGuid"]')) && hiddenOf(c.querySelector('[id$="-title"]')) && hiddenOf(c.querySelector('[id$="-feedImg"]')) && tog().textContent === 'Show feed details' && !hiddenOf(c.querySelector('.pfg-chip')) && !hiddenOf(c.querySelector('.pfg-snippet')), 'populated: feed details hidden by default; roles and owner text visible');
+  tog().click(); ok(!hiddenOf(card().querySelector('[id$="-feedGuid"]')) && tog().textContent === 'Hide feed details' && tog().getAttribute('aria-expanded') === 'true', 'Show feed details reveals title, type, GUID, feed URL and cover image');
+  c = card();
   const ro = ['title', 'medium', 'feedGuid', 'feedUrl', 'feedImg'].map(k => c.querySelector('[id$="-' + k + '"]'));
   ok(ro.every(e => e.hasAttribute('readonly')) && ro[1].hasAttribute('disabled'), 'populated: all release details are read-only');
   const chip = c.querySelector('.pfg-chip'); const before = chip.getAttribute('aria-pressed'); chip.click(); ok(c.querySelector('.pfg-chip').getAttribute('aria-pressed') !== before || card().querySelector('.pfg-chip').getAttribute('aria-pressed') !== before, 'role buttons remain editable');

@@ -25,4 +25,21 @@ ok(eq(C.ensureSupport([], plat).map(r => [r.address, r.split]), [['a@x.com', 1],
 ok(eq(C.activePlatform(plat, [{ address: 'a@x.com', split: 0 }, { address: 'B@x.com', split: 4 }]).map(r => r.split), [4]), 'activePlatform: zero is dropped, address match ignores case');
 const lifted = C.liftSupport({ value: { recipients: [{ name: 'Me', address: 'me@x.com', split: 98, type: 'lnaddress' }, { name: 'B', address: 'b@x.com', split: 2, type: 'lnaddress' }] } }, plat);
 ok(eq(lifted.support, [{ address: 'a@x.com', split: 0 }, { address: 'b@x.com', split: 2 }]) && eq(lifted.value.recipients.map(r => r.address), ['me@x.com']), 'liftSupport: an import keeps exactly its own splits; unlisted support recipients become 0')
+// artist for the release heading
+const D = require('../build/node_modules/@xmldom/xmldom'); const dom = { DOMParser: D.DOMParser, XMLSerializer: D.XMLSerializer };
+const rss = inner => '<?xml version="1.0"?><rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><title>Alb</title><podcast:guid>07adf84f-c1fa-47a7-a121-0fb544e859bd</podcast:guid>' + inner + '</channel></rss>';
+const OWN = 'a9ce0ee9-fe9f-4495-b7b8-ebae25ff2112', OTHER = '9620e1f8-0cca-5f08-b947-1c8f93244ff8', THIRD = '11111111-1111-4111-8111-111111111111';
+const link = (g, u, rel, t) => '<podcast:remoteItem medium="publisher" feedGuid="' + g + '"' + (u ? ' feedUrl="' + u + '"' : '') + (rel ? ' rel="' + rel + '"' : '') + (t ? ' title="' + t + '"' : '') + '/>';
+let i = C.inspectReleaseFeed(rss('<podcast:publisher>' + link(OTHER, 'https://x.example/m.xml', 'artist') + link(OWN, '', 'label') + '</podcast:publisher>'), dom, OWN, ['label'], 'Phafe');
+ok(i.artist === '' && i.artistUrl === 'https://x.example/m.xml', 'artist: the publisher feed with rel="artist" is chosen (its title is read from its feed)');
+i = C.inspectReleaseFeed(rss('<podcast:publisher>' + link(OTHER, 'https://x.example/m.xml', 'label') + link(THIRD, 'https://x.example/t.xml', '') + '</podcast:publisher>'), dom, OWN, [], 'Phafe');
+ok(i.artistUrl === 'https://x.example/m.xml', 'artist: without rel="artist" the first publisher feed is used');
+i = C.inspectReleaseFeed(rss('<podcast:publisher>' + link(OWN, '', 'artist') + '</podcast:publisher>'), dom, OWN, ['artist'], 'Phafe Records');
+ok(i.artist === 'Phafe Records' && !i.artistUrl, 'artist: when the artist link is this feed, our own title is used');
+i = C.inspectReleaseFeed(rss('<podcast:publisher>' + link(OTHER, '', 'artist', 'MezzaForte') + '</podcast:publisher>'), dom, OWN, [], 'P');
+ok(i.artist === 'MezzaForte', 'artist: a title attribute on the link is used when present');
+i = C.inspectReleaseFeed(rss('<podcast:person role="engineer">Eve</podcast:person><podcast:person>Bob</podcast:person>'), dom, OWN, [], 'P');
+ok(i.artist === '' && !i.artistUrl && i.person === 'Bob', 'artist: with no publisher feed, falls back to the first podcast:person');
+i = C.inspectReleaseFeed(rss(''), dom, OWN, [], 'P'); ok(i.artist === '' && i.person === '', 'artist: nothing available gives no artist');
+ok(C.channelTitle('<rss version="2.0"><channel><title>MezzaForte</title></channel></rss>', dom) === 'MezzaForte' && C.channelTitle('nope', dom) === '', 'channelTitle');
 console.log(fails ? fails + ' FAILURES' : 'editor feature tests passed'); process.exit(fails ? 1 : 0);

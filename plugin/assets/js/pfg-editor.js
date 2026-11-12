@@ -28,6 +28,7 @@
     function pTotal() { return Core.platformTotal(Core.activePlatform(platform, m.support)); }
     var slug = hosted && hosted.slug ? hosted.slug : '';
     var fields = {};      // path -> {wrap, err}
+    var showDet = new Set(); // releases whose feed details are expanded
     var ui = new Map();   // release object -> {status, info, open}
     var timer = null, saving = false, slugMsg = '';
     var slugAuto = !!(hosted && !hosted.id); // the feed name follows the title until the user types their own
@@ -309,15 +310,26 @@
           var isUrl = true;
           say('', 'Fetching the feed…');
           return post(cfg.urls.lookupFeed, { url: text }).then(function (d) { return d.xml; }).then(function (xml) {
-            var info = Core.inspectReleaseFeed(xml, { DOMParser: window.DOMParser, XMLSerializer: window.XMLSerializer }, m.guid, r.rel);
+            var dom = { DOMParser: window.DOMParser, XMLSerializer: window.XMLSerializer };
+            var info = Core.inspectReleaseFeed(xml, dom, m.guid, r.rel, m.title);
             if (info.error) throw new Error(info.error);
             if (info.guid) r.feedGuid = info.guid;
             if (info.title) r.title = info.title;
             if (info.feedUrl) r.feedUrl = info.feedUrl; else if (isUrl) r.feedUrl = text;
             if (info.feedImg) r.feedImg = info.feedImg;
             if (info.medium && (cfg.mediums || []).indexOf(info.medium) >= 0) r.medium = info.medium;
-            ui.set(r, { info: info, status: info.status, xml: xml, msg: null });
+            var prev = ui.get(r) || {};
+            var artist = info.artist || (info.artistUrl ? '' : (prev.artist || info.person));
+            ui.set(r, { info: info, status: info.status, xml: xml, msg: null, artist: artist });
             renderReleases(); changed();
+            if (!artist && info.artistUrl) {
+              // the artist's publisher feed: read its title; if that fails use the Music Index artist or the first person tag
+              post(cfg.urls.lookupFeed, { url: info.artistUrl }).then(function (d) { return Core.channelTitle(d.xml, dom); }).catch(function () { return ''; }).then(function (t) {
+                var st = ui.get(r); if (!st) return;
+                st.artist = t || prev.artist || info.person || '';
+                if (st.artist) { renderReleases(); }
+              });
+            }
           }).catch(function (e) { say('bad', e.message); });
         }
         function sameUrl(a, b) { return String(a || '').trim().replace(/\/+$/, '').toLowerCase() === String(b || '').trim().replace(/\/+$/, '').toLowerCase(); }
@@ -357,13 +369,26 @@
           if (x.image) r.feedImg = x.image;
           if (x.feedUrl) r.feedUrl = x.feedUrl;
           if (x.medium && (cfg.mediums || []).indexOf(x.medium) >= 0) r.medium = x.medium;
-          ui.set(r, { msg: x.feedUrl ? null : ['warn', 'Music Index did not give this release\'s feed address. Paste the feed\'s https address in the search box to finish adding it.'] });
+          ui.set(r, { artist: x.artist || '', msg: x.feedUrl ? null : ['warn', 'Music Index did not give this release\'s feed address. Paste the feed\'s https address in the search box to finish adding it.'] });
           if (x.feedUrl) { renderReleases(); changed(); readFeed(x.feedUrl); } else { renderReleases(); changed(); }
         }
         searchIn.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); runSearch(); } });
+        // Feed details (title, type, GUID, feed URL, cover image) are grouped and hidden until asked for.
+        var detailsGrid = h('div', { class: 'pfg-grid', id: 'pfg-details-' + i, hidden: !showDet.has(r) }, [
+          field('Title', base + '.title', { readonly: true }),
+          field('Type', base + '.medium', { select: cfg.mediums || ['music'], readonly: true }),
+          field('Feed GUID', base + '.feedGuid', { wide: true, readonly: true }),
+          field('Feed URL', base + '.feedUrl', { type: 'url', wide: true, readonly: true }),
+          field('Cover image URL', base + '.feedImg', { type: 'url', wide: true, readonly: true }),
+        ]);
+        var detailsToggle = btn('', 'pfg-btn-small', function () { setDetails(!showDet.has(r)); });
+        detailsToggle.setAttribute('aria-controls', 'pfg-details-' + i);
+        function setDetails(on) { if (on) showDet.add(r); else showDet.delete(r); detailsGrid.hidden = !on; detailsToggle.textContent = on ? 'Hide feed details' : 'Show feed details'; detailsToggle.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+        setDetails(showDet.has(r));
+        ['title', 'medium', 'feedGuid', 'feedUrl', 'feedImg'].forEach(function (k) { if (fields[base + '.' + k]) fields[base + '.' + k].reveal = function () { setDetails(true); }; });
         var item = h('div', { class: 'pfg-item' }, [
           h('div', { class: 'pfg-item-head' }, [
-            h('strong', { text: r.title || 'Release ' + (i + 1) }),
+            h('strong', { text: (r.title || 'Release ' + (i + 1)) + (((ui.get(r) || {}).artist) ? ' by ' + ui.get(r).artist : '') }),
             i > 0 ? btn('Up', 'pfg-btn-small', function () { m.releases.splice(i - 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
             i < m.releases.length - 1 ? btn('Down', 'pfg-btn-small', function () { m.releases.splice(i + 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
             btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { ui.delete(r); m.releases.splice(i, 1); renderReleases(); changed(); }),
@@ -374,13 +399,7 @@
             searchOut,
             pasteMsg,
           ]),
-          h('div', { class: 'pfg-grid', hidden: !pop }, [
-            field('Title', base + '.title', { readonly: true }),
-            field('Type', base + '.medium', { select: cfg.mediums || ['music'], readonly: true }),
-            field('Feed GUID', base + '.feedGuid', { wide: true, readonly: true }),
-            field('Feed URL', base + '.feedUrl', { type: 'url', wide: true, readonly: true }),
-            field('Cover image URL', base + '.feedImg', { type: 'url', wide: true, readonly: true }),
-          ]),
+          h('div', { hidden: !pop }, [detailsToggle, detailsGrid]),
           h('div', { class: 'pfg-field', hidden: !pop }, [h('span', { class: 'pfg-label', text: 'Your role on this release' }), roleChips(r), h('div', { class: 'pfg-hint', text: 'Pick every role that applies. The release feed must list the same roles.' }), h('div', { class: 'pfg-error', id: 'pfg-rel-err-' + i })]),
           h('div', { hidden: !pop }, [helpEl]),
         ]);
@@ -432,7 +451,7 @@
       var loose = [];
       errs.forEach(function (e) {
         var f = fields[e.path];
-        if (f && f.err && !f.err.textContent) { f.err.textContent = e.message; f.wrap.classList.add('pfg-invalid'); } else loose.push(e);
+        if (f && f.err && !f.err.textContent) { f.err.textContent = e.message; f.wrap.classList.add('pfg-invalid'); if (f.reveal) f.reveal(); } else loose.push(e);
       });
       clear(summaryErr);
       if (loose.length) summaryErr.appendChild(note('bad', h('ul', {}, loose.map(function (e) { return h('li', { text: e.message }); }))));
