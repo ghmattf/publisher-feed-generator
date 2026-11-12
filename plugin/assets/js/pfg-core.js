@@ -749,10 +749,10 @@
    * Read a pasted release feed and check whether it links back to this publisher.
    * @returns {{error?:string, guid, title, feedUrl, feedImg, medium, status:'confirmed'|'missing'|'rel-mismatch'|'unknown', theirRel:string[]}}
    */
-  function inspectReleaseFeed(xml, dom, ownGuid, ourRel) {
+  function inspectReleaseFeed(xml, dom, ownGuid, ourRel, ownTitle) {
     var pd = parseDoc(xml, dom);
     if (pd.error) return { error: pd.error };
-    var info = { guid: '', title: '', feedUrl: '', feedImg: '', medium: '', status: 'unknown', theirRel: [] }, back = [];
+    var info = { guid: '', title: '', feedUrl: '', feedImg: '', medium: '', status: 'unknown', theirRel: [], artist: '', artistUrl: '', person: '' }, back = [], people = [];
     var iImg = '', cImg = '';
     childEls(pd.channel).forEach(function (el) {
       var ns = el.namespaceURI || '', name = el.localName;
@@ -763,8 +763,19 @@
       else if (isPodcastNs(ns) && name === 'guid') info.guid = elText(el).toLowerCase();
       else if (isPodcastNs(ns) && name === 'medium') info.medium = elText(el).toLowerCase();
       else if (isPodcastNs(ns) && name === 'publisher') childEls(el).forEach(function (c) { if (c.localName === 'remoteItem') back.push(c); });
+      else if (isPodcastNs(ns) && name === 'person' && elText(el)) people.push({ name: elText(el), role: attr(el, 'role').toLowerCase() });
     });
     info.feedImg = iImg || cImg;
+    // Artist: the publisher feed with rel="artist", else the first publisher feed; its name is our own title when it is
+    // this feed, a title attribute if the link has one, otherwise the editor reads that feed. Then the first podcast:person.
+    var artistLink = back.filter(function (c) { return relTokens(attr(c, 'rel')).indexOf('artist') >= 0; })[0] || back[0];
+    if (artistLink) {
+      if (ownGuid && line(attr(artistLink, 'feedGuid')).toLowerCase() === ownGuid.toLowerCase()) info.artist = line(ownTitle || '');
+      else if (line(attr(artistLink, 'title'))) info.artist = line(attr(artistLink, 'title'));
+      else if (isHttpsUrl(line(attr(artistLink, 'feedUrl')))) info.artistUrl = line(attr(artistLink, 'feedUrl'));
+    }
+    var pe = people.filter(function (x) { return x.role === 'artist'; })[0] || people.filter(function (x) { return !x.role; })[0] || people[0];
+    if (pe) info.person = pe.name;
     if (!ownGuid) return info;
     var mine = back.filter(function (c) { return line(attr(c, 'feedGuid')).toLowerCase() === ownGuid.toLowerCase(); })[0];
     if (!mine) { info.status = 'missing'; return info; }
@@ -773,6 +784,14 @@
     var a = ourRel.slice().sort().join(' '), b = info.theirRel.slice().sort().join(' ');
     info.status = (!a || !b || a === b) ? 'confirmed' : 'rel-mismatch';
     return info;
+  }
+
+  /** Title of a feed's channel (used to name the artist's publisher feed). */
+  function channelTitle(xml, dom) {
+    var pd = parseDoc(xml, dom);
+    if (pd.error) return '';
+    var t = childEls(pd.channel).filter(function (el) { return !(el.namespaceURI || '') && el.localName === 'title'; })[0];
+    return t ? elText(t) : '';
   }
 
   /** The text a release owner must add to their own feed so the link is confirmed both ways. */
@@ -787,7 +806,7 @@
     NS_PODCAST: NS_PODCAST, NS_ITUNES: NS_ITUNES, NS_ATOM: NS_ATOM, MEDIUMS: MEDIUMS, BUILTIN_RELS: BUILTIN_RELS,
     uuid5: uuid5, guidForUrl: guidForUrl, npubEncode: npubEncode, npubDecode: npubDecode,
     emptyModel: emptyModel, emptyRecipient: emptyRecipient, platformTotal: platformTotal,
-    normalize: normalize, lint: lint, buildXml: buildXml, parseXml: parseXml, inspectReleaseFeed: inspectReleaseFeed, snippetFor: snippetFor,
+    normalize: normalize, lint: lint, buildXml: buildXml, parseXml: parseXml, inspectReleaseFeed: inspectReleaseFeed, channelTitle: channelTitle, snippetFor: snippetFor,
     line: line, text: text, isHttpsUrl: isHttpsUrl, isHttpUrl: isHttpUrl, profileToFields: profileToFields, supportRows: supportRows, activePlatform: activePlatform, ensureSupport: ensureSupport, liftSupport: liftSupport, slugify: slugify, splitRoles: splitRoles, OTHER_RELS: OTHER_RELS, CATEGORIES: CATEGORIES, LANGUAGES: LANGUAGES, isUuid: isUuid, len: len,
   };
 });
