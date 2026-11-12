@@ -19,7 +19,7 @@
   var STD_NS = { podcast: NS_PODCAST, itunes: NS_ITUNES, atom: NS_ATOM };
   var GUID_NAMESPACE = 'ead4c236-bf58-58c6-a2c6-a6b28d128cb6';
   var MEDIUMS = ['music', 'podcast', 'video', 'film', 'audiobook', 'newsletter', 'blog', 'publisher', 'course'];
-  var BUILTIN_RELS = ['artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician'];
+  var BUILTIN_RELS = ['artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician', 'studio', 'engineer'];
   // The role picker shows the roles that fit a release first and these under "Other roles".
   var OTHER_RELS = ['host', 'author', 'network', 'hosting'];
   var MAIN_REL_ORDER = ['artist', 'musician', 'songwriter', 'composer', 'producer', 'engineer', 'studio', 'label', 'sponsor'];

@@ -52,7 +52,7 @@ class PFG_Settings {
 			),
 			'default_suggested'        => '0.000033333',
 			'default_value_method'     => 'lnaddress',
-			'extra_rel_tokens'         => 'studio engineer',
+			'extra_rel_tokens'         => '',
 			'trust_cf_ip'              => 0,
 			'delete_data_on_uninstall' => 0,
 		);
