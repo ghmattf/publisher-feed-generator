@@ -40,7 +40,7 @@ $csrf = data(call('GET', '/me'))['csrf']; $H = ['X-PFG-CSRF' => $csrf];
 ok(code(call('GET', '/me/feeds')) === 200 && data(call('GET', '/me/feeds')) === [], 'empty feed list');
 
 // ---- create
-function feed($over = []){ return array_replace_recursive(['title' => 'Acme Records', 'author' => 'Acme', 'description' => 'We make records.', 'link' => 'https://acme.example', 'language' => 'en', 'category' => 'Music', 'value' => ['method' => 'lnaddress', 'suggested' => '0.000033333', 'recipients' => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => 97, 'type' => 'lnaddress']]], 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://phafe.com/x/some_songs.xml', 'medium' => 'music', 'title' => 'Some Songs', 'rel' => ['label', 'studio']]]], $over); }
+function feed($over = []){ return array_replace_recursive(['title' => 'Acme Records', 'author' => 'Acme', 'created' => 1000000000, 'description' => 'We make records.', 'link' => 'https://acme.example', 'language' => 'en', 'category' => 'Music', 'value' => ['method' => 'lnaddress', 'suggested' => '0.000033333', 'recipients' => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => 97, 'type' => 'lnaddress']]], 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://phafe.com/x/some_songs.xml', 'medium' => 'music', 'title' => 'Some Songs', 'rel' => ['label', 'studio']]]], $over); }
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()])) === 403, 'create without CSRF header -> 403');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], ['X-PFG-CSRF' => str_repeat('a', 48)])) === 403, 'create with wrong CSRF -> 403');
 ok(code(call('POST', '/me/feeds', 'slug=x', $H + ['Content-Type' => 'application/x-www-form-urlencoded'])) === 415, 'form-encoded body rejected (415)');
@@ -79,6 +79,8 @@ $r = call('PUT', "/me/feeds/$id", $bodyS, $H); ok(code($r) === 428, 'changing a 
 ok(strpos(file_get_contents($path), 'phafe@phafe.com" split="2"') === false, 'file NOT changed after 428 (support split)');
 $r = call('PUT', "/me/feeds/$id", $bodyS, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $url, 'PUT', nonce(), $bodyS)))]); ok(code($r) === 200, 'support split change with fresh signature accepted');
 ok(strpos(file_get_contents($path), 'phafe@phafe.com" split="2"') !== false, 'file updated with the new support split');
+$rowC = PFG_Storage::get_feed($id); $pdC = gmdate('D, d M Y H:i:s', (int) $rowC['created_at']) . ' GMT'; $fileC = file_get_contents($path);
+ok(strpos($fileC, "<pubDate>$pdC</pubDate>") !== false && strpos($fileC, '2001') === false, 'hosted feed pubDate is the server creation date (a date sent by the browser is ignored) and stays after updates');
 $r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $url, 'PUT', 'ab' . str_repeat('0', 30), $body)))]); ok(code($r) === 428, 'made-up (never issued) nonce rejected');
 $evB = sign($skB, $url, 'PUT', nonce(), $body); $r = call('PUT', "/me/feeds/$id", $body, $H + ['X-PFG-Auth' => base64_encode(json_encode($evB))]); ok(code($r) >= 400 && code($r) !== 200, 'signature from a different key rejected');
 $bodyOther = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Z', 'address' => 'z@x.com', 'split' => 97, 'type' => 'lnaddress']]]])]);
@@ -151,6 +153,8 @@ ok(!$res['errors'] && strpos($xn, 'podcast:value') === false, 'no own recipients
 $fp = fn($m) => PFG_Feed::payment_fingerprint($m);
 $a = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $b = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $c = PFG_Feed::normalize($mk($rc(96), [['address' => 'phafe@phafe.com', 'split' => 2]]), $po)['model'];
 ok($fp($a) === $fp($b) && $fp($a) !== $fp($c), 'payment fingerprint changes when a support split changes');
+$fc = $mk($rc(97)); $fc['created'] = 1700000000; $rcx = PFG_Feed::normalize($fc, $po);
+ok(strpos(PFG_Xml::build($rcx['model'], [], 1794000000), '<pubDate>Tue, 14 Nov 2023 22:13:20 GMT</pubDate>') !== false, 'PHP: pubDate is the creation date');
 $fa = $mk($rc(97)); $fa['author'] = 'Someone Else'; $fa['title'] = 'Acme & Co'; $ra = PFG_Feed::normalize($fa, $po); $xa = PFG_Xml::build($ra['model'], [], 1700000000);
 ok(strpos($xa, '<itunes:author>Acme &amp; Co</itunes:author>') !== false && strpos($xa, 'Someone Else') === false, 'PHP: itunes:author is made from Name / title');
 

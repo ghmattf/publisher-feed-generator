@@ -348,7 +348,7 @@
     var d = cfg.defaults || {};
     return {
       version: 1, title: '', author: '', description: '', link: '', language: 'en', image: '',
-      category: 'Music', keywords: '', explicit: false, ownerName: '', ownerEmail: '',
+      category: 'Music', keywords: '', explicit: false, created: 0, ownerName: '', ownerEmail: '',
       feedUrl: '', guid: '', npub: '',
       funding: { url: '', text: '' },
       value: { method: d.method || 'lnaddress', suggested: d.suggested || '', recipients: [] },
@@ -394,6 +394,10 @@
     m.keywords = line(get(input, 'keywords'));
     if (len(m.keywords) > 300) err('keywords', 'Keywords are too long (300 characters max).');
 
+    var cr = get(input, 'created'); // creation time (Unix seconds); 0 = none
+    m.created = 0;
+    if (typeof cr === 'number' && isFinite(cr) && cr > 0 && cr < 4102444800) m.created = Math.floor(cr);
+    else if (typeof cr === 'string' && /^[0-9]{1,10}$/.test(cr) && +cr > 0 && +cr < 4102444800) m.created = +cr;
     var ex = get(input, 'explicit');
     m.explicit = (ex === true || ex === 'true' || ex === 1 || ex === '1');
 
@@ -565,6 +569,7 @@
     if (m.link !== '') o.push(i8 + '<link>' + escText(m.link) + '</link>');
     o.push(i8 + '<language>' + escText(m.language) + '</language>');
     o.push(i8 + '<generator>Publisher Feed Generator</generator>');
+    if (m.created) o.push(i8 + '<pubDate>' + new Date(m.created * 1000).toUTCString() + '</pubDate>');
     o.push(i8 + '<lastBuildDate>' + new Date(nowMs).toUTCString() + '</lastBuildDate>');
     o.push(i8 + '<podcast:guid>' + escText(m.guid) + '</podcast:guid>');
     if (m.npub !== '') o.push(i8 + '<podcast:txt purpose="npub">' + escText(m.npub) + '</podcast:txt>');
@@ -692,6 +697,8 @@
         else if (name === 'image' && first('image')) {
           var u = childEls(el).filter(function (c) { return c.localName === 'url'; })[0];
           m.image = u ? elText(u) : '';
+        } else if (name === 'pubDate' && !m.created && isFinite(Date.parse(elText(el)))) {
+          m.created = Math.floor(Date.parse(elText(el)) / 1000); // becomes the creation date, written back as pubDate
         } else if (name === 'generator' || name === 'lastBuildDate') {
           if (name === 'lastBuildDate') notes.push('lastBuildDate and generator are regenerated on export.');
         } else preserve(el);

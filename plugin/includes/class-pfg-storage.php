@@ -242,6 +242,9 @@ class PFG_Storage {
 	 * Build and publish the XML for a feed row. Returns the XML string or a WP_Error.
 	 */
 	public static function publish( $feed, $model ) {
+		if ( empty( $model['created'] ) && ! empty( $feed['created_at'] ) ) {
+			$model['created'] = (int) $feed['created_at']; // feeds saved before pubDate existed: use the date the feed row was made.
+		}
 		$platform = PFG_Feed::active_platform( PFG_Settings::platform_recipients(), isset( $model['support'] ) ? $model['support'] : null );
 		$xml      = PFG_Xml::build( $model, $platform, time() );
 		$res      = self::write_file( $feed['slug'], $xml );

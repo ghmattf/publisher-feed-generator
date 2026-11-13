@@ -314,6 +314,7 @@ class PFG_Rest {
 		if ( $res['errors'] ) {
 			return self::invalid( $res['errors'] );
 		}
+		$res['model']['created'] = time(); // the server decides the creation date, whatever the browser sent.
 		$status = PFG_Settings::get( 'require_approval' ) ? 'pending' : 'published';
 		$id     = PFG_Storage::insert_feed( (int) $s['account_id'], $slug, $guid, $res['model'], $status );
 		if ( ! $id ) {
@@ -359,6 +360,7 @@ class PFG_Rest {
 				return $fresh;
 			}
 		}
+		$res['model']['created'] = (int) $feed['created_at']; // never changes after creation.
 		$xml = null;
 		if ( 'published' === $feed['status'] ) {
 			$xml = PFG_Storage::publish( $feed, $res['model'] );

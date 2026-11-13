@@ -56,4 +56,8 @@ m.explicit = true; ok(/<itunes:explicit>true<\/itunes:explicit>/.test(C.buildXml
 // itunes:author is the Name / title
 m.author = 'Someone Else'; m.title = 'Acme & Co'; const axml = C.buildXml(C.normalize(m, { platform: [] }).model, [], 1700000000);
 ok(/<itunes:author>Acme &amp; Co<\/itunes:author>/.test(axml) && !/Someone Else/.test(axml), 'itunes:author is made from Name / title (any other author is ignored)');
+// pubDate: the creation date
+const dm = C.normalize(Object.assign({}, m, { created: 1700000000 }), { platform: [] }).model;
+ok(/<pubDate>Tue, 14 Nov 2023 22:13:20 GMT<\/pubDate>\s*<lastBuildDate>/.test(C.buildXml(dm, [], 1794000000000)), 'pubDate is the creation date, just before lastBuildDate');
+ok(!/pubDate/.test(C.buildXml(C.normalize(Object.assign({}, m, { created: 0 }), { platform: [] }).model, [], 1794000000000)), 'no creation date, no pubDate');
 console.log(fails ? fails + ' FAILURES' : 'editor feature tests passed'); process.exit(fails ? 1 : 0);
