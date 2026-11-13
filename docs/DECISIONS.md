@@ -1,6 +1,6 @@
 # Decisions, assumptions and open items
 
-Status: plugin v0.3.3 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). Not yet run on a real WordPress site, with a real signer app, or against the live Music Index API.
+Status: plugin v0.3.3 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). The owner has tested it on a real WordPress site, with real signer apps and against the live Music Index API, including searching by feed address (all OK, 2026-11-13).
 
 ## Product decisions (stated by the owner)
 - Versioning: the plugin is at **0.3.3** (0.3.0 on 2026-11-13; 0.2.0 was decided 2026-11-12, replacing an earlier 1.0.0 string that was never tagged or released). Major version changes (including moving to 1.0.0) need the owner's explicit approval. Features and fixes before that are minor/patch bumps (0.3.0, 0.2.1).
@@ -26,7 +26,7 @@ Status: plugin v0.3.3 feature-complete for the agreed scope; all automated check
 - **Category** and **Language** are drop-down lists (lists in `pfg-core.js`: `CATEGORIES`, `LANGUAGES`). A value from an imported feed that is not in the list is kept as an extra option.
 - **Author** (`itunes:author`, now not in the form, see below) was the public creator name shown in apps. **Owner** is `itunes:owner` (name + email), a contact for directories, not shown to listeners.
 - **Support the developers (optional)**: replaces the fixed platform row and the admin option "apply to exports". Shown in **both modes** (owner answer). Each configured recipient has an editable split 0-99 (default 1); 0 leaves it out. Per feed the model stores `support: [{address, split}]`; the server takes name, address and type from Settings only and ignores unknown addresses. User recipients must total 100 minus the support total; support total must stay under 100. Imported feeds keep exactly their own splits (`liftSupport`). With no own recipients there is no value block. Support splits are part of the payment fingerprint (HTTP 428).
-- **Release search**: one search box and the hint "Search by name or paste the feed url above." The paste box and "Read feed" button are gone, so pasting XML into a release is no longer possible. A pasted https address is first looked up in Music Index (exact `feedUrl` match), otherwise the server reads the feed itself. **Assumption, unverified:** the Music Index search API is sent the address as the normal `q` parameter; whether it matches feed addresses is unknown. If it does not, the fallback reads the feed directly, so the result is the same for the user.
+- **Release search**: one search box and the hint "Search by name or paste the feed url above." The paste box and "Read feed" button are gone, so pasting XML into a release is no longer possible. A pasted https address is first looked up in Music Index (exact `feedUrl` match), otherwise the server reads the feed itself. The address is sent to the Music Index search as the normal `q` parameter (tested OK by the owner, 2026-11-13); if it ever finds no exact match, the fallback reads the feed directly.
 - **Release heading** reads "<title> by <artist>" when an artist is known (2026-11-13). Artist = the release feed's publisher link with `rel="artist"`, else its first publisher link; the name is our own title if that link is this feed, a `title` attribute on the link if present, otherwise the editor asks the server to read that publisher feed (same fetch as release feeds) and uses its channel title. If none of that gives a name: the Music Index artist from the search result, then the first `podcast:person`. Shown only for releases read or picked in this session, not stored in the feed. **Assumption:** reading the artist's publisher feed is one extra server fetch per release; failures are silent.
 - **Artist** is a read-only field at the top of the feed details (display only, not saved). When a release feed already lists this feed with roles, those roles are selected by default if the creator had not chosen any.
 - **Feed details** of a release (Title, Type, Feed GUID, Feed URL, Cover image URL) are grouped under a "Show feed details" / "Hide feed details" button, hidden by default; a validation error on any of them opens it.
@@ -45,7 +45,7 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 ## Assumptions to verify (not confirmed)
 1. (Sites that had saved the old single Podcastindex.org default are upgraded to the three defaults automatically; a customised list is kept.) Default support recipients: Phafe.com (`phafe@phafe.com`), musicindex.org (`heycitizen@getalby.com`), Podcastindex.org (`podcastindex@getalby.com`), 1% each, all `lnaddress`. Owner must review in Settings > Publisher Feeds. A change only affects feeds saved afterwards.
-2. Music Index detail fields assumed from the `v4v-musiclink-pro` code: search hits have `entity_type`, `entity_id`, `feed_guid`; `/feeds/{guid}` has `title`, `release_artist`, `image_url`. `feed_url` / `url` / `medium` are **guesses**; if absent, the UI asks the user to paste the feed address. Check against the real API.
+2. (Verified by the owner against the live Music Index API, 2026-11-13.) Music Index detail fields were assumed from the `v4v-musiclink-pro` code; if `feed_url` is absent in a result, the UI asks the user to paste the feed address.
 3. The NIP-46 client key is kept in `sessionStorage` so signing works after a reload (XSS would expose it).
 4. Cloudflare may cache hosted XML; a purge may be needed after publishing.
 5. The extension sign-in is tested only against a fake `window.nostr` that signs with a real key. Real Alby, nos2x and others are untested: check how each handles `signEvent` for kind 27235, per-site permission prompts, and late injection of `window.nostr`.
@@ -54,7 +54,7 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.
-- Not yet done: run on a real WordPress; test with real signers (nsec.app, Amber) via bunker:// and QR; test the live Music Index API; browser look-over of the UI (CSS never viewed in a real browser).
+- Not yet done: check real browser extensions (Alby, nos2x) for NIP-07 sign-in and the profile lookup against live relays (assumptions 5 and 6); wider browser look-over of the UI.
 - Ideas not requested: a "change feed" action on filled-in releases; showing hosted-feed moderation status to the owner.
 
 ## Out of scope (do not add without asking)
