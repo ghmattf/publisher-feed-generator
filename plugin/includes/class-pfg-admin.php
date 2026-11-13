@@ -272,7 +272,7 @@ class PFG_Admin {
 						<tr>
 							<td><?php echo 'published' === $f['status'] ? '<a href="' . esc_url( PFG_Storage::feed_url( $f['slug'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $f['slug'] ) . '</a>' : esc_html( $f['slug'] ); // phpcs:ignore ?></td>
 							<td><?php echo esc_html( $f['title'] ); ?></td>
-							<td><code title="<?php echo esc_attr( $npub ); ?>"><?php echo esc_html( $short ); ?></code><?php echo 'blocked' === $f['account_status'] ? ' <em>(blocked)</em>' : ''; ?></td>
+							<td><?php if ( $npub ) : ?><a href="<?php echo esc_url( 'https://njump.me/' . $npub ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $npub ); ?>"><code><?php echo esc_html( $short ); ?></code></a><?php else : ?><code><?php echo esc_html( $short ); ?></code><?php endif; ?><?php echo 'blocked' === $f['account_status'] ? ' <em>(blocked)</em>' : ''; ?></td>
 							<td><?php echo esc_html( $f['status'] ); ?></td>
 							<td><?php echo esc_html( wp_date( 'Y-m-d H:i', (int) $f['updated_at'] ) ); ?></td>
 							<td>
