@@ -1,6 +1,6 @@
 # To do (owner requests, not yet done)
 
-Added 2026-11-13. Wording is the owner's; tick off or delete when done.
+Added 2026-11-13. Wording is the owner's. Completed items are removed from this list (the history is in git and docs/DECISIONS.md).
 
 ## Front page and sign-in screen
 1. The heading "Publisher feed generator" and the line "Build a Podcasting 2.0 publisher feed for your label, studio, host or artist page. Download it and host it yourself, or sign in and we will host it for you." are white and unreadable on the website theme's yellow background.
@@ -17,6 +17,3 @@ Added 2026-11-13. Wording is the owner's; tick off or delete when done.
 10. Force Title and Description to be filled in before moving on from the "Basics" section (Next button, and opening another section).
 11. Need to generate the GUID. (Owner's wording; to confirm what is missing: the GUID is currently generated from the feed URL.)
 12. The message "Downloaded publisher.xml. Upload it to your web server." should be shown at the bottom of the page, next to the download button.
-
-## Other
-13. (done 2026-11-13) Plugin version number shown at the top of the Settings page.
