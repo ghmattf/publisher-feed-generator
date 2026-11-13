@@ -7,7 +7,6 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 ## New (2026-11-13, evening)
 19. Clicking "Back to my feeds" gives a message about leaving without saving changes even though the changes have been saved.
 20. Set feeds to be saved to /wp-content/publisher-feeds/ (create the directory if required). (Feeds are currently written under the uploads folder; the web server must also serve the new folder at the feed addresses.)
-21. In Settings "Hosted feeds", the owner npub should be a clickable link that resolves the npub using a website such as njump.
 23. Import my existing publisher feeds. (Conflicts with the out-of-scope rule in AGENTS.md: importing into hosting needs the owner's explicit go-ahead on how it should work.)
 24. Add `<generator>Publisher Role Generator by Phafe</generator>` to the feed.
 25. Using Amber, the QR code just stays at "Waiting for your signer to approve…" after scanning and authorizing in Amber.
