@@ -1,9 +1,9 @@
 # Decisions, assumptions and open items
 
-Status: plugin v0.4.0 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). The owner has tested it on a real WordPress site, with real signer apps and against the live Music Index API, including searching by feed address (all OK, 2026-11-13).
+Status: plugin v0.4.1 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). The owner has tested it on a real WordPress site, with real signer apps and against the live Music Index API, including searching by feed address (all OK, 2026-11-13).
 
 ## Product decisions (stated by the owner)
-- Versioning: the plugin is at **0.4.0** (0.3.0 on 2026-11-13; 0.2.0 was decided 2026-11-12, replacing an earlier 1.0.0 string that was never tagged or released). Major version changes (including moving to 1.0.0) need the owner's explicit approval. Features and fixes before that are minor/patch bumps (0.3.0, 0.2.1).
+- Versioning: the plugin is at **0.4.1** (0.3.0 on 2026-11-13; 0.2.0 was decided 2026-11-12, replacing an earlier 1.0.0 string that was never tagged or released). Major version changes (including moving to 1.0.0) need the owner's explicit approval. Features and fixes before that are minor/patch bumps (0.3.0, 0.2.1).
 - Publisher feeds only (`podcast:medium` publisher). Not albums or tracks.
 - Two modes. Anonymous: create, edit, export, no login (paste-XML import was removed from the page on 2026-11-13: the "Edit an existing feed" card and screen are gone, `Core.parseXml` and its tests stay). Hosted: Nostr login (browser extension via NIP-07, or remote signer via NIP-46), feeds hosted on phafe.com.
 - Whole-feed import (now not reachable from the page, see above) was by **pasted XML only**. No URL import. Importing into hosting is not an option.
