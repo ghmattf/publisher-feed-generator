@@ -28,6 +28,7 @@ A WordPress plugin for phafe.com. One page (shortcode) where labels, studios, en
 9. **Never bump the major version number (for example to 1.0.0) without the owner's explicit approval.** Current version is 0.3.3; use minor/patch bumps. Keep `Version:` and `PFG_VERSION` in `plugin/publisher-feed-generator.php` and `Stable tag` in `plugin/readme.txt` in step.
 10. Releases are created by `.github/workflows/release.yml` when main has a plugin version with no release yet. Sessions cannot create releases or tags directly; bump the version in a PR and merge it.
 11. Completed items are deleted from docs/TODO.md (not ticked off).
+12. **Every owner request goes into docs/TODO.md first, before any work on it starts** (one entry per item, in the owner's wording). Then work on it, and delete the entries when done (rule 11). Requests that are only questions need no entry.
 
 ## Verify before you say it works
 Run `tests/run-all.sh`. It runs the real PHP classes against SQLite with real Nostr signatures, and the JS in jsdom. It does **not** run a real WordPress, a real signer app, or the live Music Index API; say so when reporting.
