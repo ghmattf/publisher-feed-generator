@@ -23,7 +23,7 @@ Anonymous mode (no login, nothing stored on your server):
 
 Hosted mode (optional):
 * Sign in with a Nostr browser extension (NIP-07, for example Alby or nos2x) or a remote signer (NIP-46: bunker:// link or QR code). Your private key never reaches the server.
-* Feeds are written to wp-content/pubfeeds/{name}/{name}.xml and can be edited later.
+* New feeds are written to wp-content/pubfeeds/{name}/{name}.xml and can be edited later. Feeds made by earlier versions stay in their old uploads folder and are never moved.
 * A new feed is prefilled from your Nostr profile (name, description, website, image, Lightning address). Only empty fields are filled and you can change everything.
 * Changing payment recipients or deleting a feed asks the signer for a fresh signature (NIP-98).
 * Hosted accounts are stored in their own table, keyed by public key. They are not WordPress users.

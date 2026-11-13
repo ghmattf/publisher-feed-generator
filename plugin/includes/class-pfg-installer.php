@@ -43,7 +43,7 @@ class PFG_Installer {
 		if ( get_option( self::DB_VERSION_OPTION ) !== self::DB_VERSION ) {
 			self::create_tables();
 			if ( get_option( self::DB_VERSION_OPTION ) && version_compare( (string) get_option( self::DB_VERSION_OPTION ), '2', '<' ) ) {
-				PFG_Storage::migrate_to_pubfeeds(); // v2: feeds moved to /wp-content/pubfeeds/.
+				PFG_Storage::record_legacy_feeds(); // v2: existing feeds stay in uploads; only new feeds use /wp-content/pubfeeds/.
 			}
 			update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 		}

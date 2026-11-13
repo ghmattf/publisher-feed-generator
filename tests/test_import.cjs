@@ -25,7 +25,7 @@ const xml1 = C.buildXml(n.model, [], 1794000000000);
 let doc; try { doc = new xd.DOMParser({ onError(l, m2) { throw new Error(m2); } }).parseFromString(xml1, 'application/xml'); } catch (e) { doc = null; console.log(e.message); }
 ok(!!doc, 'exported XML is well-formed');
 ['itunes:new-feed-url', 'podcast:locked', 'foo:thing', 'keep me', 'Hello <b>world</b>', 'xmlns:foo="https://example.com/ns/foo"', 'itemGuid="abc"', 'Music Commentary'].forEach(s => ok(xml1.includes(s), 'export still contains: ' + s));
-ok(!xml1.includes('Old Generator') && xml1.includes('<generator>Publisher Role Generator by Phafe</generator>'), 'generator regenerated');
+ok(!xml1.includes('Old Generator') && xml1.includes('<generator>Phafe RSS Feed</generator>'), 'generator regenerated');
 ok((xml1.match(/xmlns:foo=/g) || []).length === 1, 'extra namespace declared once (hoisted to <rss>)');
 ok((xml1.match(/xmlns:podcast=/g) || []).length === 1, 'standard namespaces not repeated on preserved elements');
 

@@ -52,7 +52,7 @@ class PFG_Xml {
 			$o[] = $i8 . '<link>' . self::esc_text( $m['link'] ) . '</link>';
 		}
 		$o[] = $i8 . '<language>' . self::esc_text( $m['language'] ) . '</language>';
-		$o[] = $i8 . '<generator>Publisher Role Generator by Phafe</generator>';
+		$o[] = $i8 . '<generator>Phafe RSS Feed</generator>';
 		if ( ! empty( $m['created'] ) ) {
 			$o[] = $i8 . '<pubDate>' . gmdate( 'D, d M Y H:i:s', (int) $m['created'] ) . ' GMT</pubDate>';
 		}
