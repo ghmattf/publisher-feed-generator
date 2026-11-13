@@ -13,8 +13,9 @@ ok(C.slugify('x'.repeat(80)).length <= 40 && /^[a-z0-9][a-z0-9_-]{2,39}$/.test(C
 // lists
 ok(C.CATEGORIES.includes('Music') && C.CATEGORIES.includes('Business') && C.LANGUAGES.some(l => l.value === 'en') && C.LANGUAGES.some(l => l.value === 'es'), 'category and language lists present');
 // roles
-const sp = C.splitRoles(['artist', 'host', 'songwriter', 'network', 'composer', 'musician', 'hosting', 'author', 'label', 'custom']);
-ok(eq(sp.other, ['host', 'author', 'network', 'hosting']) && ['songwriter', 'composer', 'musician', 'artist', 'label', 'custom'].every(t => sp.main.includes(t)), 'roles: host, author, network, hosting move to Other roles; songwriter, composer, musician stay in the main list');
+const sp = C.splitRoles(['studio', 'artist', 'sponsor', 'host', 'songwriter', 'network', 'composer', 'musician', 'hosting', 'author', 'label', 'producer', 'engineer', 'custom']);
+ok(eq(sp.other, ['author', 'host', 'hosting', 'network', 'sponsor']), 'roles: Other roles (author, host, hosting, network, sponsor) in alphabetical order');
+ok(eq(sp.main, ['artist', 'composer', 'custom', 'engineer', 'label', 'musician', 'producer', 'songwriter', 'studio']), 'roles: main roles in alphabetical order, custom tokens included');
 const m = C.emptyModel({}); m.guid = 'a9ce0ee9-fe9f-4495-b7b8-ebae25ff2112'; m.feedUrl = 'https://x.example/p.xml'; m.title = 'T'; m.description = 'D';
 m.releases = [{ feedGuid: '07adf84f-c1fa-47a7-a121-0fb544e859bd', feedUrl: 'https://x.example/a.xml', medium: 'music', title: 'A', rel: ['songwriter', 'composer', 'musician'] }];
 const res = C.normalize(m, { platform: [] });
