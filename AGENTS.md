@@ -25,7 +25,7 @@ A WordPress plugin for phafe.com. One page (shortcode) where labels, studios, en
 6. Anything fetched from a user-supplied URL goes through `wp_safe_remote_get` (https only, size/redirect limits). Never use plain `wp_remote_get` for user URLs.
 7. Wrap `localStorage`/`sessionStorage` use in try/catch.
 8. Do not add features listed as out of scope in `docs/DECISIONS.md` without asking the owner.
-9. **Never bump the major version number (for example to 1.0.0) without the owner's explicit approval.** Current version is 0.4.1; use minor/patch bumps. Keep `Version:` and `PFG_VERSION` in `plugin/publisher-feed-generator.php` and `Stable tag` in `plugin/readme.txt` in step.
+9. **Never bump the major version number (for example to 1.0.0) without the owner's explicit approval.** Current version is 0.4.2; use minor/patch bumps. Keep `Version:` and `PFG_VERSION` in `plugin/publisher-feed-generator.php` and `Stable tag` in `plugin/readme.txt` in step.
 10. Releases are created by `.github/workflows/release.yml` when main has a plugin version with no release yet. Sessions cannot create releases or tags directly; bump the version in a PR and merge it.
 11. Completed items are deleted from docs/TODO.md (not ticked off).
 12. **Every owner request goes into docs/TODO.md first, before any work on it starts** (one entry per item, in the owner's wording). Then work on it, and delete the entries when done (rule 11). Requests that are only questions need no entry.
