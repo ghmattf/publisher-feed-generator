@@ -46,17 +46,17 @@ ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], 
 ok(code(call('POST', '/me/feeds', 'slug=x', $H + ['Content-Type' => 'application/x-www-form-urlencoded'])) === 415, 'form-encoded body rejected (415)');
 foreach (['../etc', 'ab', 'Acme Records', 'admin', 'x/../y', str_repeat('a', 41)] as $bs) ok(code(call('POST', '/me/feeds', ['slug' => $bs, 'feed' => feed()], $H)) === 422, "bad/reserved slug refused: $bs");
 $r = call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H); ok(code($r) === 201, 'create hosted feed -> 201 (' . (is_wp_error($r) ? $r->message : '') . ')');
-$f = data($r); $path = $GLOBALS['__up'] . '/rssfeed/publishers/acme-records/acme-records.xml';
-ok(file_exists($path), 'XML written to uploads/rssfeed/publishers/acme-records/');
+$f = data($r); $path = $GLOBALS['__up'] . '/wp-content/pubfeeds/acme-records/acme-records.xml';
+ok(file_exists($path), 'XML written to wp-content/pubfeeds/acme-records/');
 $xml = file_get_contents($path);
 ok(strpos($xml, '<podcast:medium>publisher</podcast:medium>') !== false && strpos($xml, 'phafe@phafe.com') !== false && strpos($xml, 'heycitizen@getalby.com') !== false && strpos($xml, 'podcastindex@getalby.com') !== false && strpos($xml, 'split="97"') !== false && substr_count($xml, 'split="1"') === 3, 'file is a publisher feed with the user (97) and three support (1 each) recipients');
-ok(strpos($xml, 'https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . PFG_Feed::guid_for_url('https://phafe.com/wp-content/uploads/rssfeed/publishers/acme-records/acme-records.xml')) !== false, 'self URL and derived GUID in file');
+ok(strpos($xml, 'https://phafe.com/wp-content/pubfeeds/acme-records/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . PFG_Feed::guid_for_url('https://phafe.com/wp-content/pubfeeds/acme-records/acme-records.xml')) !== false, 'self URL and derived GUID in file');
 $d = new DOMDocument(); ok($d->loadXML($xml), 'published XML is well-formed');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H)) === 409, 'duplicate slug -> 409');
 $r = call('POST', '/me/feeds', ['slug' => 'bad-split', 'feed' => feed(['value' => ['recipients' => [['split' => 50]]]])], $H); ok(code($r) === 422 && !empty($r->data['errors']), 'splits not totalling 97 -> 422 with errors');
-ok(!file_exists($GLOBALS['__up'] . '/rssfeed/publishers/bad-split'), 'nothing written for an invalid feed');
+ok(!file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/bad-split'), 'nothing written for an invalid feed');
 $r = call('POST', '/me/feeds', ['slug' => 'inj', 'feed' => feed(['title' => "<script>x</script> & \"q\"", 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://x.example/a.xml', 'rel' => ['label'], 'attrs' => ['onload' => 'evil']]]])], $H);
-$ix = @file_get_contents($GLOBALS['__up'] . '/rssfeed/publishers/inj/inj.xml'); $dd = new DOMDocument(); ok($ix && $dd->loadXML($ix) && strpos($ix, '<script>') === false && strpos($ix, 'onload') === false, 'markup in title escaped and unknown attributes dropped in hosted output');
+$ix = @file_get_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/inj/inj.xml'); $dd = new DOMDocument(); ok($ix && $dd->loadXML($ix) && strpos($ix, '<script>') === false && strpos($ix, 'onload') === false, 'markup in title escaped and unknown attributes dropped in hosted output');
 ok(code(call('POST', '/me/feeds', ['slug' => 'third-one', 'feed' => feed()], $H)) === 201, 'third feed allowed');
 ok(code(call('POST', '/me/feeds', ['slug' => 'fourth-one', 'feed' => feed()], $H)) === 403, 'fourth feed refused (limit 3)');
 
@@ -104,12 +104,20 @@ ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], 
 ok(code(call('GET', "/me/feeds/$id")) === 404, 'deleted feed no longer readable');
 
 
+// ---- migration from the old uploads location
+$mg = data(call('POST', '/me/feeds', ['slug' => 'mig-feed', 'feed' => feed()], $H));
+@unlink($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml');
+PFG_Storage::migrate_to_pubfeeds();
+ok(file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml'), 'migration rewrites published feeds into wp-content/pubfeeds');
+ok(file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/index.html'), 'folder gets an index.html');
+$wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='mig-feed'");
+
 // ---- payments optional
 $nof = feed(); $nof['value']['recipients'] = [];
 $wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='inj'");
 $r2 = call('POST', '/me/feeds', ['slug' => 'no-pay', 'feed' => $nof], $H);
 ok(code($r2) === 201, 'feed with no payment recipients is accepted (' . (is_wp_error($r2) ? $r2->message : '') . ')');
-$npx = @file_get_contents($GLOBALS['__up'] . '/rssfeed/publishers/no-pay/no-pay.xml'); $dn = new DOMDocument();
+$npx = @file_get_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/no-pay/no-pay.xml'); $dn = new DOMDocument();
 ok($npx && $dn->loadXML($npx) && strpos($npx, 'podcast:value') === false, 'no-payments feed has no value block (and no platform recipient)');
 $half = feed(); $half['value']['recipients'] = [['name' => 'A', 'address' => 'a@x.com', 'split' => 50, 'type' => 'lnaddress']];
 ok(code(call('PUT', '/me/feeds/' . data($r2)['id'], ['feed' => $half], $H)) === 422, 'if recipients are given, totals are still enforced');

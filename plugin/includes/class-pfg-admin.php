@@ -112,7 +112,7 @@ class PFG_Admin {
 			'deleted'   => 'Feed deleted. Its name stays reserved.',
 			'blocked'   => 'Account blocked, its sessions ended and its feeds suspended.',
 			'unblocked' => 'Account unblocked. Its feeds stay suspended until you unsuspend them.',
-			'writefail' => 'The feed file could not be written. Check the uploads folder permissions.',
+			'writefail' => 'The feed file could not be written. Check that wp-content is writable.',
 		);
 		$notice  = isset( $_GET['pfg_notice'] ) ? sanitize_key( wp_unslash( $_GET['pfg_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		?>
@@ -137,11 +137,10 @@ class PFG_Admin {
 						<td><label><input type="checkbox" name="<?php echo esc_attr( self::field_name( 'hosting_enabled' ) ); ?>" value="1" <?php checked( $s['hosting_enabled'] ); ?> /> Let people sign in with Nostr and host feeds on this site</label></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="pfg-subdir">Feed folder</label></th>
+						<th scope="row">Feed folder</th>
 						<td>
-							<code><?php echo esc_html( trailingslashit( wp_get_upload_dir()['baseurl'] ) ); ?></code>
-							<input id="pfg-subdir" type="text" class="regular-text" name="<?php echo esc_attr( self::field_name( 'feed_subdir' ) ); ?>" value="<?php echo esc_attr( $s['feed_subdir'] ); ?>" />
-							<p class="description">Each feed is written to <code>&lt;folder&gt;/&lt;name&gt;/&lt;name&gt;.xml</code>. Changing this later does not move existing feeds.</p>
+							<code><?php echo esc_html( PFG_Storage::base_url() ); ?></code>
+							<p class="description">Each feed is written to <code>&lt;name&gt;/&lt;name&gt;.xml</code> inside this folder (<code>wp-content/pubfeeds</code>), which is created automatically.</p>
 						</td>
 					</tr>
 					<tr>
@@ -234,7 +233,7 @@ class PFG_Admin {
 					<tr>
 						<th scope="row">Data</th>
 						<td><label><input type="checkbox" name="<?php echo esc_attr( self::field_name( 'delete_data_on_uninstall' ) ); ?>" value="1" <?php checked( $s['delete_data_on_uninstall'] ); ?> /> Delete accounts, feeds and settings when the plugin is deleted</label>
-						<p class="description">Published XML files in the uploads folder are never deleted automatically.</p></td>
+						<p class="description">Published XML files in wp-content/pubfeeds are never deleted automatically.</p></td>
 					</tr>
 				</table>
 				<?php submit_button(); ?>

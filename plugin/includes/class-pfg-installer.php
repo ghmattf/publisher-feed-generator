@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PFG_Installer {
 
 	const DB_VERSION_OPTION = 'pfg_db_version';
-	const DB_VERSION        = '1';
+	const DB_VERSION        = '2';
 
 	/**
 	 * Table name helper.
@@ -42,6 +42,9 @@ class PFG_Installer {
 	public static function maybe_upgrade() {
 		if ( get_option( self::DB_VERSION_OPTION ) !== self::DB_VERSION ) {
 			self::create_tables();
+			if ( get_option( self::DB_VERSION_OPTION ) && version_compare( (string) get_option( self::DB_VERSION_OPTION ), '2', '<' ) ) {
+				PFG_Storage::migrate_to_pubfeeds(); // v2: feeds moved to /wp-content/pubfeeds/.
+			}
 			update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 		}
 	}

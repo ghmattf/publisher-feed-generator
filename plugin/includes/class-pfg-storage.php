@@ -30,30 +30,49 @@ class PFG_Storage {
 	/* Paths                                                               */
 	/* ------------------------------------------------------------------ */
 
-	private static function subdir() {
-		return trim( (string) PFG_Settings::get( 'feed_subdir' ), '/' );
-	}
+	/** Folder (inside wp-content) that holds every hosted feed. */
+	const DIR = 'pubfeeds';
 
 	public static function feed_url( $slug ) {
-		$u = wp_get_upload_dir();
-		return trailingslashit( $u['baseurl'] ) . self::subdir() . '/' . $slug . '/' . $slug . '.xml';
+		return trailingslashit( content_url( self::DIR ) ) . $slug . '/' . $slug . '.xml';
+	}
+
+	/** Public base URL of the feed folder, with a trailing slash. */
+	public static function base_url() {
+		return trailingslashit( content_url( self::DIR ) );
 	}
 
 	/**
-	 * Absolute file path for a slug, or false if it would fall outside uploads.
+	 * Absolute file path for a slug, or false if the slug is not allowed.
+	 * The folder is created on demand when a feed is written.
 	 */
 	public static function feed_path( $slug ) {
 		if ( self::slug_error( $slug ) ) {
 			return false;
 		}
-		$u    = wp_get_upload_dir();
-		$base = wp_normalize_path( $u['basedir'] );
-		$dir  = $base . '/' . self::subdir() . '/' . $slug;
+		$base = wp_normalize_path( WP_CONTENT_DIR ) . '/' . self::DIR;
+		$dir  = $base . '/' . $slug;
 		return array(
 			'dir'  => $dir,
 			'file' => $dir . '/' . $slug . '.xml',
 			'base' => $base,
 		);
+	}
+
+	/**
+	 * One-time move from the old uploads folder: write every published feed
+	 * into /wp-content/pubfeeds/. Old files are left where they are. Feed
+	 * GUIDs are stored per feed, so they do not change.
+	 */
+	public static function migrate_to_pubfeeds() {
+		global $wpdb;
+		$t    = PFG_Installer::table( 'feeds' );
+		$rows = $wpdb->get_results( "SELECT * FROM {$t} WHERE status = 'published'", ARRAY_A ); // phpcs:ignore
+		foreach ( (array) $rows as $row ) {
+			$model            = self::decode_model( $row );
+			$model['feedUrl'] = self::feed_url( $row['slug'] );
+			self::publish( $row, $model );
+		}
 	}
 
 	/**
@@ -64,13 +83,17 @@ class PFG_Storage {
 		if ( ! $p ) {
 			return new WP_Error( 'pfg_path', 'Invalid feed path.', array( 'status' => 400 ) );
 		}
-		if ( ! wp_mkdir_p( $p['dir'] ) ) {
+		if ( ! wp_mkdir_p( $p['base'] ) || ! wp_mkdir_p( $p['dir'] ) ) {
 			return new WP_Error( 'pfg_mkdir', 'The server could not create the feed folder.', array( 'status' => 500 ) );
 		}
 		$real_dir  = realpath( $p['dir'] );
 		$real_base = realpath( $p['base'] );
 		if ( false === $real_dir || false === $real_base || 0 !== strpos( wp_normalize_path( $real_dir ) . '/', wp_normalize_path( $real_base ) . '/' ) ) {
 			return new WP_Error( 'pfg_path', 'Invalid feed path.', array( 'status' => 400 ) );
+		}
+		$index = $real_base . '/index.html';
+		if ( ! file_exists( $index ) ) {
+			@file_put_contents( $index, '' ); // phpcs:ignore -- stops directory listing.
 		}
 		$tmp = tempnam( $real_dir, '.pfg' );
 		if ( false === $tmp ) {
