@@ -114,6 +114,8 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   ok(hiddenOf(c.querySelector('input[type=search]')), 'populated: the search box is hidden');
   const tog = () => [...card().querySelectorAll('button')].find(b => /feed details$/.test(b.textContent));
   ok(hiddenOf(c.querySelector('[id$="-feedGuid"]')) && hiddenOf(c.querySelector('[id$="-title"]')) && hiddenOf(c.querySelector('[id$="-feedImg"]')) && tog().textContent === 'Show feed details' && !hiddenOf(c.querySelector('.pfg-chip')) && !hiddenOf(c.querySelector('.pfg-snippet')), 'populated: feed details hidden by default; roles and owner text visible');
+  ok(c.querySelector('[id$="-artist"]').value === 'MezzaForte' && c.querySelector('[id$="-artist"]').hasAttribute('readonly') && c.querySelector('[id$="-artist"]').parentElement.nextElementSibling.querySelector('[id$="-title"]'), 'Artist is a read-only field in the feed details, above Title');
+  ok(['label', 'studio', 'host'].every(t => [...c.querySelectorAll('.pfg-chip')].some(b => b.textContent === t && b.getAttribute('aria-pressed') === 'true')) && [...c.querySelectorAll('.pfg-chip')].filter(b => b.getAttribute('aria-pressed') === 'true').length === 3, 'roles the release feed already gives this feed (label studio host) are selected by default');
   tog().click(); ok(!hiddenOf(card().querySelector('[id$="-feedGuid"]')) && tog().textContent === 'Hide feed details' && tog().getAttribute('aria-expanded') === 'true', 'Show feed details reveals title, type, GUID, feed URL and cover image');
   c = card();
   const ro = ['title', 'medium', 'feedGuid', 'feedUrl', 'feedImg'].map(k => c.querySelector('[id$="-' + k + '"]'));

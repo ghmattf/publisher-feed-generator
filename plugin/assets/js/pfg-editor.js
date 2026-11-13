@@ -319,6 +319,8 @@
             if (info.feedImg) r.feedImg = info.feedImg;
             if (info.medium && (cfg.mediums || []).indexOf(info.medium) >= 0) r.medium = info.medium;
             var prev = ui.get(r) || {};
+            // Roles this release feed already gives our feed are selected by default (only when none were chosen yet).
+            if (info.theirRel.length && !(r.rel && r.rel.length)) r.rel = info.theirRel.slice();
             var artist = info.artist || (info.artistUrl ? '' : (prev.artist || info.person));
             ui.set(r, { info: info, status: info.status, xml: xml, msg: null, artist: artist });
             renderReleases(); changed();
@@ -374,7 +376,10 @@
         }
         searchIn.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); runSearch(); } });
         // Feed details (title, type, GUID, feed URL, cover image) are grouped and hidden until asked for.
+        var artistIn = h('input', { id: 'pfg-f-releases-' + i + '-artist', type: 'text', autocomplete: 'off', placeholder: 'Not found in the feed' });
+        artistIn.value = (ui.get(r) || {}).artist || ''; artistIn.setAttribute('readonly', '');
         var detailsGrid = h('div', { class: 'pfg-grid', id: 'pfg-details-' + i, hidden: !showDet.has(r) }, [
+          h('div', { class: 'pfg-field pfg-wide' }, [h('label', { for: artistIn.id, text: 'Artist' }), artistIn, h('div', { class: 'pfg-hint', text: 'Read from the release feed. Shown in the heading; not saved in your feed.' })]),
           field('Title', base + '.title', { readonly: true }),
           field('Type', base + '.medium', { select: cfg.mediums || ['music'], readonly: true }),
           field('Feed GUID', base + '.feedGuid', { wide: true, readonly: true }),
