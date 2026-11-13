@@ -52,6 +52,7 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 6. Profile lookup relays are `wss://purplepag.es`, `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net` plus the relays in Settings. Not tested against live relays (only a fake pool); a profile that lives only on other relays will show "No Nostr profile was found". Not configurable in Settings yet.
 
 ## Open items
+- Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.
 - Not yet done: run on a real WordPress; test with real signers (nsec.app, Amber) via bunker:// and QR; test the live Music Index API; browser look-over of the UI (CSS never viewed in a real browser).
 - Ideas not requested: a "change feed" action on filled-in releases; showing hosted-feed moderation status to the owner.

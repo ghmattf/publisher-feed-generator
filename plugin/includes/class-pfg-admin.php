@@ -118,6 +118,7 @@ class PFG_Admin {
 		?>
 		<div class="wrap">
 			<h1>Publisher Feeds</h1>
+			<p class="description">Publisher Feed Generator version <strong><?php echo esc_html( PFG_VERSION ); ?></strong></p>
 			<?php if ( isset( $notices[ $notice ] ) ) : ?>
 				<div class="notice notice-info is-dismissible"><p><?php echo esc_html( $notices[ $notice ] ); ?></p></div>
 			<?php endif; ?>
