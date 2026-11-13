@@ -227,6 +227,18 @@ renderNew(spy, { hosted: { id: 7, slug: 'x', status: 'published', url: 'https://
 ok(calls === 0 && $('#pfg-f-title').value === '', 'existing hosted feed is not prefilled');
 $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, host: spy, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear }); await tick();
 ok(calls === 0, 'anonymous mode never looks up a profile');
+// "Back to my feeds" only asks when there are unsaved changes
+let backed = 0, confirms = 0; w.confirm = () => { confirms++; return true; };
+const backBtn = () => $$('button').find(b => b.textContent === 'Back to my feeds');
+renderNew(mkHost(profile), { back() { backed++; } }); await tick();
+backBtn().click(); ok(backed === 1 && confirms === 0, 'Back to my feeds: no warning when the form only holds what the profile filled in');
+renderNew(mkHost(profile), { back() { backed++; } }); await tick(); set('#pfg-f-title', 'Mine'); backBtn().click();
+ok(confirms === 1 && backed === 2, 'Back to my feeds: warns when something typed is unsaved');
+renderNew(Object.assign(mkHost(profile), { createFeed: async (slug) => ({ id: 5, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }) }), { back() { backed++; } }); await tick();
+set('#pfg-f-title', 'Saved Co'); set('#pfg-f-description', 'Saved.'); await tick(); click('Save and publish'); await tick(); await tick();
+ok(/Published at/.test($('#c').textContent), 'feed saved');
+backBtn().click(); ok(confirms === 1 && backed === 3, 'Back to my feeds: no warning once the changes are saved');
+set('#pfg-f-description', 'Saved again.'); backBtn().click(); ok(confirms === 2 && backed === 4, 'Back to my feeds: warns again after a new edit');
 // no profile found / empty profile
 renderNew(mkHost(null)); await tick();
 ok($('#pfg-f-npub').value === NPUB && /No Nostr profile was found/.test($('#c').textContent), 'no profile: npub still filled, clear message shown');

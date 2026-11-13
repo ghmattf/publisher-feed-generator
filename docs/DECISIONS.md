@@ -39,6 +39,7 @@ Status: plugin v0.4.1 feature-complete for the agreed scope; all automated check
 - **Errors on Save / Download** (2026-11-13): the section holding the first problem opens, its field is focused, and the page scrolls to it (to the message when there is no field). Applies to local validation, a bad feed name, a name already taken and errors returned by the server.
 - **itunes:author = Name / title** (2026-11-13, owner, high priority): every feed gets `<itunes:author>` with its Name / title; there is no separate Author value any more (an `author` sent to the server or found in an imported feed is ignored). Same rule in PHP and JS.
 - **Settings > Hosted feeds** (2026-11-13): the owner's npub (shortened) is a link to `https://njump.me/<npub>` (opens in a new tab, `noopener noreferrer`). njump is a third-party site; this is the only outside link on that page.
+- **Leaving a hosted feed** (2026-11-13): "Back to my feeds" only asks "Leave without saving?" when the user has changed something since the last save (a failed save counts as unsaved; what the Nostr profile filled in does not).
 - The **Preview** section is removed. Validation messages still show inline and on Download/Save.
 - Roles **songwriter, composer, musician** added to the main list. **Other roles** (author, host, hosting, network, sponsor; sponsor moved there 2026-11-13) get their own heading under it. Both lists are alphabetical (custom tokens sort in with the main roles). The other feed must list the same role tokens for the link to be confirmed.
 
