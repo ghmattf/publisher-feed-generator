@@ -33,11 +33,50 @@ class PFG_Storage {
 	/** Folder (inside wp-content) that holds every hosted feed. */
 	const DIR = 'pubfeeds';
 
+	const LEGACY_OPTION = 'pfg_legacy_feeds';
+
+	/**
+	 * Folder (below uploads) of a feed made before /wp-content/pubfeeds/
+	 * existed, or '' for any other feed. Such feeds are never moved: their URL
+	 * may already be registered with podcast apps and directories.
+	 */
+	private static function legacy_subdir( $slug ) {
+		$l = get_option( self::LEGACY_OPTION );
+		if ( is_array( $l ) && ! empty( $l['subdir'] ) && ! empty( $l['slugs'] ) && in_array( $slug, (array) $l['slugs'], true ) ) {
+			return (string) $l['subdir'];
+		}
+		return '';
+	}
+
+	/**
+	 * Called once when upgrading from a version that saved feeds in uploads:
+	 * remember which feeds live there so they stay where they are.
+	 */
+	public static function record_legacy_feeds() {
+		global $wpdb;
+		$t     = PFG_Installer::table( 'feeds' );
+		$slugs = array_column( (array) $wpdb->get_results( "SELECT slug FROM {$t}", ARRAY_A ), 'slug' ); // phpcs:ignore
+		if ( ! $slugs ) {
+			return;
+		}
+		$opt    = get_option( PFG_Settings::OPTION );
+		$subdir = is_array( $opt ) && isset( $opt['feed_subdir'] ) ? trim( (string) $opt['feed_subdir'], " \t\n\r\0\x0B/" ) : 'rssfeed/publishers';
+		if ( ! preg_match( '#^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+){0,3}$#', $subdir ) ) {
+			$subdir = 'rssfeed/publishers';
+		}
+		update_option( self::LEGACY_OPTION, array( 'subdir' => $subdir, 'slugs' => array_values( $slugs ) ), false );
+	}
+
 	public static function feed_url( $slug ) {
+		$legacy = self::legacy_subdir( $slug );
+		if ( '' !== $legacy ) {
+			$u = wp_get_upload_dir();
+			return trailingslashit( $u['baseurl'] ) . $legacy . '/' . $slug . '/' . $slug . '.xml';
+		}
 		return trailingslashit( content_url( self::DIR ) ) . $slug . '/' . $slug . '.xml';
 	}
 
-	/** Public base URL of the feed folder, with a trailing slash. */
+	/** Public base URL of the feed folder for new feeds, with a trailing slash. */
 	public static function base_url() {
 		return trailingslashit( content_url( self::DIR ) );
 	}
@@ -50,29 +89,21 @@ class PFG_Storage {
 		if ( self::slug_error( $slug ) ) {
 			return false;
 		}
-		$base = wp_normalize_path( WP_CONTENT_DIR ) . '/' . self::DIR;
-		$dir  = $base . '/' . $slug;
-		return array(
-			'dir'  => $dir,
-			'file' => $dir . '/' . $slug . '.xml',
-			'base' => $base,
-		);
-	}
-
-	/**
-	 * One-time move from the old uploads folder: write every published feed
-	 * into /wp-content/pubfeeds/. Old files are left where they are. Feed
-	 * GUIDs are stored per feed, so they do not change.
-	 */
-	public static function migrate_to_pubfeeds() {
-		global $wpdb;
-		$t    = PFG_Installer::table( 'feeds' );
-		$rows = $wpdb->get_results( "SELECT * FROM {$t} WHERE status = 'published'", ARRAY_A ); // phpcs:ignore
-		foreach ( (array) $rows as $row ) {
-			$model            = self::decode_model( $row );
-			$model['feedUrl'] = self::feed_url( $row['slug'] );
-			self::publish( $row, $model );
+		$legacy = self::legacy_subdir( $slug );
+		if ( '' !== $legacy ) {
+			$u    = wp_get_upload_dir();
+			$base = wp_normalize_path( $u['basedir'] );
+			$dir  = $base . '/' . $legacy . '/' . $slug;
+		} else {
+			$base = wp_normalize_path( WP_CONTENT_DIR ) . '/' . self::DIR;
+			$dir  = $base . '/' . $slug;
 		}
+		return array(
+			'dir'    => $dir,
+			'file'   => $dir . '/' . $slug . '.xml',
+			'base'   => $base,
+			'legacy' => '' !== $legacy,
+		);
 	}
 
 	/**
@@ -92,7 +123,7 @@ class PFG_Storage {
 			return new WP_Error( 'pfg_path', 'Invalid feed path.', array( 'status' => 400 ) );
 		}
 		$index = $real_base . '/index.html';
-		if ( ! file_exists( $index ) ) {
+		if ( empty( $p['legacy'] ) && ! file_exists( $index ) ) {
 			@file_put_contents( $index, '' ); // phpcs:ignore -- stops directory listing.
 		}
 		$tmp = tempnam( $real_dir, '.pfg' );

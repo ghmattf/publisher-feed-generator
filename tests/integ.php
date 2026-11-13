@@ -104,12 +104,19 @@ ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], 
 ok(code(call('GET', "/me/feeds/$id")) === 404, 'deleted feed no longer readable');
 
 
-// ---- migration from the old uploads location
+// ---- existing feeds are never moved
+$GLOBALS['__opts']['pfg_db_version'] = '1';
+$GLOBALS['__opts'][PFG_Settings::OPTION] = ['feed_subdir' => 'rssfeed/publishers'];
+$wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='mig-feed'");
 $mg = data(call('POST', '/me/feeds', ['slug' => 'mig-feed', 'feed' => feed()], $H));
+PFG_Storage::record_legacy_feeds(); // what the v1 to v2 upgrade runs
+$lu = PFG_Storage::feed_url('mig-feed');
+ok($lu === 'https://phafe.com/wp-content/uploads/rssfeed/publishers/mig-feed/mig-feed.xml', 'a feed that already existed keeps its uploads URL after the upgrade: ' . $lu);
+ok(strpos(PFG_Storage::feed_path('mig-feed')['file'], '/rssfeed/publishers/mig-feed/') !== false, 'and its uploads file path');
+ok(PFG_Storage::feed_url('brand-new') === 'https://phafe.com/wp-content/pubfeeds/brand-new/brand-new.xml', 'a feed created after the upgrade uses /wp-content/pubfeeds/');
 @unlink($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml');
-PFG_Storage::migrate_to_pubfeeds();
-ok(file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml'), 'migration rewrites published feeds into wp-content/pubfeeds');
-ok(file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/index.html'), 'folder gets an index.html');
+$mgf = $wpdb->get_row("SELECT * FROM wp_pfg_feeds WHERE slug='mig-feed'", ARRAY_A);
+ok(!is_wp_error(PFG_Storage::publish($mgf, PFG_Storage::decode_model($mgf))) && file_exists($GLOBALS['__up'] . '/rssfeed/publishers/mig-feed/mig-feed.xml') && !file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml'), 'editing an existing feed rewrites it in place, not in pubfeeds');
 $wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='mig-feed'");
 
 // ---- payments optional
