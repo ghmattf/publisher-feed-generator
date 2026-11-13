@@ -68,7 +68,29 @@ class PFG_Settings {
 		if ( ! is_array( $saved ) ) {
 			$saved = array();
 		}
-		return array_merge( self::defaults(), $saved );
+		$all = array_merge( self::defaults(), $saved );
+		if ( self::is_old_default_platform( isset( $saved['platform_recipients'] ) ? $saved['platform_recipients'] : null ) ) {
+			// Settings saved before the support list had three entries: still the old single default, so use the new defaults.
+			$all['platform_recipients'] = self::defaults()['platform_recipients'];
+		}
+		return $all;
+	}
+
+	/**
+	 * True when saved platform recipients are exactly the old built-in default (Podcastindex.org only, 1%).
+	 *
+	 * @param mixed $rows Saved rows.
+	 * @return bool
+	 */
+	private static function is_old_default_platform( $rows ) {
+		if ( ! is_array( $rows ) || 1 !== count( $rows ) ) {
+			return false;
+		}
+		$r = reset( $rows );
+		return is_array( $r )
+			&& isset( $r['address'], $r['split'] )
+			&& 'podcastindex@getalby.com' === strtolower( (string) $r['address'] )
+			&& 1 === (int) $r['split'];
 	}
 
 	/**

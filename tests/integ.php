@@ -112,6 +112,13 @@ ok($npx && $dn->loadXML($npx) && strpos($npx, 'podcast:value') === false, 'no-pa
 $half = feed(); $half['value']['recipients'] = [['name' => 'A', 'address' => 'a@x.com', 'split' => 50, 'type' => 'lnaddress']];
 ok(code(call('PUT', '/me/feeds/' . data($r2)['id'], ['feed' => $half], $H)) === 422, 'if recipients are given, totals are still enforced');
 
+// ---- sites that saved the old single-recipient default get the three new defaults; deliberate customisations are kept
+update_option(PFG_Settings::OPTION, ['platform_recipients' => [['name' => 'Podcastindex.org', 'address' => 'podcastindex@getalby.com', 'split' => 1, 'type' => 'lnaddress']]]);
+ok(count(PFG_Settings::platform_recipients()) === 3 && PFG_Settings::platform_recipients()[0]['address'] === 'phafe@phafe.com', 'old saved single default (Podcastindex only) is upgraded to the three defaults');
+update_option(PFG_Settings::OPTION, ['platform_recipients' => [['name' => 'Mine', 'address' => 'mine@x.com', 'split' => 2, 'type' => 'lnaddress']]]);
+ok(count(PFG_Settings::platform_recipients()) === 1 && PFG_Settings::platform_recipients()[0]['address'] === 'mine@x.com', 'a customised list is left alone');
+update_option(PFG_Settings::OPTION, []);
+
 // ---- "Support the developers": creator-chosen splits (name/address/type stay under the site's control)
 $no = new ReflectionMethod('PFG_Rest', 'norm_opts'); $no->setAccessible(true);
 $po = $no->invoke(null, 'sup-test', PFG_Feed::guid_for_url(PFG_Storage::feed_url('sup-test')));

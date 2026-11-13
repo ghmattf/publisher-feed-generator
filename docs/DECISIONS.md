@@ -41,7 +41,7 @@ Status: plugin v0.3.1 feature-complete for the agreed scope; all automated check
 HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`; NIP-98 events (kind 27235, tags u/method/nonce, payload hash when there is a body, within 60 s, nonce single use). Fresh signature in `X-PFG-Auth` is demanded (HTTP 428) for payment-recipient changes and deletes. Feeds are written atomically under uploads with a realpath check; deleted feeds become tombstones so slugs/GUIDs can't be reused. Hosting needs PHP GMP and HTTPS.
 
 ## Assumptions to verify (not confirmed)
-1. Default support recipients: Phafe.com (`phafe@phafe.com`), musicindex.org (`heycitizen@getalby.com`), Podcastindex.org (`podcastindex@getalby.com`), 1% each, all `lnaddress`. Owner must review in Settings > Publisher Feeds. A change only affects feeds saved afterwards.
+1. (Sites that had saved the old single Podcastindex.org default are upgraded to the three defaults automatically; a customised list is kept.) Default support recipients: Phafe.com (`phafe@phafe.com`), musicindex.org (`heycitizen@getalby.com`), Podcastindex.org (`podcastindex@getalby.com`), 1% each, all `lnaddress`. Owner must review in Settings > Publisher Feeds. A change only affects feeds saved afterwards.
 2. Music Index detail fields assumed from the `v4v-musiclink-pro` code: search hits have `entity_type`, `entity_id`, `feed_guid`; `/feeds/{guid}` has `title`, `release_artist`, `image_url`. `feed_url` / `url` / `medium` are **guesses**; if absent, the UI asks the user to paste the feed address. Check against the real API.
 3. The NIP-46 client key is kept in `sessionStorage` so signing works after a reload (XSS would expose it).
 4. Cloudflare may cache hosted XML; a purge may be needed after publishing.
