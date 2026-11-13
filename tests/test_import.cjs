@@ -15,7 +15,8 @@ ok(m.explicit === false, 'explicit "no" -> false');
 console.log('   notes:', r.notes);
 ok(r.notes.some(n => /fee/.test(n)), 'warns that the recipient "fee" attribute is unsupported');
 const names = m.preserved.names;
-['itunes:new-feed-url', 'podcast:locked', 'foo:thing', 'item', 'pubDate', 'podcast:txt', 'itunes:category'].forEach(n => ok(names.includes(n), 'preserved ' + n));
+ok(m.created === Date.UTC(2026, 9, 6, 10, 10, 6) / 1000 && !names.includes('pubDate'), 'imported pubDate becomes the creation date (not kept twice)');
+['itunes:new-feed-url', 'podcast:locked', 'foo:thing', 'item', 'podcast:txt', 'itunes:category'].forEach(n => ok(names.includes(n), 'preserved ' + n));
 
 // 2. Re-export, must be well-formed and keep the preserved content
 const n = C.normalize(m, { hosted: false, platform: [], allowAttrs: true });

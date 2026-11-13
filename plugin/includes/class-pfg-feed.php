@@ -192,6 +192,13 @@ class PFG_Feed {
 			self::err( $errors, 'keywords', 'Keywords are too long (300 characters max).' );
 		}
 
+		$cr           = self::get( $in, 'created' ); // creation time (Unix seconds); 0 = none.
+		$m['created'] = 0;
+		if ( ( is_int( $cr ) || is_float( $cr ) ) && is_finite( $cr ) && $cr > 0 && $cr < 4102444800 ) {
+			$m['created'] = (int) floor( $cr );
+		} elseif ( is_string( $cr ) && preg_match( '/^[0-9]{1,10}$/', $cr ) && (int) $cr > 0 && (int) $cr < 4102444800 ) {
+			$m['created'] = (int) $cr;
+		}
 		$ex            = self::get( $in, 'explicit' );
 		$m['explicit'] = ( true === $ex || 'true' === $ex || 1 === $ex || '1' === $ex );
 

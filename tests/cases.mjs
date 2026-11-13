@@ -23,6 +23,16 @@ add('anon full', { ...base(), guid: G3.toUpperCase(), feedUrl: 'https://example.
 add('anon no payments', { ...base(), guid: G3, feedUrl: 'https://example.com/pub.xml', value: { recipients: [] }, funding: {} }, anon);
 add('special chars', { ...base(), title: 'Tom & Jerry <b> "q" \'s', description: 'Line1\r\nLine2\rLine3\n\n  spaced  \u0001ctrl\u007f', author: 'Ünï ✓ 日本語 🎵', keywords: 'a\tb\nc' }, hosted);
 add('whitespace', { ...base(), title: '   lots   of\t\tspace  ', description: '\n\n  x  \n\n' }, hosted);
+add('created int', { ...base(), created: 1700000000 }, hosted);
+add('created float', { ...base(), created: 1700000000.9 }, hosted);
+add('created digits text', { ...base(), created: '1700000000' }, hosted);
+add('created zero/negative', { ...base(), created: 0 }, hosted);
+add('created negative', { ...base(), created: -5 }, hosted);
+add('created too big', { ...base(), created: 99999999999 }, hosted);
+add('created bool/null/text', { ...base(), created: true }, hosted);
+add('created null', { ...base(), created: null }, hosted);
+add('created junk text', { ...base(), created: '17e8' }, anon);
+add('created int anon', { ...base(), guid: G3, feedUrl: 'https://example.com/pub.xml', created: 1700000000 }, anon);
 add('explicit variants', { ...base(), explicit: 'true' }, hosted);
 add('explicit 1', { ...base(), explicit: 1 }, hosted);
 add('npub hex input', { ...base(), npub: npubs[3].hex }, hosted);

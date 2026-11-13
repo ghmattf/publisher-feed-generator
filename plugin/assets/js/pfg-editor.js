@@ -21,6 +21,7 @@
     var hosted = ctx.hosted; // null (anonymous) or { id|null, slug, status, url }
     var m = JSON.parse(JSON.stringify(ctx.model));
     m.releases = m.releases || [];
+    if (!m.created) m.created = Math.floor(Date.now() / 1000); // creation date for <pubDate>; kept in the draft; hosted feeds get the server's date
     m.value = m.value || { method: 'lnaddress', suggested: '', recipients: [] };
     m.funding = m.funding || { url: '', text: '' };
     var platform = cfg.platform || []; // configured "Support the developers" recipients; the creator chooses each split (m.support)

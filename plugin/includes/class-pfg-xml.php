@@ -53,6 +53,9 @@ class PFG_Xml {
 		}
 		$o[] = $i8 . '<language>' . self::esc_text( $m['language'] ) . '</language>';
 		$o[] = $i8 . '<generator>Publisher Feed Generator</generator>';
+		if ( ! empty( $m['created'] ) ) {
+			$o[] = $i8 . '<pubDate>' . gmdate( 'D, d M Y H:i:s', (int) $m['created'] ) . ' GMT</pubDate>';
+		}
 		$o[] = $i8 . '<lastBuildDate>' . gmdate( 'D, d M Y H:i:s', $now ) . ' GMT</lastBuildDate>';
 		$o[] = $i8 . '<podcast:guid>' . self::esc_text( $m['guid'] ) . '</podcast:guid>';
 		if ( '' !== $m['npub'] ) {
