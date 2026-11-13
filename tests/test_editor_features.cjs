@@ -53,4 +53,7 @@ ok(r2.errors.some(e => e.message === 'Feed creator/editor is too long.') && r2.e
 // explicit content: no checkbox, no tag unless a feed already has it true
 const xm = C.normalize(m, { platform: [] }).model; ok(!/itunes:explicit/.test(C.buildXml(xm, [], 1700000000)), 'a new feed has no itunes:explicit tag');
 m.explicit = true; ok(/<itunes:explicit>true<\/itunes:explicit>/.test(C.buildXml(C.normalize(m, { platform: [] }).model, [], 1700000000)), 'a feed that already has explicit true keeps the tag');
+// itunes:author is the Name / title
+m.author = 'Someone Else'; m.title = 'Acme & Co'; const axml = C.buildXml(C.normalize(m, { platform: [] }).model, [], 1700000000);
+ok(/<itunes:author>Acme &amp; Co<\/itunes:author>/.test(axml) && !/Someone Else/.test(axml), 'itunes:author is made from Name / title (any other author is ignored)');
 console.log(fails ? fails + ' FAILURES' : 'editor feature tests passed'); process.exit(fails ? 1 : 0);

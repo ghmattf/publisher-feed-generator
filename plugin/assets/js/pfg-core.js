@@ -373,8 +373,7 @@
     if (m.title === '') err('title', 'A title is required.');
     else if (len(m.title) > 200) err('title', 'Title is too long (200 characters max).');
 
-    m.author = line(get(input, 'author'));
-    if (len(m.author) > 200) err('author', 'Author is too long (200 characters max).');
+    m.author = m.title; // itunes:author is always the Name / title (no separate Author field)
 
     m.description = text(get(input, 'description'));
     if (m.description === '') err('description', 'A description is required.');
