@@ -60,6 +60,7 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 4. Cloudflare may cache hosted XML; a purge may be needed after publishing.
 5. (Verified by the owner, 2026-11-13: Alby browser extension sign-in and the Amber remote signer both work.) Other extensions (for example nos2x) are untested.
 6. Profile lookup relays are `wss://purplepag.es`, `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net` plus the relays in Settings. Not tested against live relays (only a fake pool); a profile that lives only on other relays will show "No Nostr profile was found". Not configurable in Settings yet.
+7. (Owner chose the folder, 2026-11-14.) Hosted feeds are written to `/wp-content/pubfeeds/{name}/{name}.xml` (created on demand; the `feed_subdir` setting was removed). Feed GUIDs are stored per feed, so existing feeds keep their GUID even though their URL changes. A one-time upgrade (DB version 2) rewrites published feeds into the new folder and leaves the old uploads files in place; the old URLs are not redirected, so anyone already using an old feed URL must switch to the new one.
 
 ## Open items
 - Owner's to-do list: see docs/TODO.md.

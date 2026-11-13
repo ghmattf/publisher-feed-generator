@@ -142,8 +142,6 @@ class PFG_Rest {
 	/* ------------------------------------------------------------------ */
 
 	public static function client_config() {
-		$u    = wp_get_upload_dir();
-		$sub  = trim( (string) PFG_Settings::get( 'feed_subdir' ), '/' );
 		$rels = array_values( array_unique( array_merge( PFG_Feed::builtin_rel_tokens(), array_filter( explode( ' ', (string) PFG_Settings::get( 'extra_rel_tokens' ) ) ) ) ) );
 		return array(
 			'siteName'               => get_bloginfo( 'name' ),
@@ -160,7 +158,7 @@ class PFG_Rest {
 				'lookupFeed'   => rest_url( self::NS . '/lookup/feed' ),
 				'lookupSearch' => rest_url( self::NS . '/lookup/search' ),
 			),
-			'feedBaseUrl'            => trailingslashit( $u['baseurl'] ) . $sub . '/',
+			'feedBaseUrl'            => PFG_Storage::base_url(),
 			'relays'                 => array_values( (array) PFG_Settings::get( 'relays' ) ),
 			'platform'               => array_values( PFG_Settings::platform_recipients() ),
 			'defaults'               => array(

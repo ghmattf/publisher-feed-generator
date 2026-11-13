@@ -2,7 +2,7 @@
 /**
  * Runs when the plugin is deleted from the Plugins screen.
  * Data is only removed if "Delete accounts, feeds and settings" was ticked.
- * Published XML files in the uploads folder are left in place.
+ * Published XML files in the /wp-content/pubfeeds/ folder are left in place.
  *
  * @package Publisher_Feed_Generator
  */

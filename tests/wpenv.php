@@ -31,6 +31,8 @@ function get_option($k, $d = false){ return $GLOBALS['__opts'][$k] ?? $d; } func
 function get_transient($k){ return $GLOBALS['__tr'][$k] ?? false; } function set_transient($k, $v){ $GLOBALS['__tr'][$k] = $v; return true; }
 $UP = sys_get_temp_dir() . '/pfg_uploads_' . getmypid(); @mkdir($UP, 0755, true); $GLOBALS['__up'] = $UP;
 function wp_get_upload_dir(){ return ['basedir' => $GLOBALS['__up'], 'baseurl' => 'https://phafe.com/wp-content/uploads', 'path' => $GLOBALS['__up'], 'url' => 'https://phafe.com/wp-content/uploads', 'error' => false]; }
+if(!defined('WP_CONTENT_DIR')) define('WP_CONTENT_DIR', $GLOBALS['__up'] . '/wp-content');
+function content_url($p = ''){ return 'https://phafe.com/wp-content/' . ltrim($p, '/'); }
 function wp_delete_file($f){ @unlink($f); }
 function esc_attr($s){ return htmlspecialchars($s, ENT_QUOTES); } function esc_html($s){ return htmlspecialchars($s, ENT_QUOTES); } function esc_url($s){ return $s; } function __($s){ return $s; } function esc_html__($s){ return $s; }
 // wpdb over sqlite

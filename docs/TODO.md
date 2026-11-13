@@ -5,7 +5,6 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 17. Add the ability to move the feed. (Owner's wording; to confirm what moving means: for example telling apps the feed has a new address with `itunes:new-feed-url`, or moving a hosted feed to another host.)
 
 ## New (2026-11-13, evening)
-20. Set feeds to be saved to /wp-content/publisher-feeds/ (create the directory if required). (Feeds are currently written under the uploads folder; the web server must also serve the new folder at the feed addresses.)
 23. Import my existing publisher feeds. (Conflicts with the out-of-scope rule in AGENTS.md: importing into hosting needs the owner's explicit go-ahead on how it should work.)
 25. Using Amber, the QR code just stays at "Waiting for your signer to approve…" after scanning and authorizing in Amber.
 

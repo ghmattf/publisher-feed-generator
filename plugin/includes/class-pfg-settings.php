@@ -21,7 +21,6 @@ class PFG_Settings {
 	public static function defaults() {
 		return array(
 			'hosting_enabled'          => 1,
-			'feed_subdir'              => 'rssfeed/publishers',
 			'max_feeds_per_account'    => 3,
 			'max_releases'             => 200,
 			'require_approval'         => 0,
@@ -129,12 +128,6 @@ class PFG_Settings {
 		$out['require_approval']          = empty( $in['require_approval'] ) ? 0 : 1;
 		$out['trust_cf_ip']               = empty( $in['trust_cf_ip'] ) ? 0 : 1;
 		$out['delete_data_on_uninstall']  = empty( $in['delete_data_on_uninstall'] ) ? 0 : 1;
-
-		$subdir = isset( $in['feed_subdir'] ) ? trim( (string) $in['feed_subdir'], " \t\n\r\0\x0B/" ) : $d['feed_subdir'];
-		if ( ! preg_match( '#^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+){0,3}$#', $subdir ) ) {
-			$subdir = $d['feed_subdir'];
-		}
-		$out['feed_subdir'] = $subdir;
 
 		$out['max_feeds_per_account'] = max( 1, min( 50, (int) ( isset( $in['max_feeds_per_account'] ) ? $in['max_feeds_per_account'] : $d['max_feeds_per_account'] ) ) );
 		$out['max_releases']          = max( 1, min( 1000, (int) ( isset( $in['max_releases'] ) ? $in['max_releases'] : $d['max_releases'] ) ) );
