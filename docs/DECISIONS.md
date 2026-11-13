@@ -48,13 +48,13 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 2. (Verified by the owner against the live Music Index API, 2026-11-13.) Music Index detail fields were assumed from the `v4v-musiclink-pro` code; if `feed_url` is absent in a result, the UI asks the user to paste the feed address.
 3. The NIP-46 client key is kept in `sessionStorage` so signing works after a reload (XSS would expose it).
 4. Cloudflare may cache hosted XML; a purge may be needed after publishing.
-5. The extension sign-in is tested only against a fake `window.nostr` that signs with a real key. Real Alby, nos2x and others are untested: check how each handles `signEvent` for kind 27235, per-site permission prompts, and late injection of `window.nostr`.
+5. (Verified by the owner, 2026-11-13: Alby browser extension sign-in and the Amber remote signer both work.) Other extensions (for example nos2x) are untested.
 6. Profile lookup relays are `wss://purplepag.es`, `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net` plus the relays in Settings. Not tested against live relays (only a fake pool); a profile that lives only on other relays will show "No Nostr profile was found". Not configurable in Settings yet.
 
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.
-- Not yet done: check real browser extensions (Alby, nos2x) for NIP-07 sign-in and the profile lookup against live relays (assumptions 5 and 6); wider browser look-over of the UI.
+- Not yet done: the Nostr profile lookup against live relays (assumption 6, unless already covered by the owner's testing); other extensions such as nos2x; wider browser look-over of the UI.
 - Ideas not requested: a "change feed" action on filled-in releases; showing hosted-feed moderation status to the owner.
 
 ## Out of scope (do not add without asking)
