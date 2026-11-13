@@ -19,6 +19,18 @@ class PFG_Feed {
 		return array( 'artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician', 'studio', 'engineer' );
 	}
 
+	/** The built-in roles the page shows under "Other roles" (same list as OTHER_RELS in pfg-core.js), alphabetical. */
+	public static function other_rel_tokens() {
+		return array( 'author', 'host', 'hosting', 'network', 'sponsor' );
+	}
+
+	/** The built-in roles the page shows in the main list, alphabetical. */
+	public static function main_rel_tokens() {
+		$main = array_values( array_diff( self::builtin_rel_tokens(), self::other_rel_tokens() ) );
+		sort( $main );
+		return $main;
+	}
+
 	public static function mediums() {
 		return array( 'music', 'podcast', 'video', 'film', 'audiobook', 'newsletter', 'blog', 'publisher', 'course' );
 	}
