@@ -119,6 +119,11 @@ update_option(PFG_Settings::OPTION, ['platform_recipients' => [['name' => 'Mine'
 ok(count(PFG_Settings::platform_recipients()) === 1 && PFG_Settings::platform_recipients()[0]['address'] === 'mine@x.com', 'a customised list is left alone');
 update_option(PFG_Settings::OPTION, []);
 
+// ---- built-in roles shown in two groups (must match OTHER_RELS in pfg-core.js)
+ok(PFG_Feed::other_rel_tokens() === ['author', 'host', 'hosting', 'network', 'sponsor'], 'Other roles: author, host, hosting, network, sponsor');
+ok(PFG_Feed::main_rel_tokens() === ['artist', 'composer', 'engineer', 'label', 'musician', 'producer', 'songwriter', 'studio'], 'Roles: the rest, alphabetical');
+ok(count(array_merge(PFG_Feed::main_rel_tokens(), PFG_Feed::other_rel_tokens())) === count(PFG_Feed::builtin_rel_tokens()), 'the two groups together are exactly the built-in roles');
+
 // ---- "Support the developers": creator-chosen splits (name/address/type stay under the site's control)
 $no = new ReflectionMethod('PFG_Rest', 'norm_opts'); $no->setAccessible(true);
 $po = $no->invoke(null, 'sup-test', PFG_Feed::guid_for_url(PFG_Storage::feed_url('sup-test')));

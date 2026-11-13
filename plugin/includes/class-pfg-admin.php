@@ -210,12 +210,21 @@ class PFG_Admin {
 				</table>
 
 				<h2>Roles</h2>
+				<p class="description">The built-in roles follow the list proposed in Podcast Namespace PR #793. The role picker on the website shows them in two groups, each in alphabetical order.</p>
 				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row">Roles</th>
+						<td><code><?php echo esc_html( implode( ' ', PFG_Feed::main_rel_tokens() ) ); ?></code></td>
+					</tr>
+					<tr>
+						<th scope="row">Other roles</th>
+						<td><code><?php echo esc_html( implode( ' ', PFG_Feed::other_rel_tokens() ) ); ?></code></td>
+					</tr>
 					<tr>
 						<th scope="row"><label for="pfg-rel">Extra role words</label></th>
 						<td>
 							<input id="pfg-rel" type="text" class="regular-text" name="<?php echo esc_attr( self::field_name( 'extra_rel_tokens' ) ); ?>" value="<?php echo esc_attr( $s['extra_rel_tokens'] ); ?>" />
-							<p class="description">Offered in the role picker alongside <code><?php echo esc_html( implode( ' ', PFG_Feed::builtin_rel_tokens() ) ); ?></code> (the list proposed in Podcast Namespace PR #793). Space separated.</p>
+							<p class="description">Added to the Roles group in the role picker. Space separated.</p>
 						</td>
 					</tr>
 				</table>
