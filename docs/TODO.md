@@ -2,13 +2,6 @@
 
 Added 2026-11-13. Wording is the owner's. Completed items are removed from this list (the history is in git and docs/DECISIONS.md).
 
-## Editor
-7. Hide the "Category" field. The focus is music, so keep the value set to Music but do not display it.
-8. Change "Your npub (optional)" to "Include npub in the feed? (optional)".
-9. When signed in with Nostr, assume the feed will be hosted: label "Feed URL (where you will host it)" simply as "Feed URL".
-10. Force Title and Description to be filled in before moving on from the "Basics" section (Next button, and opening another section).
-11. Need to generate the GUID. (Owner's wording; to confirm what is missing: the GUID is currently generated from the feed URL.)
-12. The message "Downloaded publisher.xml. Upload it to your web server." should be shown at the bottom of the page, next to the download button.
 
 17. Add the ability to move the feed. (Owner's wording; to confirm what moving means: for example telling apps the feed has a new address with `itunes:new-feed-url`, or moving a hosted feed to another host.)
 

@@ -89,6 +89,15 @@
     return uuid5(u);
   }
 
+  /** A random (version 4) UUID, for a feed that has no address yet. Editor use only. */
+  function randomGuid() {
+    var b = new Uint8Array(16), c = (typeof globalThis !== 'undefined' && globalThis.crypto) || (typeof window !== 'undefined' && window.crypto);
+    if (c && c.getRandomValues) c.getRandomValues(b); else for (var i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    var h = Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  }
+
   /* ---------------------------------------------------------------- */
   /* bech32 / npub                                                     */
   /* ---------------------------------------------------------------- */
@@ -800,7 +809,7 @@
 
   return {
     NS_PODCAST: NS_PODCAST, NS_ITUNES: NS_ITUNES, NS_ATOM: NS_ATOM, MEDIUMS: MEDIUMS, BUILTIN_RELS: BUILTIN_RELS,
-    uuid5: uuid5, guidForUrl: guidForUrl, npubEncode: npubEncode, npubDecode: npubDecode,
+    uuid5: uuid5, guidForUrl: guidForUrl, randomGuid: randomGuid, npubEncode: npubEncode, npubDecode: npubDecode,
     emptyModel: emptyModel, emptyRecipient: emptyRecipient, platformTotal: platformTotal,
     normalize: normalize, lint: lint, buildXml: buildXml, parseXml: parseXml, inspectReleaseFeed: inspectReleaseFeed, channelTitle: channelTitle, snippetFor: snippetFor,
     line: line, text: text, isHttpsUrl: isHttpsUrl, isHttpUrl: isHttpUrl, profileToFields: profileToFields, supportRows: supportRows, activePlatform: activePlatform, ensureSupport: ensureSupport, liftSupport: liftSupport, slugify: slugify, splitRoles: splitRoles, OTHER_RELS: OTHER_RELS, CATEGORIES: CATEGORIES, LANGUAGES: LANGUAGES, isUuid: isUuid, len: len,

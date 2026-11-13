@@ -70,7 +70,14 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Identity and links,Payments,Releases' && openOnes().join() === 'Basics', 'sections: only Basics is expanded at first');
   const nextIn = d => [...d.querySelectorAll(':scope > .pfg-next > button')];
   ok(secs().slice(0, 3).every(d => nextIn(d).length === 1 && nextIn(d)[0].textContent === 'Next' && d.lastElementChild.classList.contains('pfg-next')) && nextIn(secs()[3]).length === 0, 'sections: Next is the last item of every section except the last');
-  nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Identity and links', 'Next opens the next section and closes the one before');
+  nextIn(secs()[0])[0].click(); await tick();
+  ok(openOnes().join() === 'Basics' && /title is required/i.test($('#pfg-f-title-err').textContent) && /description is required/i.test($('#pfg-f-description-err').textContent), 'Basics gate: Next is refused while Title and Description are empty (errors shown on both)');
+  secs()[1].querySelector('summary').click(); await tick();
+  ok(openOnes().join() === 'Basics', 'Basics gate: opening another section by its title is refused too');
+  set('#pfg-f-title', 'Acme'); nextIn(secs()[0])[0].click(); await tick();
+  ok(openOnes().join() === 'Basics' && /description is required/i.test($('#pfg-f-description-err').textContent), 'Basics gate: Description is required as well');
+  set('#pfg-f-description', 'We make records.'); await tick();
+  nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Identity and links', 'Next opens the next section and closes the one before once Title and Description are filled in');
   secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Payments', 'opening a section by its title closes the others');
   const scrolled = []; w.HTMLElement.prototype.scrollIntoView = function () { scrolled.push(this.querySelector('summary') ? this.querySelector('summary').textContent : '?'); };
   secs()[1].querySelector('summary').click(); await tick(); ok(scrolled.pop() === 'Identity and links', 'clicking a section title scrolls that section to the top');
@@ -80,6 +87,25 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   nextIn(secs()[2])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Payments opens Releases');
   secs()[3].querySelector('summary').click(); ok(openOnes().length === 0, 'a section can be closed again');
   set('#pfg-f-title', ''); click('Download XML'); await tick(); ok(openOnes().join() === 'Basics', 'a failed save/download opens the section holding the first error');
+  ok(!$$('label').some(l => l.textContent === 'Category') && !$('#pfg-f-category') && w.PFGCore.emptyModel({}).category === 'Music', 'Category is hidden and stays set to Music');
+  ok($$('label').some(l => l.textContent === 'Include npub in the feed? (optional)') && !$$('label').some(l => l.textContent === 'Your npub (optional)'), 'npub label reads "Include npub in the feed? (optional)"');
+  ok($$('label').some(l => l.textContent === 'Feed URL (where you will host it)'), 'no Nostr session: Feed URL label keeps "(where you will host it)"');
+  const cNostr = w.document.createElement('div'); w.document.body.appendChild(cNostr);
+  w.PFGEditor.render(cNostr, { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: null, host: { getSession: () => ({ npub: 'npub1abc', pubkey: 'ab' }) }, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+  ok([...cNostr.querySelectorAll('label')].some(l => l.textContent === 'Feed URL') && ![...cNostr.querySelectorAll('label')].some(l => /where you will host/.test(l.textContent)), 'signed in with Nostr: the label is simply "Feed URL"');
+  cNostr.remove();
+  // GUID generation and the download message
+  const genBtn = () => $$('button').find(b => b.textContent === 'Generate GUID');
+  set('#pfg-f-feedUrl', ''); set('#pfg-f-guid', ''); genBtn().click(); const g1 = $('#pfg-f-guid').value;
+  ok(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(g1), 'Generate GUID without a feed URL gives a random version 4 UUID');
+  set('#pfg-f-feedUrl', 'https://phafe.com/publisher.xml'); genBtn().click();
+  ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://phafe.com/publisher.xml'), 'Generate GUID with a feed URL gives the standard UUIDv5 of that URL');
+  set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'We make records.'); await tick();
+  w.URL.createObjectURL = () => 'blob:x'; w.URL.revokeObjectURL = () => {}; w.HTMLAnchorElement.prototype.click = function () {};
+  click('Download XML'); await tick();
+  const dl = [...$$('.pfg-note-ok')].find(n => /Downloaded publisher\.xml/.test(n.textContent));
+  const actionsRow = $$('button').find(b => b.textContent === 'Download XML').parentElement;
+  ok(dl && /Upload it to https:\/\/phafe\.com\/publisher\.xml/.test(dl.textContent) && (actionsRow.compareDocumentPosition(dl) & 4) && !$$('[aria-live] .pfg-note-ok').some(n => n === dl && n.parentElement === $('#c').firstChild), 'the download message is shown under the Download button, at the bottom');
   const labels = $$('label').map(l => l.textContent);
   ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Feed creator/editor') && labels.includes('Feed contact email') && !labels.includes('Owner name') && !labels.includes('Owner email'), 'Author and Keywords removed; owner fields renamed to Feed creator/editor and Feed contact email');
 }
