@@ -503,14 +503,26 @@
       var f = fields[bad[0].path]; if (f && f.input && f.input.focus) f.input.focus();
       return false;
     }
+    // Bring the first problem into view: open the section it is in, focus the field and scroll to it. With no field
+    // to point at (a general message), scroll to the message instead.
+    function revealError(errs) {
+      var first = errs && errs.length ? fields[errs[0].path] : null;
+      var sec = first && first.wrap && first.wrap.closest ? first.wrap.closest('details.pfg-section') : null;
+      if (sec) openSection(sec);
+      if (first && first.input && first.input.focus) { try { first.input.focus({ preventScroll: true }); } catch (e) { first.input.focus(); } }
+      var target = first && first.wrap ? first.wrap : (summaryErr.firstChild ? summaryErr : banner);
+      setTimeout(function () { try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* not essential */ } }, 0);
+    }
+    function revealSlug() {
+      var sec = fields.slug.wrap.closest ? fields.slug.wrap.closest('details.pfg-section') : null;
+      if (sec) openSection(sec);
+      fields.slug.input.focus(); setTimeout(function () { try { fields.slug.wrap.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* not essential */ } }, 0);
+    }
     function build() {
       var r = clean();
       if (r.errors.length) {
         showErrors(r.errors);
-        var first = fields[r.errors[0].path];
-        var sec = first && first.wrap && first.wrap.closest ? first.wrap.closest('details.pfg-section') : null;
-        if (sec) openSection(sec);
-        if (first && first.input && first.input.focus) first.input.focus();
+        revealError(r.errors);
         return null;
       }
       return { model: r.model, xml: Core.buildXml(r.model, Core.activePlatform(platform, r.model.support), Date.now()) };
@@ -545,8 +557,8 @@
     function save() {
       if (saving) return;
       var r = clean();
-      if (hosted && !hosted.id && !SLUG_RE.test(slug)) { slugMsg = 'Choose a valid feed name first.'; showErrors([]); fields.slug.input.focus(); return; }
-      if (r.errors.length) { showErrors(r.errors); setBanner('bad', 'Please fix the highlighted problems first.'); return; }
+      if (hosted && !hosted.id && !SLUG_RE.test(slug)) { slugMsg = 'Choose a valid feed name first.'; showErrors([]); revealSlug(); return; }
+      if (r.errors.length) { showErrors(r.errors); setBanner('bad', 'Please fix the highlighted problems first.'); revealError(r.errors); return; }
       saving = true; saveBtn.disabled = true; setBanner('', 'Saving… your signer may ask you to confirm.');
       var p = hosted.id ? ctx.host.updateFeed(hosted.id, r.model) : ctx.host.createFeed(slug, r.model);
       p.then(function (res) {
@@ -557,11 +569,11 @@
       }).catch(function (e) {
         if (e.status === 409 && fields.slug) {
           slugMsg = 'That feed name is already taken. Please choose another.'; slugAuto = false;
-          fields.slug.err.textContent = slugMsg; setBanner('bad', slugMsg); fields.slug.input.focus();
-        } else if (e.errors && e.errors.length) { showErrors(e.errors); setBanner('bad', e.message); }
+          fields.slug.err.textContent = slugMsg; setBanner('bad', slugMsg); revealSlug();
+        } else if (e.errors && e.errors.length) { showErrors(e.errors); setBanner('bad', e.message); revealError(e.errors); }
         else if (e.status === 401 || /sign in again|not connected/i.test(e.message)) {
           setBanner('warn', h('span', {}, [e.message + ' ', btn('Sign in', 'pfg-btn-small', function () { ctx.needSignIn(function () { setBanner('ok', 'Signed in. Press save again.'); }); })]));
-        } else setBanner('bad', e.message);
+        } else { setBanner('bad', e.message); revealError([]); }
       }).then(function () { saving = false; saveBtn.disabled = false; });
     }
 
