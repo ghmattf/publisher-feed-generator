@@ -93,30 +93,35 @@
       return h('label', { class: 'pfg-check pfg-wide', for: 'pfg-c-' + path }, [cb, label]);
     }
     // The form sections work as an accordion: opening one closes the others, and every section but the last ends with a Next button.
-    var sectionList = [];
+    var sectionList = [], lastOpen = null;
     function openSection(d) {
       sectionList.forEach(function (x) { if (x !== d) x.removeAttribute('open'); });
-      d.setAttribute('open', '');
+      d.setAttribute('open', ''); lastOpen = d;
     }
-    function section(title, open, kids, hasNext) {
+    // A section can have a gate: you cannot move on from it (Next, or opening another section) until it passes.
+    function mayLeave(d) { return !d || !d._gate || d._gate(); }
+    function section(title, open, kids, hasNext, gate) {
       var idx = sectionList.length;
       var sum = h('summary', { text: title });
       var all = [sum].concat(kids);
       if (hasNext) all.push(h('div', { class: 'pfg-next' }, [btn('Next', 'pfg-btn-small pfg-btn-primary', function () {
         var n = sectionList[idx + 1];
-        if (n) { openSection(n); try { n.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } }
+        if (n && mayLeave(sectionList[idx])) { openSection(n); try { n.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } }
       })]));
       var d = h('details', { class: 'pfg-section' }, all);
+      d._gate = gate || null;
       // After the browser has toggled this section: if it is now open, close the others and bring it to the top so the
       // reader keeps their place (the sections above may have collapsed).
       sum.addEventListener('click', function () {
         setTimeout(function () {
-          if (!d.hasAttribute('open')) return; // it was closed
+          if (!d.hasAttribute('open')) { if (lastOpen === d) lastOpen = null; return; } // it was closed
+          if (lastOpen && lastOpen !== d && !mayLeave(lastOpen)) { d.removeAttribute('open'); lastOpen.setAttribute('open', ''); return; } // the section being left is not complete
           sectionList.forEach(function (x) { if (x !== d) x.removeAttribute('open'); });
+          lastOpen = d;
           try { d.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ }
         }, 0);
       });
-      if (open) d.setAttribute('open', '');
+      if (open) { d.setAttribute('open', ''); lastOpen = d; }
       sectionList.push(d);
       return d;
     }
@@ -125,6 +130,7 @@
     var banner = h('div', { 'aria-live': 'polite' });
     var summaryErr = h('div');
     var lintEl = h('div');
+    var doneEl = h('div', { 'aria-live': 'polite' }); // message about the download, shown under its button
     var totalEl = h('div', { class: 'pfg-total' });
     var recipsEl = h('div');
     var releasesEl = h('div');
@@ -135,11 +141,10 @@
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
       field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
       field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
-      field('Category', 'category', { select: [{ value: '', label: '(none)' }].concat(Core.CATEGORIES.map(function (c) { return { value: c, label: c }; })), keepUnknown: true, hint: 'Where podcast directories list your feed.' }),
       field('Feed creator/editor', 'ownerName'),
       field('Feed contact email', 'ownerEmail', { type: 'email' }),
       check('Contains explicit content', 'explicit'),
-    ])], true);
+    ])], true, basicsGate);
 
     var slugField = null, identityKids = [], applySlug = null;
     function autoSlug() { if (slugAuto && applySlug) applySlug(Core.slugify(m.title)); }
@@ -168,7 +173,8 @@
       identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [h('span', { class: 'pfg-label', text: 'Feed URL' }), h('div', { class: 'pfg-mono', text: hosted.url })]));
       identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [h('span', { class: 'pfg-label', text: 'Feed GUID' }), h('div', { class: 'pfg-mono', text: m.guid })]));
     } else {
-      identityKids.push(field('Feed URL (where you will host it)', 'feedUrl', {
+      var nostrSession = ctx.host && ctx.host.getSession ? ctx.host.getSession() : null; // signed in with Nostr: assume the feed will be hosted
+      identityKids.push(field(nostrSession ? 'Feed URL' : 'Feed URL (where you will host it)', 'feedUrl', {
         type: 'url', placeholder: 'https://example.com/publisher.xml', wide: true,
         hint: 'The final public address of this XML file.',
         onchange: function (v) {
@@ -180,8 +186,16 @@
         onchange: function () { fields.guid.autoGuid = false; },
       }));
       fields.guid.autoGuid = !m.guid;
+      var guidStatus = h('span', { class: 'pfg-hint', 'aria-live': 'polite' });
+      fields.guid.wrap.insertBefore(h('div', { class: 'pfg-row', style: 'margin-top:6px' }, [btn('Generate GUID', 'pfg-btn-small', function () {
+        var url = (m.feedUrl || '').trim(), fromUrl = Core.isHttpsUrl(url);
+        m.guid = fromUrl ? Core.guidForUrl(url) : Core.randomGuid();
+        fields.guid.input.value = m.guid; fields.guid.autoGuid = fromUrl;
+        guidStatus.textContent = fromUrl ? 'Made from your feed URL (the standard way).' : 'No feed URL yet, so this is a random GUID. Keep it: if you move the feed later, use the same GUID.';
+        changed();
+      }), guidStatus]), fields.guid.err);
     }
-    identityKids.push(field('Your npub (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' }));
+    identityKids.push(field('Include npub in the feed? (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' }));
     // "Get your npub": from the signed-in account, or by asking a signer for its public key (nothing is saved).
     var npubStatus = h('span', { class: 'pfg-hint', 'aria-live': 'polite' });
     function setNpub(npub) { m.npub = npub; fields.npub.input.value = npub; changed(); }
@@ -482,6 +496,14 @@
       clear(summaryErr);
       if (loose.length) summaryErr.appendChild(note('bad', h('ul', {}, loose.map(function (e) { return h('li', { text: e.message }); }))));
     }
+    // Title and Description must be filled in before leaving Basics.
+    function basicsGate() {
+      var bad = clean().errors.filter(function (e) { return e.path === 'title' || e.path === 'description'; });
+      if (!bad.length) return true;
+      showErrors(bad);
+      var f = fields[bad[0].path]; if (f && f.input && f.input.focus) f.input.focus();
+      return false;
+    }
     function build() {
       var r = clean();
       if (r.errors.length) {
@@ -511,12 +533,13 @@
       return /\.xml$/i.test(last) ? last : 'publisher.xml';
     }
     function download() {
-      var r = build(); if (!r) { setBanner('bad', 'Please fix the highlighted problems first.'); return; }
+      clear(doneEl); setBanner();
+      var r = build(); if (!r) { doneEl.appendChild(note('bad', 'Please fix the highlighted problems first.')); return; }
       var blob = new Blob([r.xml], { type: 'application/rss+xml' });
       var a = h('a', { href: URL.createObjectURL(blob), download: fileName() });
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-      setBanner('ok', 'Downloaded ' + fileName() + '. Upload it to ' + (m.feedUrl || 'your web server') + '.');
+      doneEl.appendChild(note('ok', 'Downloaded ' + fileName() + '. Upload it to ' + (m.feedUrl || 'your web server') + '.'));
       ctx.clearDraft();
     }
     function setBanner(kind, msg) { clear(banner); if (msg) banner.appendChild(note(kind, msg)); }
@@ -549,7 +572,7 @@
     container.appendChild(h('h2', { text: hosted ? (hosted.id ? 'Edit hosted feed' : 'New hosted feed') : 'Feed editor' }));
     if (hosted && hosted.status && hosted.status !== 'published') container.appendChild(note('warn', 'Status: ' + hosted.status + '. This feed is not public.'));
     kept.forEach(function (n) { container.appendChild(n); });
-    [banner, summaryErr, basics, identity, payments, releases, lintEl, actions].forEach(function (n) { container.appendChild(n); });
+    [banner, summaryErr, basics, identity, payments, releases, lintEl, actions, doneEl].forEach(function (n) { container.appendChild(n); });
     renderRecipients(); renderSupport(); renderReleases(); autoSlug(); refresh();
 
     /* ---------- new hosted feed: start from the signed-in Nostr profile ---------- */
