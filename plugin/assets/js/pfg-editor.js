@@ -30,7 +30,7 @@
     var fields = {};      // path -> {wrap, err}
     var showDet = new Set(); // releases whose feed details are expanded
     var ui = new Map();   // release object -> {status, info, open}
-    var timer = null, saving = false, slugMsg = '';
+    var timer = null, saving = false, slugMsg = '', dirty = false; // dirty: changed since the last save
     var slugAuto = !!(hosted && !hosted.id); // the feed name follows the title until the user types their own
 
     /* ---------- model <-> options ---------- */
@@ -467,7 +467,7 @@
       cpBtn = btn('Copy XML', '', function () { var r = build(); if (r) copyText(r.xml, function () { cpBtn.textContent = 'Copied'; setTimeout(function () { cpBtn.textContent = 'Copy XML'; }, 1500); }); });
       actions.appendChild(dlBtn); actions.appendChild(cpBtn);
     }
-    actions.appendChild(btn(hosted ? 'Back to my feeds' : 'Start over', '', function () { if (!hosted || window.confirm('Leave without saving?')) ctx.back(); }));
+    actions.appendChild(btn(hosted ? 'Back to my feeds' : 'Start over', '', function () { if (!hosted || !dirty || window.confirm('Leave without saving?')) ctx.back(); }));
 
     /* notes from import */
     var kept = [];
@@ -536,7 +536,7 @@
       if (w.length) lintEl.appendChild(note('warn', h('ul', {}, w.map(function (t) { return h('li', { text: t }); }))));
       if (!hosted) ctx.saveDraft(m);
     }
-    function changed() { clearTimeout(timer); timer = setTimeout(refresh, 250); }
+    function changed(fromProfile) { if (!fromProfile) dirty = true; clearTimeout(timer); timer = setTimeout(refresh, 250); }
 
     /* ---------- actions ---------- */
     function fileName() {
@@ -559,7 +559,7 @@
       var r = clean();
       if (hosted && !hosted.id && !SLUG_RE.test(slug)) { slugMsg = 'Choose a valid feed name first.'; showErrors([]); revealSlug(); return; }
       if (r.errors.length) { showErrors(r.errors); setBanner('bad', 'Please fix the highlighted problems first.'); revealError(r.errors); return; }
-      saving = true; saveBtn.disabled = true; setBanner('', 'Saving… your signer may ask you to confirm.');
+      saving = true; saveBtn.disabled = true; dirty = false; setBanner('', 'Saving… your signer may ask you to confirm.'); // edits made while saving set it again
       var p = hosted.id ? ctx.host.updateFeed(hosted.id, r.model) : ctx.host.createFeed(slug, r.model);
       p.then(function (res) {
         hosted.id = res.id; hosted.slug = res.slug; hosted.status = res.status; hosted.url = res.url;
@@ -567,6 +567,7 @@
         if (res.status === 'published') setBanner('ok', ['Published at ', h('a', { href: res.url, target: '_blank', rel: 'noopener', text: res.url })]);
         else setBanner('warn', 'Saved. This feed is waiting for review and is not public yet.');
       }).catch(function (e) {
+        dirty = true; // not saved
         if (e.status === 409 && fields.slug) {
           slugMsg = 'That feed name is already taken. Please choose another.'; slugAuto = false;
           fields.slug.err.textContent = slugMsg; setBanner('bad', slugMsg); revealSlug();
@@ -585,6 +586,7 @@
     kept.forEach(function (n) { container.appendChild(n); });
     [banner, summaryErr, basics, identity, payments, releases, lintEl, actions, doneEl].forEach(function (n) { container.appendChild(n); });
     renderRecipients(); renderSupport(); renderReleases(); autoSlug(); refresh();
+    dirty = false; // nothing to lose yet
 
     /* ---------- new hosted feed: start from the signed-in Nostr profile ---------- */
     function fillIfEmpty(path, value) {
@@ -597,13 +599,13 @@
       var s = ctx.host.getSession ? ctx.host.getSession() : null;
       if (!s) return;
       var gotNpub = s.npub ? fillIfEmpty('npub', s.npub) : false;
-      if (gotNpub) changed();
+      if (gotNpub) changed(true);
       if (!ctx.host.fetchProfile) return;
       setBanner('', 'Looking up your Nostr profile to fill in the form…');
       var mine = banner.firstChild;
       ctx.host.fetchProfile(s.pubkey).then(function (profile) {
         if (container.isConnected === false) return; // the user has already left this screen
-        var f = Core.profileToFields(profile), filled = [];
+        var wasDirty = dirty, f = Core.profileToFields(profile), filled = [];
         if (fillIfEmpty('title', f.name)) filled.push('name');
         if (fillIfEmpty('description', f.about)) filled.push('description');
         if (fillIfEmpty('link', f.website)) filled.push('website');
@@ -615,7 +617,7 @@
         }
         if (profile && gotNpub) filled.push('npub');
         autoSlug();
-        changed();
+        changed(true); dirty = wasDirty; // filled in by us, not edited by the user
         if (banner.firstChild !== mine) return; // something more important is showing (for example a save result)
         if (!profile) setBanner('', 'No Nostr profile was found on the usual relays, so only your npub was filled in. Fill in the rest by hand.');
         else if (filled.length) setBanner('ok', 'Filled in from your Nostr profile: ' + filled.join(', ') + '. Check everything and change what you like.');
