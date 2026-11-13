@@ -189,10 +189,10 @@ class PFG_Feed {
 		$m['ownerName']  = self::line( self::get( $in, 'ownerName' ) );
 		$m['ownerEmail'] = self::line( self::get( $in, 'ownerEmail' ) );
 		if ( self::len( $m['ownerName'] ) > 200 ) {
-			self::err( $errors, 'ownerName', 'Owner name is too long.' );
+			self::err( $errors, 'ownerName', 'Feed creator/editor is too long.' );
 		}
 		if ( '' !== $m['ownerEmail'] && ( self::len( $m['ownerEmail'] ) > 200 || ! preg_match( '/^[^\s@<>&"\']+@[^\s@<>&"\']+\.[^\s@<>&"\']+$/', $m['ownerEmail'] ) ) ) {
-			self::err( $errors, 'ownerEmail', 'Owner email is not valid.' );
+			self::err( $errors, 'ownerEmail', 'Feed contact email is not valid.' );
 		}
 
 		// Identity: hosted feeds always use the server's values.
@@ -327,8 +327,8 @@ class PFG_Feed {
 				$errors,
 				'value.recipients',
 				$platform_total
-					? sprintf( 'Your recipients must total %d%% (support for the developers takes %d%%). They currently total %d%%.', $need, $platform_total, $user_total )
-					: sprintf( 'Recipient splits must total 100%%. They currently total %d%%.', $user_total )
+					? sprintf( 'Your recipients must total %d%% - it currently totals %d%%. (Support for the developers currently totals %d%%.)', $need, $user_total, $platform_total )
+					: sprintf( 'Your recipients must total 100%% - it currently totals %d%%.', $user_total )
 			);
 		}
 		$m['value'] = array(

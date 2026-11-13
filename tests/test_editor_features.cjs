@@ -42,4 +42,11 @@ i = C.inspectReleaseFeed(rss('<podcast:person role="engineer">Eve</podcast:perso
 ok(i.artist === '' && !i.artistUrl && i.person === 'Bob', 'artist: with no publisher feed, falls back to the first podcast:person');
 i = C.inspectReleaseFeed(rss(''), dom, OWN, [], 'P'); ok(i.artist === '' && i.person === '', 'artist: nothing available gives no artist');
 ok(C.channelTitle('<rss version="2.0"><channel><title>MezzaForte</title></channel></rss>', dom) === 'MezzaForte' && C.channelTitle('nope', dom) === '', 'channelTitle');
+// wording of the recipient total message
+const pm = C.emptyModel({}); pm.guid = m.guid; pm.feedUrl = m.feedUrl; pm.title = 'T'; pm.description = 'D'; pm.value.recipients = [{ name: 'Me', address: 'me@x.com', split: 50, type: 'lnaddress' }];
+let r2 = C.normalize(pm, { platform: plat }); const msg = (r2.errors.find(e => e.path === 'value.recipients') || {}).message;
+ok(msg === 'Your recipients must total 98% - it currently totals 50%. (Support for the developers currently totals 2%.)', 'recipient total message wording (with support): ' + msg);
+r2 = C.normalize(pm, { platform: [] }); ok((r2.errors.find(e => e.path === 'value.recipients') || {}).message === 'Your recipients must total 100% - it currently totals 50%.', 'recipient total message wording (no support)');
+pm.value.recipients = []; pm.ownerName = 'x'.repeat(201); pm.ownerEmail = 'bad'; r2 = C.normalize(pm, { platform: [] });
+ok(r2.errors.some(e => e.message === 'Feed creator/editor is too long.') && r2.errors.some(e => e.message === 'Feed contact email is not valid.'), 'owner field messages use the new names');
 console.log(fails ? fails + ' FAILURES' : 'editor feature tests passed'); process.exit(fails ? 1 : 0);

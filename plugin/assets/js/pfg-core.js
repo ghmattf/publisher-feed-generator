@@ -394,8 +394,8 @@
 
     m.ownerName = line(get(input, 'ownerName'));
     m.ownerEmail = line(get(input, 'ownerEmail'));
-    if (len(m.ownerName) > 200) err('ownerName', 'Owner name is too long.');
-    if (m.ownerEmail !== '' && (len(m.ownerEmail) > 200 || !/^[^\s@<>&"']+@[^\s@<>&"']+\.[^\s@<>&"']+$/.test(m.ownerEmail))) err('ownerEmail', 'Owner email is not valid.');
+    if (len(m.ownerName) > 200) err('ownerName', 'Feed creator/editor is too long.');
+    if (m.ownerEmail !== '' && (len(m.ownerEmail) > 200 || !/^[^\s@<>&"']+@[^\s@<>&"']+\.[^\s@<>&"']+$/.test(m.ownerEmail))) err('ownerEmail', 'Feed contact email is not valid.');
 
     if (opts.hosted) {
       m.feedUrl = opts.feedUrl;
@@ -462,8 +462,8 @@
     // Payments are optional. With no recipients there is no value block at all.
     if (recips.length && userTotal + pTotal !== 100) {
       err('value.recipients', pTotal
-        ? 'Your recipients must total ' + (100 - pTotal) + '% (support for the developers takes ' + pTotal + '%). They currently total ' + userTotal + '%.'
-        : 'Recipient splits must total 100%. They currently total ' + userTotal + '%.');
+        ? 'Your recipients must total ' + (100 - pTotal) + '% - it currently totals ' + userTotal + '%. (Support for the developers currently totals ' + pTotal + '%.)'
+        : 'Your recipients must total 100% - it currently totals ' + userTotal + '%.');
     }
     m.value = { method: method, suggested: suggested, recipients: recips };
 
@@ -524,7 +524,6 @@
     var w = [];
     if (!m.image) w.push('Add a feed image so apps can show your artwork.');
     if (!m.link) w.push('Add your website so listeners can find you.');
-    if (!m.author) w.push('Add an author name.');
     if (!m.npub) w.push('Optional: add your npub so people can find you on Nostr.');
     (m.releases || []).forEach(function (r, i) {
       if (!r.rel || !r.rel.length) w.push('Release ' + (i + 1) + ' has no role. Add one (for example "label" or "producer") so both feeds can confirm the link.');
