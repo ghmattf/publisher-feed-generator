@@ -143,7 +143,6 @@
       field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
       field('Feed creator/editor', 'ownerName'),
       field('Feed contact email', 'ownerEmail', { type: 'email' }),
-      check('Contains explicit content', 'explicit'),
     ])], true, basicsGate);
 
     var slugField = null, identityKids = [], applySlug = null;
