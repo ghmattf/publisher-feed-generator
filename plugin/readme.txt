@@ -14,7 +14,7 @@ A page where labels, studios, engineers, hosts and artists build Podcasting 2.0 
 Add the shortcode `[publisher_feed_generator]` to any page.
 
 Anonymous mode (no login, nothing stored on your server):
-* Create a publisher feed from scratch, or paste the XML of an existing publisher feed to edit it.
+* Create a publisher feed from scratch, with no account, and download it.
 * Add releases with roles (label, studio, engineer, host, artist, ...). Paste a release feed's XML to fill in its details and check that it links back to the publisher. The page shows the exact text the release owner must add to their own feed.
 * Payments are optional. With no payment recipients the feed simply has no payment block.
 * Search Music Index (api.musicindex.org) for a release, or paste a release feed's https address (or its XML), and the details are filled in for you. Lookups run on your server, need no account and are rate limited.

@@ -4,7 +4,7 @@ Read this first, then `docs/DECISIONS.md`. Together they are the full context a 
 
 ## What this is
 A WordPress plugin for phafe.com. One page (shortcode) where labels, studios, engineers, hosts and artists build **Podcasting 2.0 publisher feeds** (`podcast:medium` = `publisher`).
-- **Anonymous mode:** create from scratch or paste existing publisher-feed XML, edit, download/copy. No login, nothing stored on the server.
+- **Anonymous mode:** create from scratch, edit, download/copy (the paste-XML import screen was removed from the page on 2026-11-13 at the owner's request; `Core.parseXml` stays in the code). No login, nothing stored on the server.
 - **Hosted mode:** sign in with a Nostr browser extension (NIP-07) or remote signer (NIP-46); the feed is hosted at `wp-content/uploads/rssfeed/publishers/{slug}/{slug}.xml` and can be edited later.
 - Publisher feeds only. Not albums or tracks.
 
