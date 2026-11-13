@@ -62,6 +62,22 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   click('Add recipient'); await tick(); click('Save changes'); await tick();
   ok(/total/i.test($('#c').textContent) && /97%/.test($('#c').textContent), 'once a recipient is added, totals are enforced again (97% with the default support)');
 }
+// --- sections: accordion with Next buttons, form wording
+{
+  w.document.querySelector('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+  const secs = () => $$('details.pfg-section'), openOnes = () => secs().filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent);
+  ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Identity and links,Payments,Releases' && openOnes().join() === 'Basics', 'sections: only Basics is expanded at first');
+  const nextIn = d => [...d.querySelectorAll(':scope > .pfg-next > button')];
+  ok(secs().slice(0, 3).every(d => nextIn(d).length === 1 && nextIn(d)[0].textContent === 'Next' && d.lastElementChild.classList.contains('pfg-next')) && nextIn(secs()[3]).length === 0, 'sections: Next is the last item of every section except the last');
+  nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Identity and links', 'Next opens the next section and closes the one before');
+  secs()[2].querySelector('summary').click(); ok(openOnes().join() === 'Payments', 'opening a section by its title closes the others');
+  nextIn(secs()[2])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Payments opens Releases');
+  secs()[3].querySelector('summary').click(); ok(openOnes().length === 0, 'a section can be closed again');
+  set('#pfg-f-title', ''); click('Download XML'); await tick(); ok(openOnes().join() === 'Basics', 'a failed save/download opens the section holding the first error');
+  const labels = $$('label').map(l => l.textContent);
+  ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Feed creator/editor') && labels.includes('Feed contact email') && !labels.includes('Owner name') && !labels.includes('Owner email'), 'Author and Keywords removed; owner fields renamed to Feed creator/editor and Feed contact email');
+}
 // --- release URL + Music Index search
 {
   const calls = [];
@@ -158,17 +174,17 @@ const profile = { display_name: 'Acme Records', name: 'acme', about: 'We make <b
 const mkHost = (p, delay) => ({ getSession: () => ({ pubkey: PK, npub: NPUB }), fetchProfile: () => new Promise(r => setTimeout(() => r(p), delay || 0)), createFeed: async () => ({}) });
 const renderNew = (host, extra) => { $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), Object.assign({ cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.platform }), hosted: { id: null }, host, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear }, extra || {})); };
 renderNew(mkHost(profile)); await tick();
-ok($('#pfg-f-title').value === 'Acme Records' && $('#pfg-f-author').value === 'Acme Records', 'profile name fills Name / title and Author');
+ok($('#pfg-f-title').value === 'Acme Records' && !$('#pfg-f-author'), 'profile name fills Name / title (there is no Author field any more)');
 ok($('#pfg-f-description').value === 'We make <b>music</b>.\nValue for value.', 'profile about fills Description (as plain text)');
 ok($('#pfg-f-link').value === 'http://acme.example' && $('#pfg-f-image').value === 'http://acme.example/logo.png', 'profile website and picture fill Website and Image URL (http allowed)');
 ok($('#pfg-f-npub').value === NPUB, 'signed-in npub fills Your npub');
 ok($('#pfg-f-value-recipients-0-address').value === 'acme@getalby.com' && $('#pfg-f-value-recipients-0-split').value === '97' && $('#pfg-f-value-recipients-0-name').value === 'Acme Records', 'lud16 becomes a lnaddress payment recipient taking the non-support share (97)');
-ok($$('details').find(d => /Payments/.test(d.textContent.slice(0, 20))).hasAttribute('open'), 'Payments section opened when a Lightning address was filled');
+ok(!$$('details').find(d => /Payments/.test(d.textContent.slice(0, 20))).hasAttribute('open') && /Lightning address/.test($('.pfg-note-ok').textContent), 'a profile Lightning address does not pull the Payments section open (the banner says it was filled)');
 ok(/Filled in from your Nostr profile/.test($('.pfg-note-ok').textContent), 'banner says what was filled');
 ok(!/lud06|LNURL/i.test($('#c').textContent), 'lud06/LNURL is ignored');
 // typed values are never overwritten, even if the profile arrives later
 renderNew(mkHost(profile, 150)); set('#pfg-f-title', 'My Own Title'); set('#pfg-f-link', 'https://mine.example'); await tick();
-ok($('#pfg-f-title').value === 'My Own Title' && $('#pfg-f-link').value === 'https://mine.example' && $('#pfg-f-author').value === 'Acme Records', 'fields the user already typed are kept; empty ones still filled');
+ok($('#pfg-f-title').value === 'My Own Title' && $('#pfg-f-link').value === 'https://mine.example' && $('#pfg-f-description').value.startsWith('We make'), 'fields the user already typed are kept; empty ones still filled');
 // not for existing feeds, not anonymous
 let calls = 0; const spy = Object.assign(mkHost(profile), { fetchProfile: () => { calls++; return Promise.resolve(profile); } });
 renderNew(spy, { hosted: { id: 7, slug: 'x', status: 'published', url: 'https://phafe.com/x' } }); await tick();

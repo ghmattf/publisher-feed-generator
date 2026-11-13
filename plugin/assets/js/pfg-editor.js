@@ -92,9 +92,24 @@
       cb.addEventListener('change', function () { setPath(m, path, cb.checked); changed(); });
       return h('label', { class: 'pfg-check pfg-wide', for: 'pfg-c-' + path }, [cb, label]);
     }
-    function section(title, open, kids) {
-      var d = h('details', { class: 'pfg-section' }, [h('summary', { text: title })].concat(kids));
+    // The form sections work as an accordion: opening one closes the others, and every section but the last ends with a Next button.
+    var sectionList = [];
+    function openSection(d) {
+      sectionList.forEach(function (x) { if (x !== d) x.removeAttribute('open'); });
+      d.setAttribute('open', '');
+    }
+    function section(title, open, kids, hasNext) {
+      var idx = sectionList.length;
+      var sum = h('summary', { text: title });
+      var all = [sum].concat(kids);
+      if (hasNext) all.push(h('div', { class: 'pfg-next' }, [btn('Next', 'pfg-btn-small pfg-btn-primary', function () {
+        var n = sectionList[idx + 1];
+        if (n) { openSection(n); try { n.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } }
+      })]));
+      var d = h('details', { class: 'pfg-section' }, all);
+      sum.addEventListener('click', function () { if (!d.hasAttribute('open')) sectionList.forEach(function (x) { if (x !== d) x.removeAttribute('open'); }); });
       if (open) d.setAttribute('open', '');
+      sectionList.push(d);
       return d;
     }
 
@@ -108,17 +123,15 @@
 
     var basics = section('Basics', true, [h('div', { class: 'pfg-grid' }, [
       field('Name / title', 'title', { hint: 'Your label, studio or business name.', onchange: function () { autoSlug(); } }),
-      field('Author', 'author', { hint: 'Shown as the publisher in podcast apps.' }),
       field('Description', 'description', { textarea: true, wide: true }),
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
       field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
       field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
       field('Category', 'category', { select: [{ value: '', label: '(none)' }].concat(Core.CATEGORIES.map(function (c) { return { value: c, label: c }; })), keepUnknown: true, hint: 'Where podcast directories list your feed.' }),
-      field('Keywords', 'keywords', { hint: 'Comma separated.' }),
-      field('Owner name', 'ownerName'),
-      field('Owner email', 'ownerEmail', { type: 'email' }),
+      field('Feed creator/editor', 'ownerName'),
+      field('Feed contact email', 'ownerEmail', { type: 'email' }),
       check('Contains explicit content', 'explicit'),
-    ])]);
+    ])], true);
 
     var slugField = null, identityKids = [], applySlug = null;
     function autoSlug() { if (slugAuto && applySlug) applySlug(Core.slugify(m.title)); }
@@ -173,7 +186,7 @@
     fields.npub.wrap.insertBefore(h('div', { class: 'pfg-row', style: 'margin-top:6px' }, [btn('Get your npub', 'pfg-btn-small', getNpub), npubStatus]), fields.npub.input.nextSibling);
     identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
     identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
-    var identity = section('Identity and links', true, [h('div', { class: 'pfg-grid' }, identityKids)]);
+    var identity = section('Identity and links', false, [h('div', { class: 'pfg-grid' }, identityKids)], true);
 
     /* payments */
     function renderRecipients() {
@@ -233,7 +246,7 @@
         m.value.recipients.push(Core.emptyRecipient(0)); renderRecipients(); changed();
       })]),
       supportEl,
-    ]);
+    ], true);
     if (hosted) payments.insertBefore(note('', 'Changing who gets paid needs a fresh approval from your signer when you save.'), payments.children[1]);
 
     /* releases */
@@ -413,7 +426,7 @@
         refreshReleaseHelp(r);
       });
     }
-    var releases = section('Releases', true, [
+    var releases = section('Releases', false, [
       h('p', { class: 'pfg-hint', text: 'Albums, singles and shows you published or worked on. Each one is confirmed when its own feed links back to this feed.' }),
       releasesEl,
       h('div', { class: 'pfg-row' }, [btn('Add release', 'pfg-btn-primary pfg-btn-small', function () {
@@ -466,6 +479,8 @@
       if (r.errors.length) {
         showErrors(r.errors);
         var first = fields[r.errors[0].path];
+        var sec = first && first.wrap && first.wrap.closest ? first.wrap.closest('details.pfg-section') : null;
+        if (sec) openSection(sec);
         if (first && first.input && first.input.focus) first.input.focus();
         return null;
       }
@@ -548,13 +563,12 @@
         if (container.isConnected === false) return; // the user has already left this screen
         var f = Core.profileToFields(profile), filled = [];
         if (fillIfEmpty('title', f.name)) filled.push('name');
-        if (fillIfEmpty('author', f.name) && filled.indexOf('name') < 0) filled.push('name');
         if (fillIfEmpty('description', f.about)) filled.push('description');
         if (fillIfEmpty('link', f.website)) filled.push('website');
         if (fillIfEmpty('image', f.picture)) filled.push('image');
         if (f.lud16 && m.value.recipients.length === 0) {
           m.value.recipients.push({ name: f.name || 'Publisher', address: f.lud16, split: 100 - pTotal(), type: 'lnaddress' });
-          renderRecipients(); payments.setAttribute('open', '');
+          renderRecipients();
           filled.push('Lightning address (see Payments)');
         }
         if (profile && gotNpub) filled.push('npub');
