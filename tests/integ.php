@@ -151,6 +151,11 @@ ok(!$res['errors'] && strpos($xn, 'podcast:value') === false, 'no own recipients
 $fp = fn($m) => PFG_Feed::payment_fingerprint($m);
 $a = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $b = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $c = PFG_Feed::normalize($mk($rc(96), [['address' => 'phafe@phafe.com', 'split' => 2]]), $po)['model'];
 ok($fp($a) === $fp($b) && $fp($a) !== $fp($c), 'payment fingerprint changes when a support split changes');
+$resE = PFG_Feed::normalize($mk($rc(97)), $po); $xE = PFG_Xml::build($resE['model'], [], 1700000000);
+ok(strpos($xE, 'itunes:explicit') === false, 'PHP: a new feed has no itunes:explicit tag');
+$fe = $mk($rc(97)); $fe['explicit'] = true; $resE2 = PFG_Feed::normalize($fe, $po);
+ok(strpos(PFG_Xml::build($resE2['model'], [], 1700000000), '<itunes:explicit>true</itunes:explicit>') !== false, 'PHP: explicit true keeps the tag');
+
 $res = PFG_Feed::normalize($mk($rc(50)), $po);
 ok(in_array('Your recipients must total 97% - it currently totals 50%. (Support for the developers currently totals 3%.)', array_column($res['errors'], 'message'), true), 'PHP recipient total message wording matches the new text');
 

@@ -75,7 +75,9 @@ class PFG_Xml {
 			$o[] = $i8 . '<itunes:image href="' . self::esc_attr( $m['image'] ) . '" />';
 		}
 		$o[] = $i8 . '<podcast:medium>publisher</podcast:medium>';
-		$o[] = $i8 . '<itunes:explicit>' . ( $m['explicit'] ? 'true' : 'false' ) . '</itunes:explicit>';
+		if ( $m['explicit'] ) {
+			$o[] = $i8 . '<itunes:explicit>true</itunes:explicit>'; // Apple's tag, not part of the Podcast namespace: only kept when a feed already has it.
+		}
 		if ( '' !== $m['ownerName'] || '' !== $m['ownerEmail'] ) {
 			$o[] = $i8 . '<itunes:owner>';
 			if ( '' !== $m['ownerName'] ) {

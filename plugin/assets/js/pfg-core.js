@@ -580,7 +580,7 @@
       o.push(i8 + '<itunes:image href="' + escAttr(m.image) + '" />');
     }
     o.push(i8 + '<podcast:medium>publisher</podcast:medium>');
-    o.push(i8 + '<itunes:explicit>' + (m.explicit ? 'true' : 'false') + '</itunes:explicit>');
+    if (m.explicit) o.push(i8 + '<itunes:explicit>true</itunes:explicit>'); // Apple's tag, not part of the Podcast namespace: only kept when a feed already has it
     if (m.ownerName !== '' || m.ownerEmail !== '') {
       o.push(i8 + '<itunes:owner>');
       if (m.ownerName !== '') o.push(i12 + '<itunes:name>' + escText(m.ownerName) + '</itunes:name>');
