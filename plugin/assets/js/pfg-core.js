@@ -568,7 +568,7 @@
     o.push(i8 + '<description>' + escText(m.description) + '</description>');
     if (m.link !== '') o.push(i8 + '<link>' + escText(m.link) + '</link>');
     o.push(i8 + '<language>' + escText(m.language) + '</language>');
-    o.push(i8 + '<generator>Publisher Feed Generator</generator>');
+    o.push(i8 + '<generator>Publisher Role Generator by Phafe</generator>');
     if (m.created) o.push(i8 + '<pubDate>' + new Date(m.created * 1000).toUTCString() + '</pubDate>');
     o.push(i8 + '<lastBuildDate>' + new Date(nowMs).toUTCString() + '</lastBuildDate>');
     o.push(i8 + '<podcast:guid>' + escText(m.guid) + '</podcast:guid>');
