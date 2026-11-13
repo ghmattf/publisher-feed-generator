@@ -21,8 +21,9 @@ const $ = s => w.document.querySelector(s), $$ = s => [...w.document.querySelect
 const click = t => $$('button').find(b => b.textContent === t).click();
 const tick = () => new Promise(r => setTimeout(r, 20));
 
-ok($$('.pfg-card').length === 3, 'start screen shows three cards');
-ok($$('.pfg-card')[0].querySelector('h3').textContent === 'Hosted feeds' && $$('.pfg-card')[0].querySelector('button').textContent === 'Sign in', 'Nostr sign-in card is the first option');
+ok($$('.pfg-card').length === 2, 'start screen shows two cards (hosted, self-host)');
+ok($$('.pfg-card')[0].querySelector('h3').textContent === 'Hosted feeds' && $$('.pfg-card')[0].querySelector('button').textContent === 'Get started' && $$('.pfg-card')[0].querySelector('button').classList.contains('pfg-btn-primary') && !$$('.pfg-card')[1].querySelector('button').classList.contains('pfg-btn-primary') && $$('.pfg-card')[1].querySelector('h3').textContent === 'Want to self-host?' && $$('.pfg-card').length === 2, 'Get started (purple) is the first option; the self-host card is second with a plain Start button');
+ok($('h1').textContent === 'Roles feed generator' && !/Download it and host it yourself/.test(w.document.body.textContent) && !/Start from scratch/.test(w.document.body.textContent), 'h1 reads Roles feed generator; the old intro sentence and "Start from scratch" are gone');
 click('Start'); ok(opened && opened.model.value.recipients.length === 0 && !opened.hosted, 'new feed opens editor (no payment rows by default, anonymous)');
 // "Get your npub": signer is asked for the public key only (no hosted session), then forgotten
 ok(typeof opened.getNpub === 'function', 'editor receives a getNpub helper when a signer is available');
@@ -49,21 +50,17 @@ sess = null; extPresent = false;
 opened.saveDraft({ title: 'Draft T' }); opened.back();
 ok($('.pfg-note') && /Draft T/.test($('.pfg-note').textContent) === false || true, 'draft banner path ran');
 ok(w.localStorage.getItem('pfg_draft_v1').includes('Draft T'), 'draft autosaved to localStorage');
-ok(/unfinished draft/.test($('#pfg-app').textContent) && /Draft T/.test($('#pfg-app').textContent), 'draft offered on start screen');
+ok(/unfinished draft/.test(w.document.body.textContent) && /Draft T/.test(w.document.body.textContent), 'draft offered on start screen');
 click('Resume draft'); ok(opened.model.title === 'Draft T', 'resume draft passes model');
 opened.back();
 click('Discard'); ok(!w.localStorage.getItem('pfg_draft_v1'), 'discard clears draft');
-click('Paste XML');
-$('#pfg-import-xml').value = '<rss><channel><title>x</title><podcast:medium xmlns:podcast="https://podcastindex.org/namespace/1.0">music</podcast:medium></channel></rss>';
-click('Import'); ok(/music/.test($('.pfg-note-bad').textContent), 'non-publisher XML refused with message');
-$('#pfg-import-xml').value = fs.readFileSync('feeds/phafe_like.xml', 'utf8');
-click('Import'); ok(opened.model.title === 'Phafe' && opened.importNotes.length > 0, 'publisher XML imported, notes passed to editor');
+ok(!$$('button').some(b => b.textContent === 'Paste XML') && !/Edit an existing feed/.test($('#pfg-app, .pfg-app').textContent), 'no "Edit an existing feed" card or Paste XML button on the start screen');
 opened.back();
-click('Sign in'); ok($('.pfg-overlay') && $('#pfg-bunker'), 'sign-in window opens with bunker field');
+click('Get started'); ok($('.pfg-overlay') && $('#pfg-bunker'), 'sign-in window opens with bunker field');
 ok($('.pfg-overlay').classList.contains('pfg-app') && $('.pfg-overlay').parentNode === w.document.body, 'sign-in overlay is outside #pfg-app and carries .pfg-app (so the colour variables apply)');
 $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
 ok(!$('.pfg-overlay'), 'sign-in window closes after login');
-ok(/Hosted|Your hosted feeds/.test($('#pfg-app').textContent) && /acme/.test($('#pfg-app').textContent), 'hosted list shown with feed');
+ok(/Hosted|Your hosted feeds/.test(w.document.body.textContent) && /acme/.test(w.document.body.textContent), 'hosted list shown with feed');
 ok(/Signed in as npub1abcdefg/.test($('.pfg-bar').textContent), 'bar shows signed-in identity');
 click('New hosted feed'); ok(opened.hosted && opened.hosted.id === null, 'new hosted feed opens editor in hosted mode');
 console.log(fails ? fails + ' FAILURES' : 'shell smoke test passed'); process.exit(fails ? 1 : 0);

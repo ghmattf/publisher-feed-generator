@@ -1,7 +1,7 @@
 /**
  * Publisher Feed Generator: app shell.
  *
- * Start screen, pasted-XML import, draft autosave, sign-in window and the
+ * Start screen, draft autosave, sign-in window and the
  * hosted feed list. The feed form itself lives in pfg-editor.js
  * (window.PFGEditor.render).
  */
@@ -60,7 +60,7 @@
   function renderBar() {
     clear(barEl);
     var s = hostingOn ? Host.getSession() : null;
-    barEl.appendChild(h('div', { class: 'pfg-bar-title', text: 'Publisher feed generator' }));
+    barEl.appendChild(h('h1', { class: 'pfg-bar-title', text: 'Roles feed generator' }));
     var actions = h('div', { class: 'pfg-bar-actions' });
     if (s) {
       actions.appendChild(h('span', { class: 'pfg-who', text: 'Signed in as ' + s.npub.slice(0, 12) + '…' + s.npub.slice(-6) }));
@@ -89,53 +89,25 @@
         btn('Discard', 'pfg-btn-small', function () { draftStore.clear(); showStart(); }),
       ])));
     }
-    wrap.appendChild(h('p', { text: 'Build a Podcasting 2.0 publisher feed for your label, studio, host or artist page. Download it and host it yourself, or sign in and we will host it for you.' }));
+    wrap.appendChild(h('p', { text: 'Build a Podcasting 2.0 publisher feed for your label, studio, host or artist page.' }));
     var cards = h('div', { class: 'pfg-cards' });
     if (hostingOn) {
       var s = Host.getSession();
       cards.appendChild(h('div', { class: 'pfg-card' }, [
         h('h3', { text: 'Hosted feeds' }),
         h('p', { text: 'We host your feed at ' + (cfg.siteName || 'this site') + ' and keep it updated as you add releases. Sign in with a Nostr remote signer.' }),
-        btn(s ? 'My feeds' : 'Sign in', '', function () { if (s) showHostedList(); else openLogin(showHostedList); }),
+        btn(s ? 'My feeds' : 'Get started', 'pfg-btn-primary', function () { if (s) showHostedList(); else openLogin(showHostedList); }),
       ]));
     } else if (cfg.hostingNeedsGmp) {
       wrap.appendChild(h('p', { class: 'pfg-hint', text: 'Hosting is unavailable on this server right now. You can still create and download feeds.' }));
     }
     cards.appendChild(h('div', { class: 'pfg-card' }, [
-      h('h3', { text: 'Create a new feed' }),
-      h('p', { text: 'Start from scratch. No account needed. Download the XML when you are done.' }),
-      btn('Start', 'pfg-btn-primary', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: null }); }),
-    ]));
-    cards.appendChild(h('div', { class: 'pfg-card' }, [
-      h('h3', { text: 'Edit an existing feed' }),
-      h('p', { text: 'Paste the XML of a publisher feed you already have, change it, and download the result.' }),
-      btn('Paste XML', '', showImport),
+      h('h3', { text: 'Want to self-host?' }),
+      h('p', { text: 'No account needed. Download the XML when you are done.' }),
+      btn('Start', '', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: null }); }),
     ]));
     wrap.appendChild(cards);
     mount(wrap);
-  }
-
-  /* ---------------- import (paste XML only) ---------------- */
-  function showImport() {
-    setBanner();
-    var ta = h('textarea', { class: 'pfg-xml', id: 'pfg-import-xml', placeholder: '<?xml version="1.0" encoding="UTF-8"?>\n<rss …>', 'aria-label': 'Feed XML', spellcheck: 'false' });
-    var out = h('div', { 'aria-live': 'polite' });
-    var wrap = h('div', {}, [
-      h('h2', { text: 'Edit an existing feed' }),
-      h('p', { text: 'Paste the full XML of a publisher feed (one with podcast:medium "publisher"). Anything this tool cannot edit is kept as it is.' }),
-      ta, out,
-      h('div', { class: 'pfg-row' }, [
-        btn('Import', 'pfg-btn-primary', function () {
-          clear(out);
-          var r = Core.parseXml(ta.value, { DOMParser: window.DOMParser, XMLSerializer: window.XMLSerializer });
-          if (r.error) { out.appendChild(note('bad', r.error)); return; }
-          openEditor({ model: Core.liftSupport(r.model, cfg.platform), hosted: null, importNotes: r.notes || [] });
-        }),
-        btn('Back', '', showStart),
-      ]),
-    ]);
-    mount(wrap);
-    ta.focus();
   }
 
   /* ---------------- editor ---------------- */

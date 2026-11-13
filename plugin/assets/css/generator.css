@@ -20,6 +20,9 @@
   margin: 0 auto;
   padding: 0 16px;
   color: var(--pfg-text);
+  background: var(--pfg-bg);
+  border-radius: var(--pfg-radius);
+  padding-bottom: 16px;
   line-height: 1.5;
 }
 @media (prefers-color-scheme: dark) {
@@ -47,7 +50,7 @@
 
 /* layout */
 .pfg-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--pfg-border); margin-bottom: 20px; }
-.pfg-bar-title { font-weight: 600; }
+.pfg-app h1.pfg-bar-title { margin: 0; font-size: 1.4em; line-height: 1.25; font-weight: 600; color: inherit; }
 .pfg-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .pfg-who { color: var(--pfg-muted); font-size: .9em; word-break: break-all; }
 .pfg-section { background: var(--pfg-surface); border: 1px solid var(--pfg-border); border-radius: var(--pfg-radius); padding: 16px; margin-bottom: 16px; }
