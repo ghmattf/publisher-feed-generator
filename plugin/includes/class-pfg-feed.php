@@ -156,10 +156,7 @@ class PFG_Feed {
 			self::err( $errors, 'title', 'Title is too long (200 characters max).' );
 		}
 
-		$m['author'] = self::line( self::get( $in, 'author' ) );
-		if ( self::len( $m['author'] ) > 200 ) {
-			self::err( $errors, 'author', 'Author is too long (200 characters max).' );
-		}
+		$m['author'] = $m['title']; // itunes:author is always the Name / title (no separate Author field).
 
 		$m['description'] = self::text( self::get( $in, 'description' ) );
 		if ( '' === $m['description'] ) {

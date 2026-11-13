@@ -151,6 +151,9 @@ ok(!$res['errors'] && strpos($xn, 'podcast:value') === false, 'no own recipients
 $fp = fn($m) => PFG_Feed::payment_fingerprint($m);
 $a = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $b = PFG_Feed::normalize($mk($rc(97)), $po)['model']; $c = PFG_Feed::normalize($mk($rc(96), [['address' => 'phafe@phafe.com', 'split' => 2]]), $po)['model'];
 ok($fp($a) === $fp($b) && $fp($a) !== $fp($c), 'payment fingerprint changes when a support split changes');
+$fa = $mk($rc(97)); $fa['author'] = 'Someone Else'; $fa['title'] = 'Acme & Co'; $ra = PFG_Feed::normalize($fa, $po); $xa = PFG_Xml::build($ra['model'], [], 1700000000);
+ok(strpos($xa, '<itunes:author>Acme &amp; Co</itunes:author>') !== false && strpos($xa, 'Someone Else') === false, 'PHP: itunes:author is made from Name / title');
+
 $resE = PFG_Feed::normalize($mk($rc(97)), $po); $xE = PFG_Xml::build($resE['model'], [], 1700000000);
 ok(strpos($xE, 'itunes:explicit') === false, 'PHP: a new feed has no itunes:explicit tag');
 $fe = $mk($rc(97)); $fe['explicit'] = true; $resE2 = PFG_Feed::normalize($fe, $po);

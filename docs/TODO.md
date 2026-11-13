@@ -4,9 +4,6 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 
 17. Add the ability to move the feed. (Owner's wording; to confirm what moving means: for example telling apps the feed has a new address with `itunes:new-feed-url`, or moving a hosted feed to another host.)
 
-## High priority
-18. HIGH PRIORITY: use the "Name / title" to create the `<itunes:author>` tag. (Listed under the Amber item in the owner's message; treated as its own item. Note: the Author field was removed from the form on 2026-11-13.)
-
 ## New (2026-11-13, evening)
 19. Clicking "Back to my feeds" gives a message about leaving without saving changes even though the changes have been saved.
 20. Set feeds to be saved to /wp-content/publisher-feeds/ (create the directory if required). (Feeds are currently written under the uploads folder; the web server must also serve the new folder at the feed addresses.)
