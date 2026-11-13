@@ -71,7 +71,12 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   const nextIn = d => [...d.querySelectorAll(':scope > .pfg-next > button')];
   ok(secs().slice(0, 3).every(d => nextIn(d).length === 1 && nextIn(d)[0].textContent === 'Next' && d.lastElementChild.classList.contains('pfg-next')) && nextIn(secs()[3]).length === 0, 'sections: Next is the last item of every section except the last');
   nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Identity and links', 'Next opens the next section and closes the one before');
-  secs()[2].querySelector('summary').click(); ok(openOnes().join() === 'Payments', 'opening a section by its title closes the others');
+  secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Payments', 'opening a section by its title closes the others');
+  const scrolled = []; w.HTMLElement.prototype.scrollIntoView = function () { scrolled.push(this.querySelector('summary') ? this.querySelector('summary').textContent : '?'); };
+  secs()[1].querySelector('summary').click(); await tick(); ok(scrolled.pop() === 'Identity and links', 'clicking a section title scrolls that section to the top');
+  secs()[2].querySelector('summary').click(); await tick(); secs()[2].querySelector('summary').click(); await tick(); ok(scrolled.filter(x => x === 'Payments').length === 1, 'closing a section does not scroll');
+  secs()[2].querySelector('summary').click(); await tick(); scrolled.length = 0; nextIn(secs()[1])[0].click(); ok(scrolled.pop() === 'Payments', 'Next scrolls to the next section');
+  secs()[2].querySelector('summary').click(); await tick(); // back to the starting point for the checks below
   nextIn(secs()[2])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Payments opens Releases');
   secs()[3].querySelector('summary').click(); ok(openOnes().length === 0, 'a section can be closed again');
   set('#pfg-f-title', ''); click('Download XML'); await tick(); ok(openOnes().join() === 'Basics', 'a failed save/download opens the section holding the first error');

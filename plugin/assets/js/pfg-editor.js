@@ -107,7 +107,15 @@
         if (n) { openSection(n); try { n.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } }
       })]));
       var d = h('details', { class: 'pfg-section' }, all);
-      sum.addEventListener('click', function () { if (!d.hasAttribute('open')) sectionList.forEach(function (x) { if (x !== d) x.removeAttribute('open'); }); });
+      // After the browser has toggled this section: if it is now open, close the others and bring it to the top so the
+      // reader keeps their place (the sections above may have collapsed).
+      sum.addEventListener('click', function () {
+        setTimeout(function () {
+          if (!d.hasAttribute('open')) return; // it was closed
+          sectionList.forEach(function (x) { if (x !== d) x.removeAttribute('open'); });
+          try { d.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ }
+        }, 0);
+      });
       if (open) d.setAttribute('open', '');
       sectionList.push(d);
       return d;

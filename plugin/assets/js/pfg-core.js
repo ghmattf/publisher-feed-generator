@@ -21,8 +21,7 @@
   var MEDIUMS = ['music', 'podcast', 'video', 'film', 'audiobook', 'newsletter', 'blog', 'publisher', 'course'];
   var BUILTIN_RELS = ['artist', 'host', 'author', 'label', 'producer', 'network', 'hosting', 'sponsor', 'songwriter', 'composer', 'musician', 'studio', 'engineer'];
   // The role picker shows the roles that fit a release first and these under "Other roles".
-  var OTHER_RELS = ['host', 'author', 'network', 'hosting'];
-  var MAIN_REL_ORDER = ['artist', 'musician', 'songwriter', 'composer', 'producer', 'engineer', 'studio', 'label', 'sponsor'];
+  var OTHER_RELS = ['author', 'host', 'hosting', 'network', 'sponsor'];
   var RESERVED_ATTRS = ['feedGuid', 'feedUrl', 'medium', 'title', 'feedImg', 'rel'];
 
   /* ---------------------------------------------------------------- */
@@ -245,14 +244,12 @@
     ['sw', 'Swahili'], ['sv', 'Swedish'], ['ta', 'Tamil'], ['te', 'Telugu'], ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['ur', 'Urdu'], ['vi', 'Vietnamese'], ['cy', 'Welsh'],
   ].map(function (p) { return { value: p[0], label: p[1] + ' (' + p[0] + ')' }; });
 
-  /** Split role tokens for the picker: { main, other }. Unknown or custom tokens go with the main roles. */
+  /** Split role tokens for the picker: { main, other }. Both lists are alphabetical. Unknown or custom tokens go with the main roles. */
   function splitRoles(tokens) {
     var main = [], other = [];
     (tokens || []).forEach(function (t) { if (OTHER_RELS.indexOf(t) >= 0) other.push(t); else main.push(t); });
-    function rank(t) { var i = MAIN_REL_ORDER.indexOf(t); return i < 0 ? MAIN_REL_ORDER.length : i; }
-    var ordered = main.map(function (t, i) { return { t: t, i: i }; }).sort(function (a, b) { return rank(a.t) - rank(b.t) || a.i - b.i; }).map(function (x) { return x.t; });
-    other.sort(function (a, b) { return OTHER_RELS.indexOf(a) - OTHER_RELS.indexOf(b); });
-    return { main: ordered, other: other };
+    function alpha(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
+    return { main: main.sort(alpha), other: other.sort(alpha) };
   }
 
   function emptyRecipient(split) {
