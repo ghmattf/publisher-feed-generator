@@ -25,7 +25,7 @@ A WordPress plugin for phafe.com. One page (shortcode) where labels, studios, en
 6. Anything fetched from a user-supplied URL goes through `wp_safe_remote_get` (https only, size/redirect limits). Never use plain `wp_remote_get` for user URLs.
 7. Wrap `localStorage`/`sessionStorage` use in try/catch.
 8. Do not add features listed as out of scope in `docs/DECISIONS.md` without asking the owner.
-9. **Never bump the major version number (for example to 1.0.0) without the owner's explicit approval.** Current version is 0.3.2; use minor/patch bumps. Keep `Version:` and `PFG_VERSION` in `plugin/publisher-feed-generator.php` and `Stable tag` in `plugin/readme.txt` in step.
+9. **Never bump the major version number (for example to 1.0.0) without the owner's explicit approval.** Current version is 0.3.3; use minor/patch bumps. Keep `Version:` and `PFG_VERSION` in `plugin/publisher-feed-generator.php` and `Stable tag` in `plugin/readme.txt` in step.
 10. Releases are created by `.github/workflows/release.yml` when main has a plugin version with no release yet. Sessions cannot create releases or tags directly; bump the version in a PR and merge it.
 
 ## Verify before you say it works
