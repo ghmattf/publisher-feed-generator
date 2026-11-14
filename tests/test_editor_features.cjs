@@ -49,7 +49,7 @@ let r2 = C.normalize(pm, { platform: plat }); const msg = (r2.errors.find(e => e
 ok(msg === 'Your recipients must total 98% - it currently totals 50%. (Support for the developers currently totals 2%.)', 'recipient total message wording (with support): ' + msg);
 r2 = C.normalize(pm, { platform: [] }); ok((r2.errors.find(e => e.path === 'value.recipients') || {}).message === 'Your recipients must total 100% - it currently totals 50%.', 'recipient total message wording (no support)');
 pm.value.recipients = []; pm.ownerName = 'x'.repeat(201); pm.ownerEmail = 'bad'; r2 = C.normalize(pm, { platform: [] });
-ok(r2.errors.some(e => e.message === 'Feed creator/editor is too long.') && r2.errors.some(e => e.message === 'Feed contact email is not valid.'), 'owner field messages use the new names');
+ok(r2.errors.some(e => e.message === 'Feed maintainer is too long.') && r2.errors.some(e => e.message === 'Feed contact email is not valid.'), 'owner field messages use the new names');
 // explicit content: no checkbox, no tag unless a feed already has it true
 const xm = C.normalize(m, { platform: [] }).model; ok(!/itunes:explicit/.test(C.buildXml(xm, [], 1700000000)), 'a new feed has no itunes:explicit tag');
 m.explicit = true; ok(/<itunes:explicit>true<\/itunes:explicit>/.test(C.buildXml(C.normalize(m, { platform: [] }).model, [], 1700000000)), 'a feed that already has explicit true keeps the tag');

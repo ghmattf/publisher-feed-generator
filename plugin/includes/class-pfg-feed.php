@@ -205,7 +205,7 @@ class PFG_Feed {
 		$m['ownerName']  = self::line( self::get( $in, 'ownerName' ) );
 		$m['ownerEmail'] = self::line( self::get( $in, 'ownerEmail' ) );
 		if ( self::len( $m['ownerName'] ) > 200 ) {
-			self::err( $errors, 'ownerName', 'Feed creator/editor is too long.' );
+			self::err( $errors, 'ownerName', 'Feed maintainer is too long.' );
 		}
 		if ( '' !== $m['ownerEmail'] && ( self::len( $m['ownerEmail'] ) > 200 || ! preg_match( '/^[^\s@<>&"\']+@[^\s@<>&"\']+\.[^\s@<>&"\']+$/', $m['ownerEmail'] ) ) ) {
 			self::err( $errors, 'ownerEmail', 'Feed contact email is not valid.' );

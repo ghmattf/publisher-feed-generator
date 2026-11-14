@@ -403,7 +403,7 @@
 
     m.ownerName = line(get(input, 'ownerName'));
     m.ownerEmail = line(get(input, 'ownerEmail'));
-    if (len(m.ownerName) > 200) err('ownerName', 'Feed creator/editor is too long.');
+    if (len(m.ownerName) > 200) err('ownerName', 'Feed maintainer is too long.');
     if (m.ownerEmail !== '' && (len(m.ownerEmail) > 200 || !/^[^\s@<>&"']+@[^\s@<>&"']+\.[^\s@<>&"']+$/.test(m.ownerEmail))) err('ownerEmail', 'Feed contact email is not valid.');
 
     if (opts.hosted) {

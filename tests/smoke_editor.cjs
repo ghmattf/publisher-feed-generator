@@ -107,7 +107,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   const actionsRow = $$('button').find(b => b.textContent === 'Download XML').parentElement;
   ok(dl && /Upload it to https:\/\/phafe\.com\/publisher\.xml/.test(dl.textContent) && (actionsRow.compareDocumentPosition(dl) & 4) && !$$('[aria-live] .pfg-note-ok').some(n => n === dl && n.parentElement === $('#c').firstChild), 'the download message is shown under the Download button, at the bottom');
   const labels = $$('label').map(l => l.textContent);
-  ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Feed creator/editor') && labels.includes('Feed contact email') && !labels.includes('Owner name') && !labels.includes('Owner email'), 'Author and Keywords removed; owner fields renamed to Feed creator/editor and Feed contact email');
+  ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Feed maintainer (your name)') && labels.includes('Feed contact email (your email)') && !labels.includes('Owner name') && !labels.includes('Owner email'), 'Author and Keywords removed; owner fields renamed to Feed maintainer and Feed contact email');
 }
 // --- release URL + Music Index search
 {
