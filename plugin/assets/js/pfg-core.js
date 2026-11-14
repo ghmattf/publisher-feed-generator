@@ -348,7 +348,7 @@
     var d = cfg.defaults || {};
     return {
       version: 1, title: '', author: '', description: '', link: '', language: 'en', image: '',
-      category: 'Music', keywords: '', explicit: false, created: 0, newFeedUrl: '', ownerName: '', ownerEmail: '',
+      category: 'Music', keywords: '', explicit: false, created: 0, newFeedUrl: '', persons: [], ownerName: '', ownerEmail: '',
       feedUrl: '', guid: '', npub: '',
       funding: { url: '', text: '' },
       value: { method: d.method || 'lnaddress', suggested: d.suggested || '', recipients: [] },
@@ -420,6 +420,23 @@
     m.newFeedUrl = line(get(input, 'newFeedUrl'));
     if (m.newFeedUrl !== '' && !isHttpsUrl(m.newFeedUrl)) err('newFeedUrl', 'New feed URL must be an https:// URL.');
     else if (m.newFeedUrl !== '' && m.newFeedUrl === m.feedUrl) err('newFeedUrl', 'New feed URL is the same as this feed\'s current URL.');
+
+    var praw = get(input, 'persons');
+    praw = Array.isArray(praw) ? praw.slice() : [];
+    if (praw.length > 20) { err('persons', 'At most 20 people.'); praw = praw.slice(0, 20); }
+    m.persons = [];
+    praw.forEach(function (pr, i) {
+      var pp = 'persons.' + i;
+      var row = { name: line(get(pr, 'name')), role: line(get(pr, 'role')), group: line(get(pr, 'group')), href: line(get(pr, 'href')), img: line(get(pr, 'img')) };
+      if (row.name === '' && row.role === '' && row.group === '' && row.href === '' && row.img === '') return; // an empty row is ignored
+      if (row.name === '') err(pp + '.name', 'Enter the person\'s name.');
+      else if (len(row.name) > 100) err(pp + '.name', 'Name is too long.');
+      if (len(row.role) > 60) err(pp + '.role', 'Role is too long.');
+      if (len(row.group) > 60) err(pp + '.group', 'Group is too long.');
+      if (row.href !== '' && !isHttpsUrl(row.href)) err(pp + '.href', 'The link must be an https:// URL.');
+      if (row.img !== '' && !isHttpsUrl(row.img)) err(pp + '.img', 'The image must be an https:// URL.');
+      m.persons.push(row);
+    });
 
     var npub = line(get(input, 'npub'));
     if (npub !== '') {
@@ -596,6 +613,14 @@
       if (m.ownerEmail !== '') o.push(i12 + '<itunes:email>' + escText(m.ownerEmail) + '</itunes:email>');
       o.push(i8 + '</itunes:owner>');
     }
+    m.persons.forEach(function (pr) {
+      var pa = '';
+      if (pr.href !== '') pa += ' href="' + escAttr(pr.href) + '"';
+      if (pr.img !== '') pa += ' img="' + escAttr(pr.img) + '"';
+      if (pr.group !== '') pa += ' group="' + escAttr(pr.group) + '"';
+      if (pr.role !== '') pa += ' role="' + escAttr(pr.role) + '"';
+      o.push(i8 + '<podcast:person' + pa + '>' + escText(pr.name) + '</podcast:person>');
+    });
     var recips = m.value.recipients.length ? m.value.recipients.concat(Array.isArray(platform) ? platform : []) : [];
     if (recips.length) {
       var attrs = ' type="lightning" method="' + escAttr(m.value.method) + '"';
@@ -621,6 +646,10 @@
       o.push(i8 + '<podcast:remoteItem' + a + ' />');
     });
     (pres.channel || []).forEach(function (raw) { o.push(i8 + raw); });
+    // Fixed defaults that are not editable.
+    o.push(i8 + '<podcast:block>no</podcast:block>');
+    o.push(i8 + '<category>Music</category>');
+    o.push(i8 + '<podcast:complete>no</podcast:complete>');
     o.push(i4 + '</channel>');
     o.push('</rss>');
     return o.join('\n') + '\n';
@@ -696,6 +725,7 @@
       var ns = el.namespaceURI || '', name = el.localName;
       if (!ns) {
         if (name === 'title' && first('title')) m.title = elText(el);
+        else if (name === 'category' && elText(el) === 'Music' && !el.attributes.length && !childEls(el).length) { /* fixed default, written on export */ }
         else if (name === 'description' && first('description')) m.description = text(el.textContent || '');
         else if (name === 'link' && first('link')) m.link = elText(el);
         else if (name === 'language' && first('language')) m.language = elText(el);
@@ -723,6 +753,9 @@
         if (name === 'guid' && first('guid')) m.guid = elText(el).toLowerCase();
         else if (name === 'medium' && first('medium')) medium = elText(el).toLowerCase();
         else if (name === 'txt' && attr(el, 'purpose') === 'npub' && first('npub')) m.npub = elText(el);
+        else if (name === 'person' && elText(el) !== '' && !Array.prototype.some.call(el.attributes, function (at) { return ['href', 'img', 'group', 'role'].indexOf(at.name) < 0; })) {
+          m.persons.push({ name: elText(el), role: line(attr(el, 'role')), group: line(attr(el, 'group')), href: line(attr(el, 'href')), img: line(attr(el, 'img')) });
+        } else if ((name === 'block' || name === 'complete') && elText(el).toLowerCase() === 'no' && !el.attributes.length) { /* fixed default, written on export */ }
         else if (name === 'funding' && first('funding')) m.funding = { url: line(attr(el, 'url')), text: elText(el) };
         else if (name === 'value' && first('value')) {
           m.value.method = line(attr(el, 'method')) || 'lnaddress';

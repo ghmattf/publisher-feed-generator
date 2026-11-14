@@ -57,5 +57,18 @@ i = C.inspectReleaseFeed(album, dom, own, []); ok(i.status === 'confirmed', 'no 
 i = C.inspectReleaseFeed(album, dom, '11111111-1111-4111-8111-111111111111', ['label']); ok(i.status === 'missing', 'no back-link -> missing');
 i = C.inspectReleaseFeed(album.replace('ebae25ff2112', 'ebae25ff21128'), dom, own, ['label']); ok(i.status === 'missing', 'typo in back-link GUID (the 13-char bug) is caught');
 console.log('snippet:\n' + C.snippetFor({ guid: own, feedUrl: 'https://phafe.com/Phafe.xml' }, ['label', 'studio']));
+// ---- fixed tags and people (feeds like matt_finlay.xml)
+{
+  const x = `<?xml version="1.0"?><rss xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0"><channel><title>T</title><description>d</description><language>en</language><podcast:guid>6b8a1c1e-5d0e-5a77-9f40-0e0b1f3f9a11</podcast:guid><podcast:medium>publisher</podcast:medium><podcast:person href="https://phafe.com/mattfinlay" img="https://phafe.com/p.png" group="administration" role="content manager">Matt Finlay</podcast:person><podcast:block>no</podcast:block><category>Music</category><podcast:complete>no</podcast:complete></channel></rss>`;
+  const pr = C.parseXml(x, dom);
+  ok(!pr.error && pr.droppedItems.length === 0, 'matt_finlay-style tags: nothing is reported as dropped: ' + JSON.stringify(pr.droppedItems));
+  ok(pr.model.persons.length === 1 && pr.model.persons[0].role === 'content manager' && pr.model.persons[0].group === 'administration' && pr.model.persons[0].name === 'Matt Finlay', 'podcast:person is read into the people list');
+  const out = C.buildXml(C.normalize(pr.model, { hosted: false, platform: [], allowAttrs: true }).model, [], 1794000000000);
+  ok(out.includes('<podcast:person href="https://phafe.com/mattfinlay" img="https://phafe.com/p.png" group="administration" role="content manager">Matt Finlay</podcast:person>'), 'person written with all attributes in order href, img, group, role');
+  ok(out.includes('<podcast:block>no</podcast:block>') && out.includes('<category>Music</category>') && out.includes('<podcast:complete>no</podcast:complete>'), 'fixed tags always written');
+  const x2 = x.replace('<podcast:block>no</podcast:block>', '<podcast:block>yes</podcast:block>');
+  ok(C.parseXml(x2, dom).droppedItems.some(d => /podcast:block/.test(d.what)), 'a block value other than "no" is reported rather than silently replaced');
+}
+
 console.log(fails ? `\n${fails} FAILURES` : '\nall import tests passed');
 process.exit(fails ? 1 : 0);

@@ -21,6 +21,7 @@
     var hosted = ctx.hosted; // null (anonymous) or { id|null, slug, status, url }
     var m = JSON.parse(JSON.stringify(ctx.model));
     m.releases = m.releases || [];
+    m.persons = m.persons || [];
     if (!m.created) m.created = Math.floor(Date.now() / 1000); // creation date for <pubDate>; kept in the draft; hosted feeds get the server's date
     m.value = m.value || { method: 'lnaddress', suggested: '', recipients: [] };
     m.funding = m.funding || { url: '', text: '' };
@@ -198,6 +199,29 @@
       }), guidStatus]), fields.guid.err);
     }
     identityKids.push(field('New feed URL (only if you are moving this feed)', 'newFeedUrl', { type: 'url', placeholder: 'https://', wide: true, hint: 'Tells Podcast Index and podcasting apps this feed now lives at a new address (itunes:new-feed-url). Keep this feed online at its old address, with the same GUID, until apps have switched. Leave empty otherwise.' }));
+    var personsEl = h('div');
+    function renderPersons() {
+      clear(personsEl);
+      m.persons.forEach(function (pr, i) {
+        var base = 'persons.' + i;
+        personsEl.appendChild(h('div', { class: 'pfg-item' }, [
+          h('div', { class: 'pfg-item-head' }, [h('strong', { text: 'Person ' + (i + 1) }), btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { m.persons.splice(i, 1); renderPersons(); changed(); })]),
+          h('div', { class: 'pfg-grid' }, [
+            field('Name', base + '.name'),
+            field('Role', base + '.role', { placeholder: 'e.g. content manager' }),
+            field('Group', base + '.group', { placeholder: 'e.g. administration' }),
+            field('Link', base + '.href', { type: 'url', placeholder: 'https://' }),
+            field('Image URL', base + '.img', { type: 'url', placeholder: 'https://' }),
+          ]),
+        ]));
+      });
+    }
+    identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [
+      h('h4', { class: 'pfg-subhead', text: 'People (optional)' }),
+      h('p', { class: 'pfg-hint', text: 'Credit the people behind this feed (podcast:person), for example the person who looks after it.' }),
+      personsEl,
+      btn('Add person', 'pfg-btn-small', function () { if (m.persons.length >= 20) return; m.persons.push({ name: '', role: '', group: '', href: '', img: '' }); renderPersons(); changed(); }),
+    ]));
     identityKids.push(field('Include npub in the feed? (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' }));
     // "Get your npub": from the signed-in account, or by asking a signer for its public key (nothing is saved).
     var npubStatus = h('span', { class: 'pfg-hint', 'aria-live': 'polite' });
@@ -612,7 +636,7 @@
     if (hosted && hosted.status && hosted.status !== 'published') container.appendChild(note('warn', 'Status: ' + hosted.status + '. This feed is not public.'));
     kept.forEach(function (n) { container.appendChild(n); });
     [banner, summaryErr, basics, identity, payments, releases, lintEl, actions, doneEl].forEach(function (n) { container.appendChild(n); });
-    renderRecipients(); renderSupport(); renderReleases(); autoSlug(); refresh();
+    renderRecipients(); renderSupport(); renderPersons(); renderReleases(); autoSlug(); refresh();
     dirty = false; // nothing to lose yet
 
     /* ---------- new hosted feed: start from the signed-in Nostr profile ---------- */
