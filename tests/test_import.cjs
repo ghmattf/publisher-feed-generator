@@ -16,6 +16,7 @@ console.log('   notes:', r.notes);
 ok(r.notes.some(n => /fee/.test(n)), 'warns that the recipient "fee" attribute is unsupported');
 const names = m.preserved.names;
 ok(m.created === Date.UTC(2026, 9, 6, 10, 10, 6) / 1000 && !names.includes('pubDate'), 'imported pubDate becomes the creation date (not kept twice)');
+ok(r.droppedItems && r.droppedItems.length > 0 && r.droppedItems.some(d => /podcast:locked|foo:thing/.test(d.what) && d.xml.length > 0), 'droppedItems lists what a hosted save would remove, with the XML: ' + (r.droppedItems || []).map(d => d.what).join('; '));
 ok(m.newFeedUrl.startsWith('https://') && !names.includes('itunes:new-feed-url'), 'itunes:new-feed-url is read into the New feed URL field (not just preserved): ' + m.newFeedUrl);
 ['podcast:locked', 'foo:thing', 'item', 'podcast:txt', 'itunes:category'].forEach(n => ok(names.includes(n), 'preserved ' + n));
 

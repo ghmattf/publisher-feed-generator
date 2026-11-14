@@ -40,12 +40,31 @@ class PFG_Storage {
 	 * existed, or '' for any other feed. Such feeds are never moved: their URL
 	 * may already be registered with podcast apps and directories.
 	 */
-	private static function legacy_subdir( $slug ) {
+	private static function legacy_map() {
 		$l = get_option( self::LEGACY_OPTION );
-		if ( is_array( $l ) && ! empty( $l['subdir'] ) && ! empty( $l['slugs'] ) && in_array( $slug, (array) $l['slugs'], true ) ) {
-			return (string) $l['subdir'];
+		if ( ! is_array( $l ) ) {
+			return array();
 		}
-		return '';
+		$map = isset( $l['map'] ) && is_array( $l['map'] ) ? $l['map'] : array();
+		if ( ! empty( $l['subdir'] ) && ! empty( $l['slugs'] ) ) { // first (0.5.x) shape: one folder for many feeds.
+			foreach ( (array) $l['slugs'] as $sl ) {
+				if ( ! isset( $map[ $sl ] ) ) {
+					$map[ $sl ] = $l['subdir'];
+				}
+			}
+		}
+		return $map;
+	}
+
+	private static function legacy_subdir( $slug ) {
+		$map = self::legacy_map();
+		return isset( $map[ $slug ] ) ? (string) $map[ $slug ] : '';
+	}
+
+	private static function add_legacy( $slug, $subdir ) {
+		$map          = self::legacy_map();
+		$map[ $slug ] = $subdir;
+		update_option( self::LEGACY_OPTION, array( 'map' => $map ), false );
 	}
 
 	/**
@@ -285,6 +304,91 @@ class PFG_Storage {
 			array( '%s', '%s', '%s', '%d' ),
 			array( '%d' )
 		);
+	}
+
+	/** True for a feed taken over from an existing file that has not been saved from the editor yet. */
+	public static function is_adopted_pending( $feed ) {
+		$m = self::decode_model( $feed );
+		return ! empty( $m['adopted'] );
+	}
+
+	/** Current contents of a feed's file, or '' if it is not there. */
+	public static function read_file( $slug ) {
+		$p = self::feed_path( $slug );
+		if ( ! $p || ! is_readable( $p['file'] ) ) {
+			return '';
+		}
+		$x = file_get_contents( $p['file'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		return false === $x ? '' : $x;
+	}
+
+	public static function list_accounts() {
+		global $wpdb;
+		$t = PFG_Installer::table( 'accounts' );
+		return (array) $wpdb->get_results( "SELECT id, pubkey, status FROM {$t} ORDER BY id ASC LIMIT 500", ARRAY_A ); // phpcs:ignore
+	}
+
+	/**
+	 * Take over a feed file that already exists in this site's uploads folder, so its owner can edit it in the
+	 * editor. The file stays where it is and keeps its GUID. Admin use only (the caller checks the capability).
+	 * Returns the new feed id or a WP_Error.
+	 */
+	public static function adopt_from_url( $url, $account_id ) {
+		$u    = wp_get_upload_dir();
+		$base = trailingslashit( $u['baseurl'] );
+		$url  = trim( (string) $url );
+		if ( 0 !== strpos( $url, $base ) ) {
+			return new WP_Error( 'pfg_adopt', 'The feed must be a file on this site, under ' . $base );
+		}
+		$rel = substr( $url, strlen( $base ) );
+		if ( ! preg_match( '#^((?:[A-Za-z0-9_-]+/){1,4})([a-z0-9][a-z0-9_-]{2,39})/\2\.xml$#', $rel, $mm ) ) {
+			return new WP_Error( 'pfg_adopt', 'The address must look like ' . $base . 'folder/name/name.xml (the file name must repeat the folder name).' );
+		}
+		$subdir = rtrim( $mm[1], '/' );
+		$slug   = $mm[2];
+		if ( self::slug_error( $slug ) ) {
+			return new WP_Error( 'pfg_adopt', self::slug_error( $slug ) );
+		}
+		$basedir = realpath( $u['basedir'] );
+		$file    = realpath( wp_normalize_path( $u['basedir'] ) . '/' . $rel );
+		if ( false === $basedir || false === $file || 0 !== strpos( wp_normalize_path( $file ), wp_normalize_path( $basedir ) . '/' ) || ! is_file( $file ) ) {
+			return new WP_Error( 'pfg_adopt', 'That file was not found on this server.' );
+		}
+		if ( filesize( $file ) > 1048576 ) {
+			return new WP_Error( 'pfg_adopt', 'That file is larger than 1 MB.' );
+		}
+		$xml = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		$doc = new DOMDocument();
+		$prev = libxml_use_internal_errors( true );
+		$ok   = $xml && $doc->loadXML( $xml, LIBXML_NONET );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev );
+		if ( ! $ok ) {
+			return new WP_Error( 'pfg_adopt', 'That file is not well-formed XML.' );
+		}
+		$xp = new DOMXPath( $doc );
+		$xp->registerNamespace( 'podcast', PFG_Xml::NS_PODCAST );
+		$medium = $xp->evaluate( 'string(/rss/channel/podcast:medium)' );
+		if ( 'publisher' !== trim( $medium ) ) {
+			return new WP_Error( 'pfg_adopt', 'That is not a publisher feed (podcast:medium must be "publisher").' );
+		}
+		$guid = strtolower( trim( $xp->evaluate( 'string(/rss/channel/podcast:guid)' ) ) );
+		if ( ! PFG_Feed::is_uuid( $guid ) ) {
+			return new WP_Error( 'pfg_adopt', 'The feed has no valid podcast:guid, so it cannot be adopted.' );
+		}
+		$title = trim( $xp->evaluate( 'string(/rss/channel/title)' ) );
+		if ( ! self::get_account( (int) $account_id ) ) {
+			return new WP_Error( 'pfg_adopt', 'Choose the account that will own this feed.' );
+		}
+		if ( self::slug_or_guid_taken( $slug, $guid ) ) {
+			return new WP_Error( 'pfg_adopt', 'This feed name or GUID is already managed by the plugin.' );
+		}
+		$id = self::insert_feed( (int) $account_id, $slug, $guid, array( 'title' => $title, 'adopted' => true ), 'published' );
+		if ( ! $id ) {
+			return new WP_Error( 'pfg_adopt', 'The feed could not be saved.' );
+		}
+		self::add_legacy( $slug, $subdir );
+		return $id;
 	}
 
 	public static function decode_model( $feed ) {

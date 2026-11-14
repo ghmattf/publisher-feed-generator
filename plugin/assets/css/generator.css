@@ -149,3 +149,5 @@
 
 .pfg-loading { padding: 24px 0; text-align: center; color: var(--pfg-muted); }
 .pfg-app [hidden] { display: none !important; }
+.pfg-dropped-detail { max-height: 40vh; overflow: auto; margin-top: 10px; }
+.pfg-dropped-detail pre { white-space: pre-wrap; word-break: break-all; margin: 4px 0 10px; }

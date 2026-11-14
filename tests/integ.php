@@ -124,6 +124,25 @@ $mgf = $wpdb->get_row("SELECT * FROM wp_pfg_feeds WHERE slug='mig-feed'", ARRAY_
 ok(!is_wp_error(PFG_Storage::publish($mgf, PFG_Storage::decode_model($mgf))) && file_exists($GLOBALS['__up'] . '/rssfeed/publishers/mig-feed/mig-feed.xml') && !file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml'), 'editing an existing feed rewrites it in place, not in pubfeeds');
 $wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='mig-feed'");
 
+// ---- adopting a feed that already exists on the server
+@mkdir($GLOBALS['__up'] . '/rssfeed/music/old_pub', 0777, true);
+$oldx = '<?xml version="1.0"?><rss xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:foo="urn:foo" version="2.0"><channel><title>Old Pub</title><podcast:guid>6b8a1c1e-5d0e-5a77-9f40-0e0b1f3f9a11</podcast:guid><podcast:medium>publisher</podcast:medium><foo:thing>x</foo:thing></channel></rss>';
+file_put_contents($GLOBALS['__up'] . '/rssfeed/music/old_pub/old_pub.xml', $oldx);
+$ad = PFG_Storage::adopt_from_url('https://phafe.com/wp-content/uploads/rssfeed/music/old_pub/old_pub.xml', 1);
+ok(is_int($ad) || ctype_digit((string) $ad), 'adopt: an existing publisher feed file is taken over');
+ok(PFG_Storage::feed_url('old_pub') === 'https://phafe.com/wp-content/uploads/rssfeed/music/old_pub/old_pub.xml', 'adopt: it keeps its own URL (other folder than the default)');
+ok($wpdb->get_row("SELECT guid FROM wp_pfg_feeds WHERE slug='old_pub'", ARRAY_A)['guid'] === '6b8a1c1e-5d0e-5a77-9f40-0e0b1f3f9a11', 'adopt: it keeps its GUID');
+ok(file_get_contents($GLOBALS['__up'] . '/rssfeed/music/old_pub/old_pub.xml') === $oldx, 'adopt: the file is not changed by adopting');
+$gr = data(call('GET', '/me/feeds/' . $ad, [], $H));
+ok(isset($gr['importXml']) && strpos($gr['importXml'], 'Old Pub') !== false, 'adopt: the owner gets the existing file to fill the editor');
+ok(is_wp_error(PFG_Storage::adopt_from_url('https://phafe.com/wp-content/uploads/rssfeed/music/old_pub/old_pub.xml', 1)), 'adopt: the same feed cannot be adopted twice');
+ok(is_wp_error(PFG_Storage::adopt_from_url('https://evil.example/wp-content/uploads/rssfeed/music/old_pub/old_pub.xml', 1)), 'adopt: a URL on another site is refused');
+ok(is_wp_error(PFG_Storage::adopt_from_url('https://phafe.com/wp-content/uploads/rssfeed/music/../../../etc/x/x.xml', 1)), 'adopt: path tricks are refused');
+@mkdir($GLOBALS['__up'] . '/rssfeed/music/not_pub', 0777, true);
+file_put_contents($GLOBALS['__up'] . '/rssfeed/music/not_pub/not_pub.xml', str_replace('publisher', 'music', $oldx));
+ok(is_wp_error(PFG_Storage::adopt_from_url('https://phafe.com/wp-content/uploads/rssfeed/music/not_pub/not_pub.xml', 1)), 'adopt: a feed that is not a publisher feed is refused');
+$wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='old_pub'");
+
 // ---- payments optional
 $nof = feed(); $nof['value']['recipients'] = [];
 $wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='inj'");

@@ -759,7 +759,14 @@
     }
     if (pres.channel.length) notes.push('Kept as-is (not editable here): ' + pres.names.filter(function (n, i) { return pres.names.indexOf(n) === i; }).join(', ') + '.');
     m.preserved = pres;
-    return { model: m, notes: notes };
+    // What a hosted save would drop, for the warning shown before saving (hosted feeds keep no extra tags or attributes).
+    var droppedItems = [];
+    pres.channel.forEach(function (x, i) { droppedItems.push({ what: 'Tag not supported here: ' + pres.names[i], xml: x }); });
+    dropped.filter(function (d, i) { return dropped.indexOf(d) === i; }).forEach(function (d) { droppedItems.push({ what: 'Not supported here', xml: d }); });
+    m.releases.forEach(function (r, i) {
+      Object.keys(r.attrs || {}).forEach(function (k) { droppedItems.push({ what: 'Release ' + (i + 1) + ' (' + (r.title || r.feedGuid || 'untitled') + '): extra attribute', xml: k + '="' + r.attrs[k] + '"' }); });
+    });
+    return { model: m, notes: notes, droppedItems: droppedItems };
   }
 
   /**

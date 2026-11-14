@@ -15,6 +15,7 @@ class PFG_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register' ) );
 		add_action( 'admin_post_pfg_feed_action', array( __CLASS__, 'handle_action' ) );
+		add_action( 'admin_post_pfg_adopt', array( __CLASS__, 'handle_adopt' ) );
 	}
 
 	public static function menu() {
@@ -53,6 +54,11 @@ class PFG_Admin {
 				case 'unsuspend':
 					if ( 'deleted' !== $feed['status'] ) {
 						$model = PFG_Storage::decode_model( $feed );
+						if ( ! empty( $model['adopted'] ) ) { // the original file is still in place and untouched.
+							PFG_Storage::set_feed_status( $id, 'published' );
+							$notice = 'published';
+							break;
+						}
 						$res   = $model ? PFG_Storage::publish( $feed, $model ) : new WP_Error( 'x', 'No data' );
 						if ( is_wp_error( $res ) ) {
 							$notice = 'writefail';
@@ -63,11 +69,19 @@ class PFG_Admin {
 					}
 					break;
 				case 'suspend':
+					if ( PFG_Storage::is_adopted_pending( $feed ) ) {
+						$notice = 'adopted_untouched';
+						break;
+					}
 					PFG_Storage::delete_file( $feed['slug'] );
 					PFG_Storage::set_feed_status( $id, 'suspended' );
 					$notice = 'suspended';
 					break;
 				case 'delete':
+					if ( PFG_Storage::is_adopted_pending( $feed ) ) {
+						$notice = 'adopted_untouched';
+						break;
+					}
 					PFG_Storage::tombstone_feed( $feed );
 					$notice = 'deleted';
 					break;
@@ -78,6 +92,9 @@ class PFG_Admin {
 					$t    = PFG_Installer::table( 'feeds' );
 					$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, slug FROM {$t} WHERE account_id = %d AND status = 'published'", (int) $feed['account_id'] ), ARRAY_A ); // phpcs:ignore
 					foreach ( (array) $rows as $row ) {
+						if ( PFG_Storage::is_adopted_pending( PFG_Storage::get_feed( (int) $row['id'] ) ) ) {
+							continue; // an adopted feed that has not been edited yet: leave its original file alone.
+						}
 						PFG_Storage::delete_file( $row['slug'] );
 						PFG_Storage::set_feed_status( (int) $row['id'], 'suspended' );
 					}
@@ -90,6 +107,26 @@ class PFG_Admin {
 			}
 		}
 		wp_safe_redirect( add_query_arg( array( 'page' => 'pfg', 'pfg_notice' => $notice ), admin_url( 'options-general.php' ) ) );
+		exit;
+	}
+
+	/** Take over a feed file that already exists on this server (admin only). */
+	public static function handle_adopt() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Not allowed.', 403 );
+		}
+		check_admin_referer( 'pfg_adopt' );
+		$url = isset( $_POST['adopt_url'] ) ? esc_url_raw( wp_unslash( $_POST['adopt_url'] ) ) : '';
+		$acc = isset( $_POST['adopt_account'] ) ? (int) $_POST['adopt_account'] : 0;
+		$res = PFG_Storage::adopt_from_url( $url, $acc );
+		$args = array( 'page' => 'pfg' );
+		if ( is_wp_error( $res ) ) {
+			$args['pfg_notice'] = 'adopt_error';
+			$args['pfg_msg']    = rawurlencode( $res->get_error_message() );
+		} else {
+			$args['pfg_notice'] = 'adopted';
+		}
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'options-general.php' ) ) );
 		exit;
 	}
 
@@ -112,6 +149,8 @@ class PFG_Admin {
 			'deleted'   => 'Feed deleted. Its name stays reserved.',
 			'blocked'   => 'Account blocked, its sessions ended and its feeds suspended.',
 			'unblocked' => 'Account unblocked. Its feeds stay suspended until you unsuspend them.',
+			'adopted'   => 'Feed adopted. Its owner can now find it under Your hosted feeds and edit it. The file was not changed.',
+			'adopted_untouched' => 'That adopted feed has not been edited yet, so its original file is left alone. Edit and save it first.',
 			'writefail' => 'The feed file could not be written. Check that wp-content is writable.',
 		);
 		$notice  = isset( $_GET['pfg_notice'] ) ? sanitize_key( wp_unslash( $_GET['pfg_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
@@ -121,6 +160,9 @@ class PFG_Admin {
 			<p class="description">Publisher Feed Generator version <strong><?php echo esc_html( PFG_VERSION ); ?></strong></p>
 			<?php if ( isset( $notices[ $notice ] ) ) : ?>
 				<div class="notice notice-info is-dismissible"><p><?php echo esc_html( $notices[ $notice ] ); ?></p></div>
+			<?php endif; ?>
+			<?php if ( 'adopt_error' === $notice && isset( $_GET['pfg_msg'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
+				<div class="notice notice-error is-dismissible"><p><?php echo esc_html( sanitize_text_field( rawurldecode( wp_unslash( $_GET['pfg_msg'] ) ) ) ); // phpcs:ignore ?></p></div>
 			<?php endif; ?>
 			<?php if ( ! extension_loaded( 'gmp' ) ) : ?>
 				<div class="notice notice-error"><p><strong>The PHP GMP extension is not installed.</strong> Hosting is switched off because the server cannot verify Nostr signatures without it. Ask your host to enable <code>gmp</code>. The generator, import and export still work.</p></div>
@@ -237,6 +279,35 @@ class PFG_Admin {
 					</tr>
 				</table>
 				<?php submit_button(); ?>
+			</form>
+
+			<h2>Adopt an existing feed</h2>
+			<p>For a publisher feed that is already on this server. It stays at its current address with its current GUID. Pick the Nostr account that will own it; that person can then edit it from the front page. The file is not changed until they save.</p>
+			<?php $accounts = PFG_Storage::list_accounts(); ?>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="pfg_adopt" />
+				<?php wp_nonce_field( 'pfg_adopt' ); ?>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="pfg-adopt-url">Feed address</label></th>
+						<td><input id="pfg-adopt-url" type="url" class="regular-text" name="adopt_url" placeholder="<?php echo esc_attr( trailingslashit( wp_get_upload_dir()['baseurl'] ) . 'folder/name/name.xml' ); ?>" required />
+						<p class="description">Must be a file in this site's uploads folder, named <code>name/name.xml</code>.</p></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pfg-adopt-account">Owner</label></th>
+						<td>
+							<select id="pfg-adopt-account" name="adopt_account" required>
+								<option value="">Choose an account</option>
+								<?php foreach ( $accounts as $a ) : ?>
+									<?php $np = PFG_Nostr::npub_encode( (string) $a['pubkey'] ); ?>
+									<option value="<?php echo (int) $a['id']; ?>"><?php echo esc_html( substr( $np, 0, 14 ) . '…' . substr( $np, -8 ) ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description">Only people who have signed in at least once appear here.</p>
+						</td>
+					</tr>
+				</table>
+				<?php submit_button( 'Adopt feed', 'secondary' ); ?>
 			</form>
 
 			<h2>Hosted feeds</h2>

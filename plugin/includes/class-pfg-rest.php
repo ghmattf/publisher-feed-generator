@@ -283,7 +283,11 @@ class PFG_Rest {
 		if ( is_wp_error( $feed ) ) {
 			return $feed;
 		}
-		return rest_ensure_response( array_merge( self::feed_summary( $feed ), array( 'feed' => PFG_Storage::decode_model( $feed ) ) ) );
+		$out = array_merge( self::feed_summary( $feed ), array( 'feed' => PFG_Storage::decode_model( $feed ) ) );
+		if ( PFG_Storage::is_adopted_pending( $feed ) ) {
+			$out['importXml'] = PFG_Storage::read_file( $feed['slug'] ); // the editor reads this existing file to fill the form.
+		}
+		return rest_ensure_response( $out );
 	}
 
 	public static function route_create( WP_REST_Request $r ) {
