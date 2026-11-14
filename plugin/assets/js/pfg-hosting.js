@@ -164,7 +164,7 @@
     });
     var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var cancelled = false;
-    var done = N.BunkerSigner.fromURI(sk, uri, { pool: pool, onauth: onauth, skipSwitchRelays: true }, ac ? ac.signal : 300000)
+    var done = N.BunkerSigner.fromURI(sk, uri, { pool: pool, onauth: onauth }, ac ? ac.signal : 300000)
       .then(function (s) {
         if (cancelled) { try { s.close(); } catch (e) { /* ignore */ } throw new Error('Cancelled.'); }
         signer = s;
@@ -183,6 +183,7 @@
     var attempt = {
       uri: uri,
       qr: N.qrSvg(uri),
+      relays: relays,
       done: done,
       cancel: function () { cancelled = true; if (ac) { try { ac.abort(); } catch (e) { /* ignore */ } } },
     };

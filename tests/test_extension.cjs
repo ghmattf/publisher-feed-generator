@@ -77,7 +77,7 @@ const msgs = []; H.on('progress', m => msgs.push(m));
 w.PFGNostr.BunkerSigner = { fromURI: async (sk, uri, params) => { msgs.push('skipSwitch=' + params.skipSwitchRelays); return { getPublicKey: () => new Promise(() => {}), close() {} }; } };
 err = null; try { await H.startNostrConnect().done; } catch (e) { err = e; }
 ok(err && /connected but did not share your public key/.test(err.message), 'QR: signer that connects but never answers get_public_key gives a clear timeout error');
-ok(msgs.includes('skipSwitch=true') && msgs.some(m => /Your signer connected/.test(m)), 'QR: progress message after the signer connects; switch_relays skipped');
+ok(msgs.includes('skipSwitch=undefined') && msgs.some(m => /Your signer connected/.test(m)), 'QR: progress message after the signer connects; switch_relays is NOT skipped (lets the signer move us to relays it can reach)');
 w.PFGNostr.BunkerSigner = { fromURI: async () => ({ getPublicKey: async () => 'c'.repeat(64), close() {}, bp: { pubkey: 'd'.repeat(64), relays: [] } }) };
 ok(await H.startNostrConnect().done === 'c'.repeat(64), 'QR: normal connection still resolves with the public key');
 
