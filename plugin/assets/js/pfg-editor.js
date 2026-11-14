@@ -612,9 +612,10 @@
       function reveal() {
         if (loaded) return; loaded = true;
         if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
-        hideEls.forEach(function (n) { n.style.display = ''; });
+        hideEls.forEach(function (n) { n.hidden = false; n.style.removeProperty('display'); });
       }
-      hideEls.forEach(function (n) { n.style.display = 'none'; });
+      // "important" so that a theme rule such as details { display: block !important } cannot bring the sections back.
+      hideEls.forEach(function (n) { n.hidden = true; n.style.setProperty('display', 'none', 'important'); });
       container.insertBefore(loadingEl, basics);
       var giveUp = setTimeout(reveal, 20000); // never leave the person stuck on a slow relay
       var mine = banner.firstChild;

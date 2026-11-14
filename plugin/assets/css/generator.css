@@ -148,3 +148,4 @@
 .pfg-subhead { font-weight: 600; font-size: .9em; margin: 12px 0 6px; }
 
 .pfg-loading { padding: 24px 0; text-align: center; color: var(--pfg-muted); }
+.pfg-app [hidden] { display: none !important; }

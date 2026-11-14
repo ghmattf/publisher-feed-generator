@@ -70,6 +70,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 11. (Item 25, 2026-11-14.) QR / nostrconnect sign-in: the cause of the Amber hang could not be reproduced without a device. Changes made so the stall is visible and not endless: progress messages after the signer connects and while signing in; 60 s timeout on get_public_key and 120 s on the login signature, each with a clear error; the optional switch_relays step is skipped. Needs a re-test with Amber (TODO 13). Possible remaining cause if it still hangs: a signer replying with NIP-04 encryption (nostr-tools here reads NIP-44 only).
 
+12. (2026-11-14.) While the Nostr profile loads, the form is hidden with `hidden` plus an inline `display:none !important`. A plain inline `display:none` was reproduced in Chromium being beaten by a theme rule like `details { display:block !important }`, which is the likely reason the sections stayed visible on the live site.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

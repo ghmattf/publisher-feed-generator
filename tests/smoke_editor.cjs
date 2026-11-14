@@ -224,7 +224,7 @@ renderNew(mkHost(profile, 150)); set('#pfg-f-title', 'My Own Title'); set('#pfg-
 ok($('#pfg-f-title').value === 'My Own Title' && $('#pfg-f-link').value === 'https://mine.example' && $('#pfg-f-description').value.startsWith('We make'), 'fields the user already typed are kept; empty ones still filled');
 // the form is hidden behind a loading message until the profile has arrived
 renderNew(mkHost(profile, 200));
-ok(!!$('.pfg-loading') && /Loading your Nostr profile/.test($('.pfg-loading').textContent) && $$('details.pfg-section').every(d => d.style.display === 'none'), 'while the profile loads: loading message shown, sections hidden');
+ok(!!$('.pfg-loading') && /Loading your Nostr profile/.test($('.pfg-loading').textContent) && $$('details.pfg-section').every(d => d.style.display === 'none' && d.style.getPropertyPriority('display') === 'important' && d.hidden), 'while the profile loads: loading message shown, sections hidden (with !important, so a theme cannot show them)');
 await new Promise(r => setTimeout(r, 400));
 ok(!$('.pfg-loading') && $$('details.pfg-section').every(d => d.style.display === ''), 'after it loads: loading message gone, sections shown');
 ok($('#pfg-f-title').value === 'Acme Records', 'and the form is filled in');
