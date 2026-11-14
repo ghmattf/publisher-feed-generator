@@ -1,9 +1,9 @@
 # Decisions, assumptions and open items
 
-Status: plugin v0.5.2 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). The owner has tested it on a real WordPress site, with real signer apps and against the live Music Index API, including searching by feed address (all OK, 2026-11-13).
+Status: plugin v0.5.3 feature-complete for the agreed scope; all automated checks pass (`tests/run-all.sh`). The owner has tested it on a real WordPress site, with real signer apps and against the live Music Index API, including searching by feed address (all OK, 2026-11-13).
 
 ## Product decisions (stated by the owner)
-- Versioning: the plugin is at **0.5.2** (0.5.1 on 2026-11-14; 0.5.0 on 2026-11-14; 0.4.2 on 2026-11-14; 0.3.0 on 2026-11-13; 0.2.0 was decided 2026-11-12, replacing an earlier 1.0.0 string that was never tagged or released). Major version changes (including moving to 1.0.0) need the owner's explicit approval. Features and fixes before that are minor/patch bumps (0.3.0, 0.2.1).
+- Versioning: the plugin is at **0.5.3** (0.5.2 on 2026-11-14; 0.5.1 on 2026-11-14; 0.5.0 on 2026-11-14; 0.4.2 on 2026-11-14; 0.3.0 on 2026-11-13; 0.2.0 was decided 2026-11-12, replacing an earlier 1.0.0 string that was never tagged or released). Major version changes (including moving to 1.0.0) need the owner's explicit approval. Features and fixes before that are minor/patch bumps (0.3.0, 0.2.1).
 - Publisher feeds only (`podcast:medium` publisher). Not albums or tracks.
 - Two modes. Anonymous: create, edit, export, no login (paste-XML import was removed from the page on 2026-11-13: the "Edit an existing feed" card and screen are gone, `Core.parseXml` and its tests stay). Hosted: Nostr login (browser extension via NIP-07, or remote signer via NIP-46), feeds hosted on phafe.com.
 - Whole-feed import (now not reachable from the page, see above) was by **pasted XML only**. No URL import. Importing into hosting is not an option.
@@ -68,11 +68,11 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 10. (Owner request, 2026-11-14.) Owner field labels are "Feed maintainer (your name)" and "Feed contact email (your email)" (previously "Feed creator/editor" and "Feed contact email"). The feed tags are unchanged.
 
-11. (Item 25, 2026-11-14.) QR / nostrconnect sign-in: the cause of the Amber hang could not be reproduced without a device. Changes made so the stall is visible and not endless: progress messages after the signer connects and while signing in; 60 s timeout on get_public_key and 120 s on the login signature, each with a clear error; (the switch_relays skip was tried in 0.5.2 and reverted: with it Amber showed "Failed to send event"; switch_relays lets Amber move the client to relays it can reach.) The dialog now lists the relays used. Needs a re-test with Amber (TODO 13). Possible remaining cause if it still hangs: a signer replying with NIP-04 encryption (nostr-tools here reads NIP-44 only).
+11. (Item 25, 2026-11-14.) QR / nostrconnect sign-in: the cause of the Amber hang could not be reproduced without a device. Changes made so the stall is visible and not endless: progress messages after the signer connects and while signing in; 60 s timeout on get_public_key and 120 s on the login signature, each with a clear error; (the switch_relays skip was tried in 0.5.2 and reverted: with it Amber showed "Failed to send event"; switch_relays lets Amber move the client to relays it can reach.) The dialog now lists the relays used. (Verified by the owner with Amber, 2026-11-14, after decision 13 below: QR sign-in works.)
 
 12. (2026-11-14.) While the Nostr profile loads, the form is hidden with `hidden` plus an inline `display:none !important`. A plain inline `display:none` was reproduced in Chromium being beaten by a theme rule like `details { display:block !important }`, which is the likely reason the sections stayed visible on the live site.
 
-13. (Item 33, 2026-11-14.) The QR code carried only the first 3 relays in Settings, so a relay added at the end (the owner added relay.primal.net, Amber's first default relay) never reached Amber. It now carries the first 5, and new installs default to primal, nsec.app, damus and nos.lol. Amber has several relay lists (default, connection, profile); the signer must share at least one relay with the QR code.
+13. (Item 33, 2026-11-14.) The QR code carried only the first 3 relays in Settings, so a relay added at the end (the owner added relay.primal.net, Amber's first default relay) never reached Amber. It now carries the first 5, and new installs default to primal, nsec.app, damus and nos.lol. Amber has several relay lists (default, connection, profile); the signer must share at least one relay with the QR code. (Verified by the owner with Amber, 2026-11-14: works.)
 
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
