@@ -25,7 +25,7 @@ class PFG_Settings {
 			'max_releases'             => 200,
 			'require_approval'         => 0,
 			'session_hours'            => 24,
-			'relays'                   => array( 'wss://relay.nsec.app', 'wss://relay.damus.io', 'wss://nos.lol' ),
+			'relays'                   => array( 'wss://relay.primal.net', 'wss://relay.nsec.app', 'wss://relay.damus.io', 'wss://nos.lol' ),
 			// "Support the developers (optional)": shown to every feed creator with these default splits.
 			// The creator can change each split (0 to 99); name, address and type are fixed here.
 			// Review the addresses before going live; an empty list means no support section.

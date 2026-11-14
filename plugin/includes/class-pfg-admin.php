@@ -159,7 +159,7 @@ class PFG_Admin {
 						<th scope="row"><label for="pfg-relays">Signer relays</label></th>
 						<td>
 							<textarea id="pfg-relays" rows="3" cols="50" name="<?php echo esc_attr( self::field_name( 'relays' ) ); ?>"><?php echo esc_textarea( implode( "\n", (array) $s['relays'] ) ); ?></textarea>
-							<p class="description">One <code>wss://</code> relay per line. Used for the "scan with your signer" (nostrconnect) option. Pasted <code>bunker://</code> links bring their own relays.</p>
+							<p class="description">One <code>wss://</code> relay per line. Used for the "scan with your signer" (nostrconnect) option: the first 5 go into the QR code, so put the relays your signer uses first (in Amber, see Settings, Relays). Pasted <code>bunker://</code> links bring their own relays.</p>
 						</td>
 					</tr>
 					<tr>

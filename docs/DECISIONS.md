@@ -72,6 +72,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 12. (2026-11-14.) While the Nostr profile loads, the form is hidden with `hidden` plus an inline `display:none !important`. A plain inline `display:none` was reproduced in Chromium being beaten by a theme rule like `details { display:block !important }`, which is the likely reason the sections stayed visible on the live site.
 
+13. (Item 33, 2026-11-14.) The QR code carried only the first 3 relays in Settings, so a relay added at the end (the owner added relay.primal.net, Amber's first default relay) never reached Amber. It now carries the first 5, and new installs default to primal, nsec.app, damus and nos.lol. Amber has several relay lists (default, connection, profile); the signer must share at least one relay with the QR code.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

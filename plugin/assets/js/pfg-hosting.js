@@ -153,7 +153,7 @@
     clientSk = N.generateSecretKey();
     var sk = clientSk;
     var secret = randomHex(16);
-    var relays = (cfg.relays || []).slice(0, 3);
+    var relays = (cfg.relays || []).slice(0, 5);
     var uri = N.createNostrConnectURI({
       clientPubkey: N.getPublicKey(sk),
       relays: relays,
