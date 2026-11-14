@@ -142,8 +142,8 @@
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
       field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
       field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
-      field('Feed creator/editor', 'ownerName'),
-      field('Feed contact email', 'ownerEmail', { type: 'email' }),
+      field('Feed maintainer (your name)', 'ownerName'),
+      field('Feed contact email (your email)', 'ownerEmail', { type: 'email' }),
     ])], true, basicsGate);
 
     var slugField = null, slugInputs = null, identityKids = [], applySlug = null;
