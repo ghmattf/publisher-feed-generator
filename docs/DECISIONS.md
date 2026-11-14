@@ -62,6 +62,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 6. Profile lookup relays are `wss://purplepag.es`, `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net` plus the relays in Settings. Not tested against live relays (only a fake pool); a profile that lives only on other relays will show "No Nostr profile was found". Not configurable in Settings yet.
 7. (Owner chose the folder, 2026-11-14.) New hosted feeds are written to `/wp-content/pubfeeds/{name}/{name}.xml` (created on demand; the `feed_subdir` setting was removed). Feeds that already existed are never moved or migrated: they may be registered with podcastindex.org or elsewhere. On upgrade (DB version 2) their slugs and old folder are recorded (`pfg_legacy_feeds`) so they keep their uploads URL and file; their GUIDs are stored and unchanged. Moving a feed is a separate future feature (TODO 17). No short-URL rewrite rule (owner declined, 2026-11-14).
 
+8. (Owner request, 2026-11-14.) On a new hosted feed the sections and buttons stay hidden behind "Loading your Nostr profile…" until the profile lookup finishes (or fails, or 20 seconds pass), then the pre-filled form appears.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

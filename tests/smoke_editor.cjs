@@ -221,6 +221,14 @@ ok(!/lud06|LNURL/i.test($('#c').textContent), 'lud06/LNURL is ignored');
 // typed values are never overwritten, even if the profile arrives later
 renderNew(mkHost(profile, 150)); set('#pfg-f-title', 'My Own Title'); set('#pfg-f-link', 'https://mine.example'); await tick();
 ok($('#pfg-f-title').value === 'My Own Title' && $('#pfg-f-link').value === 'https://mine.example' && $('#pfg-f-description').value.startsWith('We make'), 'fields the user already typed are kept; empty ones still filled');
+// the form is hidden behind a loading message until the profile has arrived
+renderNew(mkHost(profile, 200));
+ok(!!$('.pfg-loading') && /Loading your Nostr profile/.test($('.pfg-loading').textContent) && $$('details.pfg-section').every(d => d.style.display === 'none'), 'while the profile loads: loading message shown, sections hidden');
+await new Promise(r => setTimeout(r, 400));
+ok(!$('.pfg-loading') && $$('details.pfg-section').every(d => d.style.display === ''), 'after it loads: loading message gone, sections shown');
+ok($('#pfg-f-title').value === 'Acme Records', 'and the form is filled in');
+let failHost = mkHost(profile); failHost.fetchProfile = () => Promise.reject(new Error('x')); renderNew(failHost); await tick();
+ok(!$('.pfg-loading') && $$('details.pfg-section').every(d => d.style.display === ''), 'if the lookup fails the form is shown anyway');
 // not for existing feeds, not anonymous
 let calls = 0; const spy = Object.assign(mkHost(profile), { fetchProfile: () => { calls++; return Promise.resolve(profile); } });
 renderNew(spy, { hosted: { id: 7, slug: 'x', status: 'published', url: 'https://phafe.com/x' } }); await tick();
