@@ -230,6 +230,10 @@
       });
     }
 
+    Host.on('progress', function (msg) {
+      if (closed) return;
+      status.replaceChildren(note('', msg));
+    });
     Host.on('auth-url', function (url) {
       if (closed || !/^https:\/\//i.test(url)) return;
       status.replaceChildren(note('warn', ['Your signer needs you to approve this in a browser: ', h('a', { href: url, target: '_blank', rel: 'noopener', text: 'open approval page' })]));
