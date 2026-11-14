@@ -197,6 +197,7 @@
         changed();
       }), guidStatus]), fields.guid.err);
     }
+    identityKids.push(field('New feed URL (only if you are moving this feed)', 'newFeedUrl', { type: 'url', placeholder: 'https://', wide: true, hint: 'Tells Podcast Index and podcasting apps this feed now lives at a new address (itunes:new-feed-url). Keep this feed online at its old address, with the same GUID, until apps have switched. Leave empty otherwise.' }));
     identityKids.push(field('Include npub in the feed? (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' }));
     // "Get your npub": from the signed-in account, or by asking a signer for its public key (nothing is saved).
     var npubStatus = h('span', { class: 'pfg-hint', 'aria-live': 'polite' });

@@ -348,7 +348,7 @@
     var d = cfg.defaults || {};
     return {
       version: 1, title: '', author: '', description: '', link: '', language: 'en', image: '',
-      category: 'Music', keywords: '', explicit: false, created: 0, ownerName: '', ownerEmail: '',
+      category: 'Music', keywords: '', explicit: false, created: 0, newFeedUrl: '', ownerName: '', ownerEmail: '',
       feedUrl: '', guid: '', npub: '',
       funding: { url: '', text: '' },
       value: { method: d.method || 'lnaddress', suggested: d.suggested || '', recipients: [] },
@@ -416,6 +416,10 @@
       if (m.guid === '') err('guid', 'A feed GUID is required.');
       else if (!isUuid(m.guid)) err('guid', 'GUID must be a UUID.');
     }
+
+    m.newFeedUrl = line(get(input, 'newFeedUrl'));
+    if (m.newFeedUrl !== '' && !isHttpsUrl(m.newFeedUrl)) err('newFeedUrl', 'New feed URL must be an https:// URL.');
+    else if (m.newFeedUrl !== '' && m.newFeedUrl === m.feedUrl) err('newFeedUrl', 'New feed URL is the same as this feed\'s current URL.');
 
     var npub = line(get(input, 'npub'));
     if (npub !== '') {
@@ -563,6 +567,7 @@
     o.push('<rss xmlns:podcast="' + NS_PODCAST + '" xmlns:itunes="' + NS_ITUNES + '" xmlns:atom="' + NS_ATOM + '"' + extraNs + ' version="2.0">');
     o.push(i4 + '<channel>');
     if (m.feedUrl !== '') o.push(i8 + '<atom:link href="' + escAttr(m.feedUrl) + '" rel="self" type="application/rss+xml" />');
+    if (m.newFeedUrl) o.push(i8 + '<itunes:new-feed-url>' + escText(m.newFeedUrl) + '</itunes:new-feed-url>');
     o.push(i8 + '<title>' + escText(m.title) + '</title>');
     if (m.author !== '') o.push(i8 + '<itunes:author>' + escText(m.author) + '</itunes:author>');
     o.push(i8 + '<description>' + escText(m.description) + '</description>');
@@ -705,6 +710,7 @@
       } else if (ns === NS_ITUNES) {
         if (name === 'author' && first('author')) m.author = elText(el);
         else if (name === 'keywords' && first('keywords')) m.keywords = elText(el);
+        else if (name === 'new-feed-url' && first('newfeedurl')) m.newFeedUrl = elText(el);
         else if (name === 'explicit' && first('explicit')) m.explicit = /^(true|yes)$/i.test(elText(el));
         else if (name === 'image' && first('itunesimage')) { if (!m.image) m.image = attr(el, 'href'); }
         else if (name === 'category' && !childEls(el).length && first('category')) m.category = attr(el, 'text');

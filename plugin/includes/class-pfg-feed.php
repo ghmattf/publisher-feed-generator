@@ -228,6 +228,13 @@ class PFG_Feed {
 			}
 		}
 
+		$m['newFeedUrl'] = self::line( self::get( $in, 'newFeedUrl' ) );
+		if ( '' !== $m['newFeedUrl'] && ! self::is_https_url( $m['newFeedUrl'] ) ) {
+			self::err( $errors, 'newFeedUrl', 'New feed URL must be an https:// URL.' );
+		} elseif ( '' !== $m['newFeedUrl'] && $m['newFeedUrl'] === $m['feedUrl'] ) {
+			self::err( $errors, 'newFeedUrl', 'New feed URL is the same as this feed\'s current URL.' );
+		}
+
 		// Nostr npub (metadata only; it does not have to match the login key).
 		$npub = self::line( self::get( $in, 'npub' ) );
 		if ( '' !== $npub ) {

@@ -190,6 +190,7 @@ set('#pfg-support-1', '0'); await tick(); ok(/of 98%/.test($('.pfg-total').textC
 set('#pfg-support-1', '1'); await tick();
 set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '97');
 ok($('#pfg-f-slug').value === 'acme', 'feed name made from the title as it is typed');
+ok(!!$('#pfg-f-newFeedUrl') && /moving this feed/.test($('#pfg-f-newFeedUrl').closest('.pfg-field').textContent), 'New feed URL field exists in Identity and links');
 ok($('#pfg-f-slug').parentNode.style.display === 'none', 'the Feed name input is hidden while it is fine');
 set('#pfg-f-slug', '');
 const scrolled2 = []; w.HTMLElement.prototype.scrollIntoView = function () { const i = this.querySelector && this.querySelector('input,textarea,select'); scrolled2.push(i ? i.id : (this.className || this.tagName)); };
