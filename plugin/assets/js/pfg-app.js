@@ -274,6 +274,7 @@
       var link = h('input', { type: 'text', readonly: true, value: attempt.uri, 'aria-label': 'Connection link' });
       link.addEventListener('focus', function () { link.select(); });
       panel.appendChild(link);
+      panel.appendChild(h('p', { class: 'pfg-hint', text: 'Relays used: ' + (attempt.relays && attempt.relays.length ? attempt.relays.join(', ') : 'none set') + '. Your signer must be able to reach at least one of them.' }));
       finish(attempt.done);
     }
 
