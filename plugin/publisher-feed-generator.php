@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Publisher Feed Generator
  * Description:       Lets labels, studios, engineers, hosts and artists generate Podcasting 2.0 publisher feeds (podcast:medium "publisher"). Feeds can be exported and self-hosted, or hosted here with Nostr remote-signer (NIP-46) login. Use the [publisher_feed_generator] shortcode.
- * Version:           0.5.1
+ * Version:           0.5.2
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Phafe
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PFG_VERSION', '0.5.1' );
+define( 'PFG_VERSION', '0.5.2' );
 define( 'PFG_FILE', __FILE__ );
 define( 'PFG_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PFG_URL', plugin_dir_url( __FILE__ ) );
