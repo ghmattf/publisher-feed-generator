@@ -146,7 +146,7 @@
       field('Feed contact email', 'ownerEmail', { type: 'email' }),
     ])], true, basicsGate);
 
-    var slugField = null, identityKids = [], applySlug = null;
+    var slugField = null, slugInputs = null, identityKids = [], applySlug = null;
     function autoSlug() { if (slugAuto && applySlug) applySlug(Core.slugify(m.title)); }
     if (hosted && !hosted.id) {
       slugField = h('div', { class: 'pfg-field' }, []);
@@ -164,9 +164,11 @@
       }
       si.addEventListener('input', function () { slugAuto = si.value.trim() === ''; slugChanged(); }); // typing your own name stops the automatic one; clearing it brings it back
       applySlug = function (s) { si.value = s; slugChanged(); };
-      slugField.appendChild(h('label', { for: 'pfg-f-slug', text: 'Feed name (web address)' }));
-      slugField.appendChild(si); slugField.appendChild(serr); slugField.appendChild(urlOut);
-      slugField.appendChild(h('div', { class: 'pfg-hint', text: 'Made from your name as you type; change it if you like. After you save it cannot be changed, and the address can never be reused if you delete the feed.' }));
+      // The feed name is made from the title automatically, so its input is hidden. It is shown only when it needs fixing (invalid or already taken).
+      slugInputs = h('div', {}, [h('label', { for: 'pfg-f-slug', text: 'Feed name (web address)' }), si,
+        h('div', { class: 'pfg-hint', text: 'Made from your name; change it if you like. After you save it cannot be changed, and the address can never be reused if you delete the feed.' })]);
+      slugInputs.style.display = 'none';
+      slugField.appendChild(slugInputs); slugField.appendChild(serr); slugField.appendChild(urlOut);
       fields.slug = { wrap: slugField, err: serr, input: si };
       identityKids.push(slugField);
     } else if (hosted) {
@@ -515,6 +517,7 @@
       setTimeout(function () { try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* not essential */ } }, 0);
     }
     function revealSlug() {
+      if (slugInputs) slugInputs.style.display = '';
       var sec = fields.slug.wrap.closest ? fields.slug.wrap.closest('details.pfg-section') : null;
       if (sec) openSection(sec);
       fields.slug.input.focus(); setTimeout(function () { try { fields.slug.wrap.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* not essential */ } }, 0);
