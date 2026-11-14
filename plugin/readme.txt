@@ -4,7 +4,7 @@ Tags: podcasting 2.0, rss, publisher feed, nostr, music
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.5.1
+Stable tag: 0.5.2
 License: GPLv2 or later
 
 A page where labels, studios, engineers, hosts and artists build Podcasting 2.0 publisher feeds (podcast:medium "publisher"). Export the XML to host yourself, or sign in with a Nostr remote signer and have it hosted on your site.
