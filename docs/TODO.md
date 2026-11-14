@@ -2,10 +2,9 @@
 
 Added 2026-11-13. Wording is the owner's. Completed items are removed from this list (the history is in git and docs/DECISIONS.md).
 
-17. Add the ability to move the feed. (Owner's wording; to confirm what moving means: for example telling apps the feed has a new address with `itunes:new-feed-url`, or moving a hosted feed to another host.)
 
 ## New (2026-11-13, evening)
-23. Import my existing publisher feeds. (Conflicts with the out-of-scope rule in AGENTS.md: importing into hosting needs the owner's explicit go-ahead on how it should work.)
+23. Import my existing publisher feeds. (Owner, 2026-11-14: these are already hosted on this server and should be modifiable with the plugin, staying at the same URLs: https://phafe.com/wp-content/uploads/rssfeed/music/mezzaforte/mezzaforte.xml , https://phafe.com/wp-content/uploads/rssfeed/music/matt_finlay/matt_finlay.xml , https://phafe.com/wp-content/uploads/rssfeed/music/fentlay/fentlay.xml. This is the owner's go-ahead for adopting feeds already on the server; it is not URL import of arbitrary feeds.) Original note: (Conflicts with the out-of-scope rule in AGENTS.md: importing into hosting needs the owner's explicit go-ahead on how it should work.)
 
 ## Testing still to do
 14. Test other browser extensions for NIP-07 sign-in (for example nos2x).

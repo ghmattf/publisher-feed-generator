@@ -43,6 +43,9 @@ class PFG_Xml {
 		if ( '' !== $m['feedUrl'] ) {
 			$o[] = $i8 . '<atom:link href="' . self::esc_attr( $m['feedUrl'] ) . '" rel="self" type="application/rss+xml" />';
 		}
+		if ( ! empty( $m['newFeedUrl'] ) ) {
+			$o[] = $i8 . '<itunes:new-feed-url>' . self::esc_text( $m['newFeedUrl'] ) . '</itunes:new-feed-url>';
+		}
 		$o[] = $i8 . '<title>' . self::esc_text( $m['title'] ) . '</title>';
 		if ( '' !== $m['author'] ) {
 			$o[] = $i8 . '<itunes:author>' . self::esc_text( $m['author'] ) . '</itunes:author>';

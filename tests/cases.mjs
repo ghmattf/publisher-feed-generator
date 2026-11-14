@@ -23,6 +23,10 @@ add('anon full', { ...base(), guid: G3.toUpperCase(), feedUrl: 'https://example.
 add('anon no payments', { ...base(), guid: G3, feedUrl: 'https://example.com/pub.xml', value: { recipients: [] }, funding: {} }, anon);
 add('special chars', { ...base(), title: 'Tom & Jerry <b> "q" \'s', description: 'Line1\r\nLine2\rLine3\n\n  spaced  \u0001ctrl\u007f', author: 'Ünï ✓ 日本語 🎵', keywords: 'a\tb\nc' }, hosted);
 add('whitespace', { ...base(), title: '   lots   of\t\tspace  ', description: '\n\n  x  \n\n' }, hosted);
+add('moved feed (new feed url)', { ...base(), newFeedUrl: 'https://new.example.com/p/phafe.xml' }, hosted);
+add('new feed url not https', { ...base(), newFeedUrl: 'http://new.example.com/p.xml' }, hosted);
+add('new feed url same as current', { ...base(), newFeedUrl: 'https://phafe.com/wp-content/uploads/rssfeed/publishers/phafe/phafe.xml' }, hosted);
+add('anon moved feed', { ...base(), guid: G3, feedUrl: 'https://example.com/pub.xml', newFeedUrl: 'https://example.org/pub.xml', value: { recipients: [] }, funding: {} }, anon);
 add('created int', { ...base(), created: 1700000000 }, hosted);
 add('created float', { ...base(), created: 1700000000.9 }, hosted);
 add('created digits text', { ...base(), created: '1700000000' }, hosted);

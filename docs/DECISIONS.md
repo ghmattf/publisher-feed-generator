@@ -74,6 +74,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 13. (Item 33, 2026-11-14.) The QR code carried only the first 3 relays in Settings, so a relay added at the end (the owner added relay.primal.net, Amber's first default relay) never reached Amber. It now carries the first 5, and new installs default to primal, nsec.app, damus and nos.lol. Amber has several relay lists (default, connection, profile); the signer must share at least one relay with the QR code. (Verified by the owner with Amber, 2026-11-14: works.)
 
+14. (Item 17, owner request 2026-11-14.) Moving a feed = telling Podcast Index and apps the feed has a new URL. New optional field "New feed URL" (Identity and links), written as `<itunes:new-feed-url>` near the top of the channel; imported feeds that already have the tag now fill the field. Must be https and different from the feed's own URL. The GUID is never changed. The plugin does not move files or redirect: the feed has to stay online at its old address, serving the tag, until apps switch. Assumption: Podcast Index and apps honour `itunes:new-feed-url` for publisher feeds the way they do for podcasts; not tested against them.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.
