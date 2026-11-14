@@ -8,7 +8,6 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 23. Import my existing publisher feeds. (Conflicts with the out-of-scope rule in AGENTS.md: importing into hosting needs the owner's explicit go-ahead on how it should work.)
 
 ## Testing still to do
-32. Amber QR (0.5.2): Amber shows "Error: Failed to send event. Try again." (0.5.1 and earlier showed no Amber error; the website just stayed on "Waiting for your signer to approve…"). (in progress)
 14. Test other browser extensions for NIP-07 sign-in (for example nos2x).
 15. Test the Nostr profile lookup against live relays (name, about, website, picture and Lightning address filled in on a new hosted feed), unless the Alby and Amber tests already covered it.
 16. A wider look over the UI in different browsers.
