@@ -70,5 +70,16 @@ ok(err && /did not approve the request: User rejected/.test(err.message) && H.ge
 w.nostr = makeExt(); await H.connectExtension(); const before = calls.length; delete w.nostr;
 err = null; try { await H.login(); } catch (e) { err = e; }
 ok(err && /did not approve|not connected/.test(err.message) && calls.length === before, 'extension disappearing mid-session fails cleanly');
+// ---- QR (nostrconnect) sign-in: progress messages, and a signer that goes quiet gives a clear error instead of waiting forever
+Object.assign(w.PFGNostr, { generateSecretKey: () => new Uint8Array(32).fill(7), getPublicKey: () => 'b'.repeat(64), createNostrConnectURI: () => 'nostrconnect://x?secret=s', qrSvg: () => '<svg/>', bytesToHex: b => Buffer.from(b).toString('hex') });
+H.init({ urls, relays: [], signerTimeoutMs: 60 });
+const msgs = []; H.on('progress', m => msgs.push(m));
+w.PFGNostr.BunkerSigner = { fromURI: async (sk, uri, params) => { msgs.push('skipSwitch=' + params.skipSwitchRelays); return { getPublicKey: () => new Promise(() => {}), close() {} }; } };
+err = null; try { await H.startNostrConnect().done; } catch (e) { err = e; }
+ok(err && /connected but did not share your public key/.test(err.message), 'QR: signer that connects but never answers get_public_key gives a clear timeout error');
+ok(msgs.includes('skipSwitch=true') && msgs.some(m => /Your signer connected/.test(m)), 'QR: progress message after the signer connects; switch_relays skipped');
+w.PFGNostr.BunkerSigner = { fromURI: async () => ({ getPublicKey: async () => 'c'.repeat(64), close() {}, bp: { pubkey: 'd'.repeat(64), relays: [] } }) };
+ok(await H.startNostrConnect().done === 'c'.repeat(64), 'QR: normal connection still resolves with the public key');
+
 console.log(fails ? fails + ' FAILURES' : 'extension tests passed'); process.exit(fails ? 1 : 0);
 })();

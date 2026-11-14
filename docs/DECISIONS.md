@@ -68,6 +68,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 10. (Owner request, 2026-11-14.) Owner field labels are "Feed maintainer (your name)" and "Feed contact email (your email)" (previously "Feed creator/editor" and "Feed contact email"). The feed tags are unchanged.
 
+11. (Item 25, 2026-11-14.) QR / nostrconnect sign-in: the cause of the Amber hang could not be reproduced without a device. Changes made so the stall is visible and not endless: progress messages after the signer connects and while signing in; 60 s timeout on get_public_key and 120 s on the login signature, each with a clear error; the optional switch_relays step is skipped. Needs a re-test with Amber (TODO 13). Possible remaining cause if it still hangs: a signer replying with NIP-04 encryption (nostr-tools here reads NIP-44 only).
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

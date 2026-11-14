@@ -51,6 +51,16 @@
     return N.bytesToHex(a);
   }
 
+  /** Reject if `promise` has not settled within `ms` (so a silent signer never leaves the page waiting forever). */
+  function withTimeout(promise, ms, message) {
+    var t;
+    return Promise.race([
+      promise,
+      new Promise(function (res, rej) { t = setTimeout(function () { rej(new Error(message)); }, ms); }),
+    ]).then(function (v) { clearTimeout(t); return v; }, function (e) { clearTimeout(t); throw e; });
+  }
+  function signerWait() { return (cfg && cfg.signerTimeoutMs) || 60000; }
+
   function onauth(url) {
     // Some signers ask the user to approve in a browser page first.
     emit('auth-url', url);
@@ -154,11 +164,12 @@
     });
     var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var cancelled = false;
-    var done = N.BunkerSigner.fromURI(sk, uri, { pool: pool, onauth: onauth }, ac ? ac.signal : 300000)
+    var done = N.BunkerSigner.fromURI(sk, uri, { pool: pool, onauth: onauth, skipSwitchRelays: true }, ac ? ac.signal : 300000)
       .then(function (s) {
         if (cancelled) { try { s.close(); } catch (e) { /* ignore */ } throw new Error('Cancelled.'); }
         signer = s;
-        return s.getPublicKey().then(function (pk) {
+        emit('progress', 'Your signer connected. Asking it for your public key…');
+        return withTimeout(s.getPublicKey(), signerWait(), 'Your signer connected but did not share your public key. Open your signer app, approve the request if it is waiting, then try again.').then(function (pk) {
           remember(s.bp || { pubkey: pk, relays: relays, secret: secret });
           pending = null;
           return pk;
@@ -236,7 +247,8 @@
 
   /** Sign in: the signer proves control of a key, the server starts a cookie session. */
   async function login() {
-    var event = await signHttpAuth(cfg.urls.login, 'POST', null);
+    emit('progress', 'Signing in. Your signer may ask you to approve a sign-in request…');
+    var event = await withTimeout(signHttpAuth(cfg.urls.login, 'POST', null), Math.max(signerWait(), 120000), 'Your signer did not answer the sign-in request. Open your signer app, approve it if it is waiting, then try again.');
     var r = await rawFetch('POST', cfg.urls.login, { event: event });
     if (!r.res.ok) throw apiError(r.res, r.data);
     session = r.data;
