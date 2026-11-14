@@ -559,15 +559,37 @@
       ctx.clearDraft();
     }
     function setBanner(kind, msg) { clear(banner); if (msg) banner.appendChild(note(kind, msg)); }
+    // Warn before a save removes data this plugin cannot keep (for example tags in a feed that was already on the server).
+    function confirmDropped(proceed) {
+      var items = hosted.dropped;
+      var overlay = h('div', { class: 'pfg-app pfg-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Data that will be removed' });
+      var detail = h('div', { class: 'pfg-dropped-detail' }, items.map(function (it) {
+        return h('div', {}, [h('strong', { text: it.what }), h('pre', { class: 'pfg-mono', text: it.xml })]);
+      }));
+      detail.hidden = true;
+      var toggle = btn('Show what will be removed', '', function () { detail.hidden = !detail.hidden; toggle.textContent = detail.hidden ? 'Show what will be removed' : 'Hide what will be removed'; });
+      function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); document.removeEventListener('keydown', onKey); }
+      function onKey(ev) { if (ev.key === 'Escape') close(); }
+      document.addEventListener('keydown', onKey);
+      overlay.appendChild(h('div', { class: 'pfg-modal' }, [
+        h('h2', { text: 'Some data will be removed' }),
+        h('p', { text: 'This feed contains ' + items.length + (items.length === 1 ? ' item' : ' items') + ' this plugin does not support. Saving will remove ' + (items.length === 1 ? 'it' : 'them') + ' from the feed file.' }),
+        toggle, detail,
+        h('div', { class: 'pfg-row', style: 'margin-top:12px' }, [btn('Save anyway', 'pfg-btn-primary', function () { close(); proceed(); }), btn('Cancel', '', close)]),
+      ]));
+      document.body.appendChild(overlay);
+    }
     function save() {
       if (saving) return;
       var r = clean();
       if (hosted && !hosted.id && !SLUG_RE.test(slug)) { slugMsg = 'Choose a valid feed name first.'; showErrors([]); revealSlug(); return; }
       if (r.errors.length) { showErrors(r.errors); setBanner('bad', 'Please fix the highlighted problems first.'); revealError(r.errors); return; }
+      if (hosted && hosted.dropped && hosted.dropped.length && !hosted.dropOk) { confirmDropped(function () { hosted.dropOk = true; save(); }); return; }
       saving = true; saveBtn.disabled = true; dirty = false; setBanner('', 'Saving… your signer may ask you to confirm.'); // edits made while saving set it again
       var p = hosted.id ? ctx.host.updateFeed(hosted.id, r.model) : ctx.host.createFeed(slug, r.model);
       p.then(function (res) {
         hosted.id = res.id; hosted.slug = res.slug; hosted.status = res.status; hosted.url = res.url;
+        hosted.dropped = []; hosted.dropOk = false; // the file now holds only what this plugin supports
         saveBtn.textContent = 'Save changes';
         if (res.status === 'published') setBanner('ok', ['Published at ', h('a', { href: res.url, target: '_blank', rel: 'noopener', text: res.url })]);
         else setBanner('warn', 'Saved. This feed is waiting for review and is not public yet.');

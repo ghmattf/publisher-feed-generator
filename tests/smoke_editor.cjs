@@ -231,6 +231,18 @@ ok(!$('.pfg-loading') && $$('details.pfg-section').every(d => d.style.display ==
 ok($('#pfg-f-title').value === 'Acme Records', 'and the form is filled in');
 let failHost = mkHost(profile); failHost.fetchProfile = () => Promise.reject(new Error('x')); renderNew(failHost); await tick();
 ok(!$('.pfg-loading') && $$('details.pfg-section').every(d => d.style.display === ''), 'if the lookup fails the form is shown anyway');
+// warning before a save drops unsupported data
+{ const hd = { id: 7, slug: 'old_pub', status: 'published', url: 'https://phafe.com/x.xml', dropped: [{ what: 'Tag not supported here: foo:thing', xml: '<foo:thing>x</foo:thing>' }] };
+  let sent2 = 0; const hh = mkHost(null); hh.updateFeed = async () => { sent2++; return { id: 7, slug: 'old_pub', status: 'published', url: hd.url }; };
+  const m0 = w.PFGCore.liftSupport(w.PFGCore.emptyModel({}), cfg.platform); m0.title = 'Old Pub'; m0.description = 'd'; m0.value.recipients = [{ name: 'Me', address: 'me@x.com', split: 97, type: 'lnaddress' }];
+  w.PFGEditor.render($('#c'), { cfg, model: m0, hosted: hd, host: hh, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+  [...$$('button')].find(b => /Save changes/.test(b.textContent)).click(); await tick();
+  ok(!!$('.pfg-overlay [aria-label], .pfg-overlay') && /Some data will be removed/.test(w.document.body.textContent) && sent2 === 0, 'dropped data: save is held and a warning appears');
+  const det = $('.pfg-dropped-detail'); ok(det && det.hidden && /foo:thing/.test(det.textContent), 'the removed data is listed, hidden until asked');
+  [...$$('.pfg-overlay button')].find(b => /Show what will be removed/.test(b.textContent)).click(); ok(!det.hidden, 'Show what will be removed reveals it');
+  [...$$('.pfg-overlay button')].find(b => /Save anyway/.test(b.textContent)).click(); await tick(); await tick();
+  ok(sent2 === 1 && !$('.pfg-overlay'), 'Save anyway saves');
+}
 // not for existing feeds, not anonymous
 let calls = 0; const spy = Object.assign(mkHost(profile), { fetchProfile: () => { calls++; return Promise.resolve(profile); } });
 renderNew(spy, { hosted: { id: 7, slug: 'x', status: 'published', url: 'https://phafe.com/x' } }); await tick();

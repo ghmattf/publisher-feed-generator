@@ -177,9 +177,15 @@
   function editHosted(f) {
     setBanner();
     Host.getFeed(f.id).then(function (r) {
-      var m = r.feed;
+      var m = r.feed, dropped = [], notes = [];
+      if (r.importXml) { // a feed that was already on the server: read its existing file into the form
+        var pr = window.PFGCore.parseXml(r.importXml, { DOMParser: window.DOMParser, XMLSerializer: window.XMLSerializer });
+        if (pr.error) { setBanner('bad', 'Could not read the existing feed file: ' + pr.error); return; }
+        m = Core.liftSupport(pr.model, cfg.platform); dropped = pr.droppedItems || [];
+        notes = (pr.notes || []).filter(function (n) { return !/^Kept as-is/.test(n); }); // hosted feeds do not keep those tags: the save warning lists them
+      }
       m.guid = r.guid; m.feedUrl = r.url;
-      openEditor({ model: m, hosted: { id: r.id, slug: r.slug, status: r.status, url: r.url } });
+      openEditor({ model: m, importNotes: notes, hosted: { id: r.id, slug: r.slug, status: r.status, url: r.url, dropped: dropped } });
     }).catch(function (e) { setBanner('bad', errText(e)); });
   }
 
