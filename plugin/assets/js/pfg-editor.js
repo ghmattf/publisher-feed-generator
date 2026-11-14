@@ -602,9 +602,21 @@
       var gotNpub = s.npub ? fillIfEmpty('npub', s.npub) : false;
       if (gotNpub) changed(true);
       if (!ctx.host.fetchProfile) return;
-      setBanner('', 'Looking up your Nostr profile to fill in the form…');
+      // Hide the form until the profile has loaded, so nothing is typed into a form that is about to be filled in.
+      var hideEls = [basics, identity, payments, releases, lintEl, actions];
+      var loadingEl = h('p', { class: 'pfg-loading', role: 'status', 'aria-live': 'polite', text: 'Loading your Nostr profile to fill in the form…' });
+      var loaded = false;
+      function reveal() {
+        if (loaded) return; loaded = true;
+        if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+        hideEls.forEach(function (n) { n.style.display = ''; });
+      }
+      hideEls.forEach(function (n) { n.style.display = 'none'; });
+      container.insertBefore(loadingEl, basics);
+      var giveUp = setTimeout(reveal, 20000); // never leave the person stuck on a slow relay
       var mine = banner.firstChild;
       ctx.host.fetchProfile(s.pubkey).then(function (profile) {
+        clearTimeout(giveUp);
         if (container.isConnected === false) return; // the user has already left this screen
         var wasDirty = dirty, f = Core.profileToFields(profile), filled = [];
         if (fillIfEmpty('title', f.name)) filled.push('name');
@@ -619,11 +631,12 @@
         if (profile && gotNpub) filled.push('npub');
         autoSlug();
         changed(true); dirty = wasDirty; // filled in by us, not edited by the user
+        reveal();
         if (banner.firstChild !== mine) return; // something more important is showing (for example a save result)
         if (!profile) setBanner('', 'No Nostr profile was found on the usual relays, so only your npub was filled in. Fill in the rest by hand.');
         else if (filled.length) setBanner('ok', 'Filled in from your Nostr profile: ' + filled.join(', ') + '. Check everything and change what you like.');
         else setBanner('', 'Your Nostr profile had nothing new to fill in.');
-      });
+      }, function () { clearTimeout(giveUp); reveal(); });
     }
     if (hosted && !hosted.id && ctx.host) prefillFromNostr();
   }
