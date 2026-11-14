@@ -23,6 +23,8 @@ add('anon full', { ...base(), guid: G3.toUpperCase(), feedUrl: 'https://example.
 add('anon no payments', { ...base(), guid: G3, feedUrl: 'https://example.com/pub.xml', value: { recipients: [] }, funding: {} }, anon);
 add('special chars', { ...base(), title: 'Tom & Jerry <b> "q" \'s', description: 'Line1\r\nLine2\rLine3\n\n  spaced  \u0001ctrl\u007f', author: 'Ünï ✓ 日本語 🎵', keywords: 'a\tb\nc' }, hosted);
 add('whitespace', { ...base(), title: '   lots   of\t\tspace  ', description: '\n\n  x  \n\n' }, hosted);
+add('people', { ...base(), persons: [{ name: 'Matt Finlay', role: 'content manager', group: 'administration', href: 'https://phafe.com/mattfinlay', img: 'https://phafe.com/p.png' }, { name: 'Just A Name' }, { name: '', role: '', group: '', href: '', img: '' }] }, hosted);
+add('people invalid', { ...base(), persons: [{ name: '', role: 'x' }, { name: 'A', href: 'http://x.com' }, { name: 'B', img: 'ftp://x' }, { name: 'C'.repeat(101), role: 'r'.repeat(61), group: 'g'.repeat(61) }] }, hosted);
 add('moved feed (new feed url)', { ...base(), newFeedUrl: 'https://new.example.com/p/phafe.xml' }, hosted);
 add('new feed url not https', { ...base(), newFeedUrl: 'http://new.example.com/p.xml' }, hosted);
 add('new feed url same as current', { ...base(), newFeedUrl: 'https://phafe.com/wp-content/uploads/rssfeed/publishers/phafe/phafe.xml' }, hosted);

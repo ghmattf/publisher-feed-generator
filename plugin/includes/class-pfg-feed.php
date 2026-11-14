@@ -235,6 +235,45 @@ class PFG_Feed {
 			self::err( $errors, 'newFeedUrl', 'New feed URL is the same as this feed\'s current URL.' );
 		}
 
+		$praw = self::get( $in, 'persons' );
+		$praw = is_array( $praw ) ? array_values( $praw ) : array();
+		if ( count( $praw ) > 20 ) {
+			self::err( $errors, 'persons', 'At most 20 people.' );
+			$praw = array_slice( $praw, 0, 20 );
+		}
+		$m['persons'] = array();
+		foreach ( $praw as $i => $pr ) {
+			$pp  = 'persons.' . $i;
+			$row = array(
+				'name'  => self::line( self::get( $pr, 'name' ) ),
+				'role'  => self::line( self::get( $pr, 'role' ) ),
+				'group' => self::line( self::get( $pr, 'group' ) ),
+				'href'  => self::line( self::get( $pr, 'href' ) ),
+				'img'   => self::line( self::get( $pr, 'img' ) ),
+			);
+			if ( '' === $row['name'] && '' === $row['role'] && '' === $row['group'] && '' === $row['href'] && '' === $row['img'] ) {
+				continue; // an empty row is ignored.
+			}
+			if ( '' === $row['name'] ) {
+				self::err( $errors, $pp . '.name', 'Enter the person\'s name.' );
+			} elseif ( self::len( $row['name'] ) > 100 ) {
+				self::err( $errors, $pp . '.name', 'Name is too long.' );
+			}
+			if ( self::len( $row['role'] ) > 60 ) {
+				self::err( $errors, $pp . '.role', 'Role is too long.' );
+			}
+			if ( self::len( $row['group'] ) > 60 ) {
+				self::err( $errors, $pp . '.group', 'Group is too long.' );
+			}
+			if ( '' !== $row['href'] && ! self::is_https_url( $row['href'] ) ) {
+				self::err( $errors, $pp . '.href', 'The link must be an https:// URL.' );
+			}
+			if ( '' !== $row['img'] && ! self::is_https_url( $row['img'] ) ) {
+				self::err( $errors, $pp . '.img', 'The image must be an https:// URL.' );
+			}
+			$m['persons'][] = $row;
+		}
+
 		// Nostr npub (metadata only; it does not have to match the login key).
 		$npub = self::line( self::get( $in, 'npub' ) );
 		if ( '' !== $npub ) {

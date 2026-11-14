@@ -95,6 +95,23 @@ class PFG_Xml {
 			$o[] = $i8 . '</itunes:owner>';
 		}
 
+		foreach ( (array) ( isset( $m['persons'] ) ? $m['persons'] : array() ) as $pr ) {
+			$pa = '';
+			if ( '' !== $pr['href'] ) {
+				$pa .= ' href="' . self::esc_attr( $pr['href'] ) . '"';
+			}
+			if ( '' !== $pr['img'] ) {
+				$pa .= ' img="' . self::esc_attr( $pr['img'] ) . '"';
+			}
+			if ( '' !== $pr['group'] ) {
+				$pa .= ' group="' . self::esc_attr( $pr['group'] ) . '"';
+			}
+			if ( '' !== $pr['role'] ) {
+				$pa .= ' role="' . self::esc_attr( $pr['role'] ) . '"';
+			}
+			$o[] = $i8 . '<podcast:person' . $pa . '>' . self::esc_text( $pr['name'] ) . '</podcast:person>';
+		}
+
 		$recips = $m['value']['recipients'] ? array_merge( $m['value']['recipients'], is_array( $platform ) ? $platform : array() ) : array();
 		if ( $recips ) {
 			$attrs = ' type="lightning" method="' . self::esc_attr( $m['value']['method'] ) . '"';
@@ -140,6 +157,10 @@ class PFG_Xml {
 			$o[] = $i8 . '<podcast:remoteItem' . $a . ' />';
 		}
 
+		// Fixed defaults that are not editable.
+		$o[] = $i8 . '<podcast:block>no</podcast:block>';
+		$o[] = $i8 . '<category>Music</category>';
+		$o[] = $i8 . '<podcast:complete>no</podcast:complete>';
 		$o[] = $i4 . '</channel>';
 		$o[] = '</rss>';
 		return implode( "\n", $o ) . "\n";

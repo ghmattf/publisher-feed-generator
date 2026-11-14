@@ -183,7 +183,7 @@ w.document.querySelector('#c').innerHTML = '';
 w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.platform }), hosted: { id: null }, host, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
 ok(/optional/i.test($('.pfg-total').textContent), 'payments empty and optional by default');
 click('Add recipient'); await tick();
-ok($('.pfg-subhead').textContent === 'Support the developers (optional)' && $$('.pfg-locked').length === 0, 'support heading shown, nothing locked');
+ok([...$$('.pfg-subhead')].some(e => e.textContent === 'Support the developers (optional)') && $$('.pfg-locked').length === 0, 'support heading shown, nothing locked');
 ok([0, 1, 2].map(i => $('#pfg-support-' + i)).every(e => e && e.value === '1' && !e.disabled && !e.readOnly) && /Phafe\.com[\s\S]*musicindex\.org[\s\S]*Podcastindex\.org/.test($('.pfg-support').textContent), 'three support recipients (Phafe.com, musicindex.org, Podcastindex.org) default to an editable 1%');
 ok(/97%/.test($('.pfg-total').textContent) && /takes 3%/.test($('.pfg-total').textContent), 'recipient total target is 97%');
 set('#pfg-support-1', '0'); await tick(); ok(/of 98%/.test($('.pfg-total').textContent), 'setting a support share to 0 raises the target to 98%');
@@ -191,6 +191,7 @@ set('#pfg-support-1', '1'); await tick();
 set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '97');
 ok($('#pfg-f-slug').value === 'acme', 'feed name made from the title as it is typed');
 ok(!!$('#pfg-f-newFeedUrl') && /moving this feed/.test($('#pfg-f-newFeedUrl').closest('.pfg-field').textContent), 'New feed URL field exists in Identity and links');
+{ const addP = [...$$('button')].find(b => b.textContent === 'Add person'); addP.click(); ok(!!$('#pfg-f-persons-0-name') || !!$('[id*="persons"][id$="name"]'), 'People: Add person adds a row with a Name field'); [...$$('button')].filter(b => b.textContent === 'Remove').pop().click(); }
 ok($('#pfg-f-slug').parentNode.style.display === 'none', 'the Feed name input is hidden while it is fine');
 set('#pfg-f-slug', '');
 const scrolled2 = []; w.HTMLElement.prototype.scrollIntoView = function () { const i = this.querySelector && this.querySelector('input,textarea,select'); scrolled2.push(i ? i.id : (this.className || this.tagName)); };
