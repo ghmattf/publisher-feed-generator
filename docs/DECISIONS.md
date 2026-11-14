@@ -64,6 +64,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 8. (Owner request, 2026-11-14.) On a new hosted feed the sections and buttons stay hidden behind "Loading your Nostr profile…" until the profile lookup finishes (or fails, or 20 seconds pass), then the pre-filled form appears.
 
+9. (Owner request, 2026-11-14.) The "Feed name (web address)" input is hidden on new hosted feeds; the name is always made from Name / title. The input is shown again only if it needs fixing (name too short or invalid, or already taken). The "Your feed will be at …" line stays. Existing feeds never showed the input (they show the read-only Feed URL).
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

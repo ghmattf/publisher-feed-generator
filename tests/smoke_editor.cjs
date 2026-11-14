@@ -190,12 +190,13 @@ set('#pfg-support-1', '0'); await tick(); ok(/of 98%/.test($('.pfg-total').textC
 set('#pfg-support-1', '1'); await tick();
 set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '97');
 ok($('#pfg-f-slug').value === 'acme', 'feed name made from the title as it is typed');
+ok($('#pfg-f-slug').parentNode.style.display === 'none', 'the Feed name input is hidden while it is fine');
 set('#pfg-f-slug', '');
 const scrolled2 = []; w.HTMLElement.prototype.scrollIntoView = function () { const i = this.querySelector && this.querySelector('input,textarea,select'); scrolled2.push(i ? i.id : (this.className || this.tagName)); };
 $$('details.pfg-section').forEach(d => d.removeAttribute('open'));
 click('Save and publish'); await tick();
 ok(scrolled2.pop() === 'pfg-f-slug' && $$('details.pfg-section').filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent).join() === 'Identity and links', 'Save with a bad feed name opens its section and scrolls to it');
-ok(!sent && /feed name/i.test($('#pfg-f-slug-err').textContent), 'saving without a feed name is blocked');
+ok(!sent && /feed name/i.test($('#pfg-f-slug-err').textContent) && $('#pfg-f-slug').parentNode.style.display === '', 'saving without a feed name is blocked, and the input is shown so it can be fixed');
 set('#pfg-f-slug', 'acme-records'); set('#pfg-f-description', ''); await tick(); $$('details.pfg-section').forEach(d => d.removeAttribute('open'));
 click('Save and publish'); await tick();
 ok(!sent && scrolled2.pop() === 'pfg-f-description' && $$('details.pfg-section').filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent).join() === 'Basics', 'Save with a missing Description opens Basics and scrolls to the first error');
