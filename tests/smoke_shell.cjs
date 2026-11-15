@@ -10,7 +10,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if 
 // fake nostr + hosting
 w.PFGNostr = {};
 let forgot = 0, extPresent = false, extUsed = 0, sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
-w.PFGHosting = { init: () => true, on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
+w.PFGHosting = { init: () => true, hasBrowserKey: () => false, browserKeyName: () => "", forgetBrowserKey() {}, createBrowserAccount: async () => ({}), connectBrowserKey: async () => ({}), on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
   listFeeds: async () => listed, connectBunker: async () => 'pk', hasExtension: () => extPresent, connectExtension: async () => { extUsed++; return 'pk'; }, npubOf: pk => 'npub1for' + pk, forgetSigner: () => { forgot++; }, login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
   startNostrConnect: () => ({ uri: 'nostrconnect://x', qr: '<svg></svg>', done: new Promise(() => {}), cancel() {} }) };
 w.eval(fs.readFileSync(P + 'pfg-core.js', 'utf8'));
@@ -56,7 +56,8 @@ opened.back();
 click('Discard'); ok(!w.localStorage.getItem('pfg_draft_v1'), 'discard clears draft');
 ok(!$$('button').some(b => b.textContent === 'Paste XML') && !/Edit an existing feed/.test($('#pfg-app, .pfg-app').textContent), 'no "Edit an existing feed" card or Paste XML button on the start screen');
 opened.back();
-click('Get started'); ok($('.pfg-overlay') && $('#pfg-bunker'), 'sign-in window opens with bunker field');
+click('Get started'); ok($('.pfg-overlay') && $('#pfg-newname') && selTab().join() === 'Create account', 'sign-in window opens on the Create account tab when no extension');
+click('Paste bunker link'); ok($('#pfg-bunker'), 'bunker field available on its tab');
 ok($('.pfg-overlay').classList.contains('pfg-app') && $('.pfg-overlay').parentNode === w.document.body, 'sign-in overlay is outside #pfg-app and carries .pfg-app (so the colour variables apply)');
 $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
 ok(!$('.pfg-overlay'), 'sign-in window closes after login');

@@ -242,6 +242,23 @@ $GLOBALS['__http'] = fn($u, $a) => new WP_Error('x', 'down'); ok(code(call('POST
 $GLOBALS['__tr'] = []; $hit429 = false; for ($i = 0; $i < 25; $i++) { if (code(call('POST', '/lookup/search', ['q' => 'abc'])) === 429) { $hit429 = true; break; } } ok($hit429, 'lookups are rate limited (429)');
 
 $_COOKIE['pfg_session'] = $savedCookie; $GLOBALS['__tr'] = [];
+// ---- browser-key accounts: payments locked server-side
+$skC = bin2hex(random_bytes(32)); $nC = nonce();
+$rC = call('POST', '/auth/login', ['event' => sign($skC, "$B/auth/login", 'POST', $nC), 'browserKey' => true]);
+ok(code($rC) === 200 && data($rC)['kind'] === 'browser', 'browser-key login: session reports kind=browser');
+$tokC = bin2hex(random_bytes(32)); $accC = $wpdb->get_row("SELECT id FROM wp_pfg_accounts WHERE kind = 'browser'", ARRAY_A);
+$wpdb->query("UPDATE wp_pfg_sessions SET token_hash = '" . hash('sha256', $tokC) . "' WHERE account_id = " . (int) $accC['id']); $_COOKIE['pfg_session'] = $tokC;
+$HC = ['X-PFG-CSRF' => data(call('GET', '/me'))['csrf']];
+$noPay = feed(['value' => ['recipients' => []]]); $noPay['value']['recipients'] = [];
+ok(code(call('POST', '/me/feeds', ['slug' => 'locked-pay', 'feed' => feed()], $HC)) === 403, 'browser account: feed with payment recipients refused (403)');
+$withFund = $noPay; $withFund['funding'] = ['url' => 'https://acme.example/support', 'text' => 'Support'];
+ok(code(call('POST', '/me/feeds', ['slug' => 'locked-fund', 'feed' => $withFund], $HC)) === 403, 'browser account: funding link refused (403)');
+$rc = call('POST', '/me/feeds', ['slug' => 'no-money', 'feed' => $noPay], $HC); ok(code($rc) === 201, 'browser account: feed without payments is created');
+ok(code(call('PUT', '/me/feeds/' . data($rc)['id'], ['feed' => feed()], $HC)) === 403, 'browser account: adding payments on update refused (403)');
+// the lock is decided by the account flag set at creation: a later login without the flag does not unlock it
+$nC = nonce(); call('POST', '/auth/login', ['event' => sign($skC, "$B/auth/login", 'POST', $nC)]);
+ok($wpdb->get_var("SELECT kind FROM wp_pfg_accounts WHERE id = " . (int) $accC['id']) === 'browser', 'logging in again without the browser flag does not unlock the account');
+$_COOKIE['pfg_session'] = $savedCookie;
 // ---- logout, config
 ok(code(call('POST', '/auth/logout', null, $H)) === 200 && code(call('GET', '/me')) === 401, 'logout ends the session');
 $cfg = PFG_Rest::client_config(); ok(json_encode($cfg) && $cfg['hostingAvailable'] === true && $cfg['urls']['feedTemplate'] === "$B/me/feeds/0" && count($cfg['platform']) === 3 && !array_key_exists('applyPlatformToExports', $cfg) && $cfg['platform'][0]['address'] === 'phafe@phafe.com' && $cfg['platform'][1]['address'] === 'heycitizen@getalby.com' && $cfg['platform'][2]['address'] === 'podcastindex@getalby.com', 'client config sane (three support recipients in order: Phafe, Music Index, Podcastindex)');

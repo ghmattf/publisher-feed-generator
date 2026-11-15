@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PFG_Installer {
 
 	const DB_VERSION_OPTION = 'pfg_db_version';
-	const DB_VERSION        = '2';
+	const DB_VERSION        = '3';
 
 	/**
 	 * Table name helper.
@@ -68,6 +68,7 @@ class PFG_Installer {
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				pubkey char(64) NOT NULL,
 				status varchar(16) NOT NULL DEFAULT 'active',
+				kind varchar(16) NOT NULL DEFAULT 'signer',
 				created_at int(10) unsigned NOT NULL,
 				last_login int(10) unsigned NOT NULL DEFAULT 0,
 				PRIMARY KEY  (id),

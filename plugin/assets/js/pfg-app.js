@@ -51,9 +51,11 @@
 
   /* ---------------- layout ---------------- */
   var barEl = h('div', { class: 'pfg-bar' });
+  var kindEl = h('div'); // the reminder shown to people signed in with a key kept in this browser
   var bodyEl = h('div', { class: 'pfg-body' });
   var bannerEl = h('div', { 'aria-live': 'polite' });
   root.appendChild(barEl);
+  root.appendChild(kindEl);
   root.appendChild(bannerEl);
   root.appendChild(bodyEl);
 
@@ -67,6 +69,16 @@
       actions.appendChild(btn('Sign out', 'pfg-btn-small', function () { Host.logout().then(function () { showStart(); }); }));
     }
     barEl.appendChild(actions);
+    clear(kindEl);
+    if (s && s.kind === 'browser') {
+      kindEl.appendChild(note('warn', [
+        'You are signed in with a key kept in this browser. Payments are not available, and this account is lost if you clear your browser data. For a lasting account that can set up payments, use a signer app or a browser extension. ',
+        moreInfoLink(),
+      ]));
+    }
+  }
+  function moreInfoLink() {
+    return cfg.moreInfoUrl ? h('a', { href: cfg.moreInfoUrl, target: '_blank', rel: 'noopener', text: 'More information' }) : null;
   }
 
   function setBanner(kind, msg) { clear(bannerEl); if (msg) bannerEl.appendChild(note(kind, msg)); }
@@ -95,7 +107,7 @@
       var s = Host.getSession();
       cards.appendChild(h('div', { class: 'pfg-card' }, [
         h('h3', { text: 'Hosted feeds' }),
-        h('p', { text: 'We host your feed at ' + (cfg.siteName || 'this site') + ' and keep it updated as you add releases. Sign in with a Nostr remote signer.' }),
+        h('p', { text: 'We host your feed at ' + (cfg.siteName || 'this site') + ' and keep it updated as you add releases. Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
         btn(s ? 'My feeds' : 'Get started', 'pfg-btn-primary', function () { if (s) showHostedList(); else openLogin(showHostedList); }),
       ]));
     } else if (cfg.hostingNeedsGmp) {
@@ -129,6 +141,10 @@
       // Ask a signer for the public key only (no hosted session). Calls back with the npub.
       getNpub: signerOn ? function (then) { openLogin(then, { npubOnly: true }); } : null,
       back: function () { if (opts.hosted) showHostedList(); else showStart(); },
+      // A key kept in this browser cannot set up payments (the server enforces this too).
+      paymentsLocked: !!(opts.hosted && hostingOn && Host.getSession() && Host.getSession().kind === 'browser'),
+      moreInfoUrl: cfg.moreInfoUrl || '',
+      suggestedName: Host.browserKeyName ? Host.browserKeyName() : '',
       h: h, btn: btn, note: note, clear: clear,
     });
   }
@@ -285,13 +301,39 @@
     }
 
     var tabs = h('div', { class: 'pfg-tabs', role: 'tablist' });
+    function tabNew() {
+      clear(panel);
+      if (Host.hasBrowserKey()) {
+        panel.appendChild(h('p', { text: 'A key from an account you made here is kept in this browser.' }));
+        panel.appendChild(h('div', { class: 'pfg-row' }, [
+          btn('Sign in with this browser\'s key', 'pfg-btn-primary', function () { finish(Host.connectBrowserKey(), 'Signing in…'); }),
+        ]));
+        panel.appendChild(h('p', { class: 'pfg-hint', style: 'margin-top:12px' }, ['For a safer, lasting account that can set up payments, use a signer app or a browser extension. ', moreInfoLink()]));
+        panel.appendChild(h('div', { class: 'pfg-row' }, [btn('Forget this key', 'pfg-btn-small pfg-btn-danger', function () {
+          if (window.confirm('Forget the key kept in this browser? You will not be able to sign in to that account again, and its feeds will be out of reach.')) { Host.forgetBrowserKey(); tabNew(); }
+        })]));
+        return;
+      }
+      var input = h('input', { type: 'text', id: 'pfg-newname', placeholder: 'Your name', autocomplete: 'off', 'aria-label': 'Your name' });
+      panel.appendChild(h('p', { text: 'No app or extension needed. We make a key for you and keep it in this browser only.' }));
+      panel.appendChild(input);
+      panel.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [
+        btn('Create account', 'pfg-btn-primary', function () { finish(Host.createBrowserAccount(input.value), 'Creating your account…'); }),
+      ]));
+      panel.appendChild(h('p', { class: 'pfg-hint', style: 'margin-top:12px' }, ['This account only works in this browser, and is lost if you clear your browser data. Payments are not available until you use a signer app or a browser extension. ', moreInfoLink()]));
+      input.focus();
+    }
+    var tNew = btn(Host.hasBrowserKey() ? 'This browser' : 'Create account', 'pfg-tab', function () { sel(tNew); status.replaceChildren(); if (attempt) { attempt.cancel(); attempt = null; } tabNew(); }, { role: 'tab' });
     var tExt = btn('Browser extension', 'pfg-tab', function () { sel(tExt); status.replaceChildren(); if (attempt) { attempt.cancel(); attempt = null; } tabExtension(); }, { role: 'tab' });
     var tPaste = btn('Paste bunker link', 'pfg-tab', function () { sel(tPaste); status.replaceChildren(); if (attempt) { attempt.cancel(); attempt = null; } tabPaste(); }, { role: 'tab' });
     var tQr = btn('Scan QR code', 'pfg-tab', function () { sel(tQr); status.replaceChildren(); tabQr(); }, { role: 'tab' });
-    function sel(t) { [tExt, tPaste, tQr].forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); }); }
+    function sel(t) { [tNew, tExt, tPaste, tQr].forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); }); }
     // An installed extension is the quickest way in, so it comes first and is preselected; otherwise it is the last option.
     var extFirst = Host.hasExtension();
-    (extFirst ? [tExt, tPaste, tQr] : [tPaste, tQr, tExt]).forEach(function (t) { tabs.appendChild(t); });
+    var newFirst = !npubOnly && (Host.hasBrowserKey() || !extFirst);
+    var order = extFirst ? [tExt, tPaste, tQr] : [tPaste, tQr, tExt];
+    if (!npubOnly) order = newFirst ? [tNew].concat(order) : order.concat([tNew]);
+    order.forEach(function (t) { tabs.appendChild(t); });
 
     modal.appendChild(h('h2', { text: npubOnly ? 'Get your npub' : 'Sign in with Nostr' }));
     modal.appendChild(h('p', { class: 'pfg-hint', text: npubOnly
@@ -302,7 +344,7 @@
     modal.appendChild(status);
     modal.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:12px' }, [btn('Cancel', '', close)]));
     document.body.appendChild(overlay);
-    if (extFirst) { sel(tExt); tabExtension(); } else { sel(tPaste); tabPaste(); }
+    if (newFirst) { sel(tNew); tabNew(); } else if (extFirst) { sel(tExt); tabExtension(); } else { sel(tPaste); tabPaste(); }
   }
 
   /* ---------------- start ---------------- */

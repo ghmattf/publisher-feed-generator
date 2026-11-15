@@ -191,10 +191,66 @@
     return attempt;
   }
 
+  /* ---------------- key kept in this browser (for people with no signer app or extension) ---------------- */
+  // The private key is made here and stays in this browser's localStorage. The server never sees it. It has no
+  // password and no backup: it is a way in, and people who want a lasting account switch to a signer or extension.
+  var LOCAL_KEY = 'pfg_browser_key';
+  function localGet() {
+    try {
+      var o = JSON.parse(localStorage.getItem(LOCAL_KEY) || 'null');
+      return o && typeof o.sk === 'string' && /^[0-9a-f]{64}$/i.test(o.sk) ? o : null;
+    } catch (e) { return null; }
+  }
+  function hasBrowserKey() { return !!localGet(); }
+  function browserKeyName() { var k = localGet(); return k && typeof k.name === 'string' ? k.name : ''; }
+  function localSigner(skHex) {
+    var sk = N.hexToBytes(skHex);
+    return {
+      isLocal: true,
+      getPublicKey: function () { return Promise.resolve(N.getPublicKey(sk)); },
+      signEvent: function (template) { return Promise.resolve(N.finalizeEvent(template, sk)); },
+      close: function () {},
+    };
+  }
+  /** Make a new key in this browser and use it. Resolves with the public key (hex). */
+  async function createBrowserAccount(name) {
+    clearSigner();
+    var skHex = N.bytesToHex(N.generateSecretKey());
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({ sk: skHex, name: String(name || '').trim().slice(0, 100), created: Math.floor(Date.now() / 1000) }));
+    } catch (e) {
+      throw new Error('This browser would not let the page keep a key (private browsing, or storage is blocked). Please use a signer app or a browser extension instead.');
+    }
+    if (!localGet()) throw new Error('This browser would not let the page keep a key. Please use a signer app or a browser extension instead.');
+    signer = localSigner(skHex);
+    store({ local: true });
+    return N.getPublicKey(N.hexToBytes(skHex));
+  }
+  /** Use the key already kept in this browser. Resolves with the public key (hex). */
+  async function connectBrowserKey() {
+    clearSigner();
+    var k = localGet();
+    if (!k) throw new Error('No key is kept in this browser.');
+    signer = localSigner(k.sk);
+    store({ local: true });
+    return N.getPublicKey(N.hexToBytes(k.sk));
+  }
+  /** Delete the key kept in this browser. Anything signed in with it becomes unreachable. */
+  function forgetBrowserKey() {
+    try { localStorage.removeItem(LOCAL_KEY); } catch (e) { /* ignore */ }
+    clearSigner();
+  }
+
   /** Rebuild the signer after a page reload (same tab only). */
   function restoreSigner() {
     if (signer) return true;
     var s = loadStore();
+    if (s && s.local === true) {
+      var lk = localGet();
+      if (!lk) return false;
+      signer = localSigner(lk.sk);
+      return true;
+    }
     if (s && s.ext === true) {
       if (!hasExtension()) return false; // the extension is gone or not ready: the user signs in again
       signer = extensionSigner();
@@ -250,7 +306,7 @@
   async function login() {
     emit('progress', 'Signing in. Your signer may ask you to approve a sign-in request…');
     var event = await withTimeout(signHttpAuth(cfg.urls.login, 'POST', null), Math.max(signerWait(), 120000), 'Your signer did not answer the sign-in request. Open your signer app, approve it if it is waiting, then try again.');
-    var r = await rawFetch('POST', cfg.urls.login, { event: event });
+    var r = await rawFetch('POST', cfg.urls.login, { event: event, browserKey: !!(signer && signer.isLocal) });
     if (!r.res.ok) throw apiError(r.res, r.data);
     session = r.data;
     emit('session', session);
@@ -341,6 +397,11 @@
     init: init,
     on: on,
     connectBunker: connectBunker,
+    createBrowserAccount: createBrowserAccount,
+    connectBrowserKey: connectBrowserKey,
+    hasBrowserKey: hasBrowserKey,
+    browserKeyName: browserKeyName,
+    forgetBrowserKey: forgetBrowserKey,
     hasExtension: hasExtension,
     connectExtension: connectExtension,
     startNostrConnect: startNostrConnect,

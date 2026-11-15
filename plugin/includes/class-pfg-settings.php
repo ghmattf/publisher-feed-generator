@@ -24,6 +24,7 @@ class PFG_Settings {
 			'max_feeds_per_account'    => 3,
 			'max_releases'             => 200,
 			'require_approval'         => 0,
+			'more_info_url'            => '',
 			'session_hours'            => 24,
 			'relays'                   => array( 'wss://relay.primal.net', 'wss://relay.nsec.app', 'wss://relay.damus.io', 'wss://nos.lol' ),
 			// "Support the developers (optional)": shown to every feed creator with these default splits.
@@ -128,6 +129,9 @@ class PFG_Settings {
 		$out['require_approval']          = empty( $in['require_approval'] ) ? 0 : 1;
 		$out['trust_cf_ip']               = empty( $in['trust_cf_ip'] ) ? 0 : 1;
 		$out['delete_data_on_uninstall']  = empty( $in['delete_data_on_uninstall'] ) ? 0 : 1;
+
+		$mi                  = isset( $in['more_info_url'] ) ? esc_url_raw( trim( (string) $in['more_info_url'] ), array( 'https' ) ) : '';
+		$out['more_info_url'] = $mi;
 
 		$out['max_feeds_per_account'] = max( 1, min( 50, (int) ( isset( $in['max_feeds_per_account'] ) ? $in['max_feeds_per_account'] : $d['max_feeds_per_account'] ) ) );
 		$out['max_releases']          = max( 1, min( 1000, (int) ( isset( $in['max_releases'] ) ? $in['max_releases'] : $d['max_releases'] ) ) );

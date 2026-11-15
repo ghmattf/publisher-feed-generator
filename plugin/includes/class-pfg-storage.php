@@ -184,7 +184,8 @@ class PFG_Storage {
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t} WHERE id = %d", $id ), ARRAY_A ); // phpcs:ignore
 	}
 
-	public static function touch_account( $pubkey ) {
+	/** Accounts whose key lives in the person's browser ('browser') cannot change payments. Others are 'signer'. */
+	public static function touch_account( $pubkey, $kind = 'signer' ) {
 		global $wpdb;
 		$t   = PFG_Installer::table( 'accounts' );
 		$now = time();
@@ -195,10 +196,11 @@ class PFG_Storage {
 				array(
 					'pubkey'     => $pubkey,
 					'status'     => 'active',
+					'kind'       => 'browser' === $kind ? 'browser' : 'signer',
 					'created_at' => $now,
 					'last_login' => $now,
 				),
-				array( '%s', '%s', '%d', '%d' )
+				array( '%s', '%s', '%s', '%d', '%d' )
 			);
 			return self::get_account_by_pubkey( $pubkey );
 		}

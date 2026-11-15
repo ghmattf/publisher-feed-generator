@@ -159,6 +159,7 @@ class PFG_Rest {
 				'lookupSearch' => rest_url( self::NS . '/lookup/search' ),
 			),
 			'feedBaseUrl'            => PFG_Storage::base_url(),
+			'moreInfoUrl'            => (string) PFG_Settings::get( 'more_info_url' ),
 			'relays'                 => array_values( (array) PFG_Settings::get( 'relays' ) ),
 			'platform'               => array_values( PFG_Settings::platform_recipients() ),
 			'defaults'               => array(
@@ -199,7 +200,7 @@ class PFG_Rest {
 		if ( ! is_array( $body ) || ! isset( $body['event'] ) ) {
 			return new WP_Error( 'pfg_bad_request', 'Missing signed event.', array( 'status' => 400 ) );
 		}
-		$res = PFG_Auth::login( $body['event'], rest_url( self::NS . '/auth/login' ) );
+		$res = PFG_Auth::login( $body['event'], rest_url( self::NS . '/auth/login' ), ! empty( $body['browserKey'] ) ? 'browser' : 'signer' );
 		if ( is_wp_error( $res ) ) {
 			return $res;
 		}
@@ -224,6 +225,7 @@ class PFG_Rest {
 	private static function session_payload( $acc, $csrf, $expires ) {
 		return array(
 			'pubkey'  => $acc['pubkey'],
+			'kind'    => isset( $acc['kind'] ) && 'browser' === $acc['kind'] ? 'browser' : 'signer',
 			'npub'    => PFG_Nostr::npub_encode( $acc['pubkey'] ),
 			'csrf'    => $csrf,
 			'expires' => (int) $expires,
@@ -258,6 +260,23 @@ class PFG_Rest {
 			'default_suggested' => (string) PFG_Settings::get( 'default_suggested' ),
 			'allow_attrs'       => false,
 		);
+	}
+
+	/**
+	 * Accounts whose key is kept in the person's browser may not set up payments (recipients or a funding link):
+	 * a stolen browser key must not be able to redirect money. Returns a WP_Error, or null when allowed.
+	 */
+	private static function payments_lock( $session, $model ) {
+		$acc = PFG_Storage::get_account( (int) $session['account_id'] );
+		if ( ! $acc || empty( $acc['kind'] ) || 'browser' !== $acc['kind'] ) {
+			return null;
+		}
+		$has_recipients = ! empty( $model['value']['recipients'] );
+		$has_funding    = ! empty( $model['funding']['url'] );
+		if ( $has_recipients || $has_funding ) {
+			return new WP_Error( 'pfg_payments_locked', 'Payments are not supported when you sign in with a key kept in this browser. Sign in with a signer app or a browser extension to set up payments.', array( 'status' => 403 ) );
+		}
+		return null;
 	}
 
 	private static function invalid( $errors ) {
@@ -316,6 +335,10 @@ class PFG_Rest {
 		if ( $res['errors'] ) {
 			return self::invalid( $res['errors'] );
 		}
+		$lock = self::payments_lock( $s, $res['model'] );
+		if ( $lock ) {
+			return $lock;
+		}
 		$res['model']['created'] = time(); // the server decides the creation date, whatever the browser sent.
 		$status = PFG_Settings::get( 'require_approval' ) ? 'pending' : 'published';
 		$id     = PFG_Storage::insert_feed( (int) $s['account_id'], $slug, $guid, $res['model'], $status );
@@ -354,6 +377,10 @@ class PFG_Rest {
 		$res = PFG_Feed::normalize( isset( $body['feed'] ) ? $body['feed'] : array(), self::norm_opts( $feed['slug'], $feed['guid'] ) );
 		if ( $res['errors'] ) {
 			return self::invalid( $res['errors'] );
+		}
+		$lock = self::payments_lock( $s, $res['model'] );
+		if ( $lock ) {
+			return $lock;
 		}
 		$old = PFG_Storage::decode_model( $feed );
 		if ( PFG_Feed::payment_fingerprint( $old ) !== PFG_Feed::payment_fingerprint( $res['model'] ) ) {
