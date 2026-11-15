@@ -61,6 +61,67 @@ class PFG_Lookup {
 		return $body;
 	}
 
+	/**
+	 * Does the person with this Nostr key control the website a feed points to? Two proofs are accepted, both
+	 * fetched from the feed's own website (https only, through the safe HTTP functions):
+	 *  1. NIP-05: https://host/.well-known/nostr.json lists the key under any name.
+	 *  2. The website's address from the feed (its home page) shows the person's npub somewhere in its HTML.
+	 *
+	 * @param string $website  The feed's website (the channel link).
+	 * @param string $pubkey   64 hex characters.
+	 * @return array array( 'ok' => bool, 'how' => string, 'checked' => string[] )
+	 */
+	public static function verify_domain_control( $website, $pubkey ) {
+		$out  = array( 'ok' => false, 'how' => '', 'checked' => array() );
+		$host = wp_parse_url( (string) $website, PHP_URL_HOST );
+		if ( ! is_string( $host ) || '' === $host || 'https' !== strtolower( (string) wp_parse_url( $website, PHP_URL_SCHEME ) ) ) {
+			return $out;
+		}
+		$npub = PFG_Nostr::npub_encode( strtolower( (string) $pubkey ) );
+		$n05  = 'https://' . $host . '/.well-known/nostr.json';
+		$out['checked'][] = $n05;
+		$body = self::fetch_small( $n05 );
+		if ( is_string( $body ) ) {
+			$j = json_decode( $body, true );
+			if ( is_array( $j ) && isset( $j['names'] ) && is_array( $j['names'] ) ) {
+				foreach ( $j['names'] as $v ) {
+					if ( is_string( $v ) && hash_equals( strtolower( (string) $pubkey ), strtolower( $v ) ) ) {
+						$out['ok']  = true;
+						$out['how'] = 'the key is listed in ' . $n05;
+						return $out;
+					}
+				}
+			}
+		}
+		$out['checked'][] = $website;
+		$page = self::fetch_small( $website );
+		if ( is_string( $page ) && $npub && false !== strpos( $page, $npub ) ) {
+			$out['ok']  = true;
+			$out['how'] = 'the npub appears on ' . $website;
+		}
+		return $out;
+	}
+
+	/** Small, safe GET of a page (https only, 256 KB). Returns the body or null. */
+	private static function fetch_small( $url ) {
+		if ( ! preg_match( '#^https://[^\s<>"\']+$#i', (string) $url ) ) {
+			return null;
+		}
+		$res = wp_safe_remote_get(
+			$url,
+			array(
+				'timeout'             => 8,
+				'redirection'         => 3,
+				'limit_response_size' => 262144,
+				'headers'             => array( 'User-Agent' => 'PublisherFeedGenerator/1.0 (' . home_url() . ')' ),
+			)
+		);
+		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+			return null;
+		}
+		return (string) wp_remote_retrieve_body( $res );
+	}
+
 	/** GET against the Music Index API. Returns decoded array or null. */
 	private static function mi_get( $path ) {
 		$res = wp_remote_get(

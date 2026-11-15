@@ -419,6 +419,70 @@ class PFG_Storage {
 		return $id;
 	}
 
+	/** The website a feed points to: the channel link in its settings, or, for an adopted feed, in its file. */
+	public static function feed_website( $feed ) {
+		$m = self::decode_model( $feed );
+		if ( ! empty( $m['link'] ) && is_string( $m['link'] ) ) {
+			return $m['link'];
+		}
+		$xml = self::read_file( $feed['slug'] );
+		if ( '' === $xml || strlen( $xml ) > 2097152 ) {
+			return '';
+		}
+		$doc  = new DOMDocument();
+		$prev = libxml_use_internal_errors( true );
+		$ok   = $doc->loadXML( $xml, LIBXML_NONET );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $prev );
+		if ( ! $ok ) {
+			return '';
+		}
+		$xp = new DOMXPath( $doc );
+		return trim( $xp->evaluate( 'string(/rss/channel/link)' ) );
+	}
+
+	/**
+	 * Admin action: give a feed to another account (new owner = a Nostr key). The file, URL and GUID do not change.
+	 * Unless `$skip_check`, the new owner must show control of the feed's website (see verify_domain_control).
+	 * Returns array( 'account_id', 'how' ) or a WP_Error.
+	 */
+	public static function move_feed( $feed_id, $new_key, $skip_check = false ) {
+		$feed = self::get_feed( (int) $feed_id );
+		if ( ! $feed || 'deleted' === $feed['status'] ) {
+			return new WP_Error( 'pfg_move', 'Choose a feed to move.' );
+		}
+		$new_key = trim( (string) $new_key );
+		$hex     = preg_match( '/^[0-9a-fA-F]{64}$/', $new_key ) ? strtolower( $new_key ) : PFG_Nostr::npub_decode( $new_key );
+		if ( ! $hex ) {
+			return new WP_Error( 'pfg_move', 'The new owner must be an npub1… address (or 64 hex characters).' );
+		}
+		$old = self::get_account( (int) $feed['account_id'] );
+		if ( $old && hash_equals( $old['pubkey'], $hex ) ) {
+			return new WP_Error( 'pfg_move', 'That key already owns this feed.' );
+		}
+		$existing = self::get_account_by_pubkey( $hex );
+		if ( $existing && 'active' !== $existing['status'] ) {
+			return new WP_Error( 'pfg_move', 'That account is blocked.' );
+		}
+		$how = 'checked by the administrator, not by the plugin';
+		if ( ! $skip_check ) {
+			$site = self::feed_website( $feed );
+			if ( '' === $site ) {
+				return new WP_Error( 'pfg_move', 'The feed has no website address to check. Confirm the new owner another way and tick the box to skip the check.' );
+			}
+			$v = PFG_Lookup::verify_domain_control( $site, $hex );
+			if ( ! $v['ok'] ) {
+				return new WP_Error( 'pfg_move', 'The new owner has not shown control of ' . $site . '. They can add their npub (' . PFG_Nostr::npub_encode( $hex ) . ') anywhere on that page, or list their key in /.well-known/nostr.json on that domain (NIP-05). Checked: ' . implode( ', ', $v['checked'] ) . '. Or confirm another way and tick the box to skip the check.' );
+			}
+			$how = $v['how'];
+		}
+		$acc = $existing ? $existing : self::touch_account( $hex, 'signer' );
+		if ( ! $acc || ! self::reassign_feed( (int) $feed['id'], (int) $acc['id'] ) ) {
+			return new WP_Error( 'pfg_move', 'The feed could not be moved.' );
+		}
+		return array( 'account_id' => (int) $acc['id'], 'how' => $how );
+	}
+
 	public static function decode_model( $feed ) {
 		$m = json_decode( isset( $feed['data'] ) ? $feed['data'] : '{}', true );
 		return is_array( $m ) ? $m : array();
