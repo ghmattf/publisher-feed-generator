@@ -11,7 +11,7 @@ function call($method, $route, $body = null, $headers = []){
   $id = null; if (preg_match('#^/me/feeds/(\d+)$#', $route, $m)) { $id = $m[1]; $req['id'] = $id; }
   $perm = in_array($route, ['/auth/nonce', '/auth/login'], true) ? 'perm_hosting' : (strpos($route, '/lookup/') === 0 ? 'perm_lookup' : 'perm_session');
   $p = PFG_Rest::$perm($req); if (is_wp_error($p)) return $p;
-  $map = ['POST /auth/nonce' => 'route_nonce', 'POST /auth/login' => 'route_login', 'POST /auth/logout' => 'route_logout', 'GET /me' => 'route_me', 'POST /lookup/feed' => 'route_lookup_feed', 'POST /lookup/search' => 'route_lookup_search', 'GET /me/feeds' => 'route_list', 'POST /me/feeds' => 'route_create'];
+  $map = ['POST /auth/nonce' => 'route_nonce', 'POST /auth/login' => 'route_login', 'POST /auth/logout' => 'route_logout', 'GET /me' => 'route_me', 'POST /lookup/feed' => 'route_lookup_feed', 'POST /lookup/search' => 'route_lookup_search', 'GET /me/feeds' => 'route_list', 'POST /me/feeds' => 'route_create', 'POST /me/upgrade' => 'route_upgrade'];
   $k = $method . ' ' . ($id ? '/me/feeds' : $route); 
   if ($id) $h = ['GET' => 'route_get', 'PUT' => 'route_update', 'DELETE' => 'route_delete'][$method]; else $h = $map[$k];
   return PFG_Rest::$h($req);
@@ -258,6 +258,37 @@ ok(code(call('PUT', '/me/feeds/' . data($rc)['id'], ['feed' => feed()], $HC)) ==
 // the lock is decided by the account flag set at creation: a later login without the flag does not unlock it
 $nC = nonce(); call('POST', '/auth/login', ['event' => sign($skC, "$B/auth/login", 'POST', $nC)]);
 ok($wpdb->get_var("SELECT kind FROM wp_pfg_accounts WHERE id = " . (int) $accC['id']) === 'browser', 'logging in again without the browser flag does not unlock the account');
+// ---- upgrade a browser-key account to a signer (two-key move)
+$UP = "$B/me/upgrade";
+function upgrade_call($skOld, $skNew, $newPub, $H, $nOld = null, $nNew = null){
+  global $UP; $body = json_encode(['newPubkey' => $newPub]);
+  $h = $H;
+  if ($skOld) $h['X-PFG-Auth'] = base64_encode(json_encode(sign($skOld, $UP, 'POST', $nOld ?: nonce(), $body)));
+  if ($skNew) $h['X-PFG-Auth-New'] = base64_encode(json_encode(sign($skNew, $UP, 'POST', $nNew ?: nonce(), $body)));
+  return call('POST', '/me/upgrade', $body, $h);
+}
+function pubof($sk){ return trim(shell_exec("node -e \"const {getPublicKey}=require('" . __DIR__ . "/../build/node_modules/nostr-tools/lib/cjs/pure.js');const {hexToBytes}=require('" . __DIR__ . "/../build/node_modules/@noble/hashes/utils.js');console.log(getPublicKey(hexToBytes('$sk')))\"")); }
+$skN = bin2hex(random_bytes(32)); $pubN = pubof($skN); $pubC = pubof($skC);
+ok(code(upgrade_call($skC, null, $pubN, $HC)) === 428 && code(upgrade_call(null, $skN, $pubN, $HC)) === 428, 'upgrade needs both signatures (428 when either is missing)');
+ok(code(upgrade_call($skC, $skC, $pubC, $HC)) === 422, 'upgrading to the same key refused');
+$skX = bin2hex(random_bytes(32));
+ok(code(upgrade_call($skC, $skX, $pubN, $HC)) === 403, 'new-key signature from a different key than the one named: refused');
+ok(code(upgrade_call($skX, $skN, $pubN, $HC)) === 403, 'old-key signature from a key that is not the session key: refused');
+$same = nonce(); ok(code(upgrade_call($skC, $skN, $pubN, $HC, $same, $same)) >= 400, 'both keys sharing one nonce refused');
+$me = data(call('GET', '/me')); $HC = ['X-PFG-CSRF' => $me['csrf']]; ok($me['pubkey'] === $pubC, 'failed attempts changed nothing');
+ok(code(upgrade_call($skC, $skA, $pubA, $HC)) === 409, 'new key that already has an account with feeds: refused');
+// a throwaway empty account for the new key is replaced, not blocking
+$nE = nonce(); call('POST', '/auth/login', ['event' => sign($skN, "$B/auth/login", 'POST', $nE)]); $_COOKIE['pfg_session'] = $tokC;
+ok((int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_accounts WHERE pubkey = '$pubN'") === 1, 'precondition: the new key already has an empty account');
+$HC = ['X-PFG-CSRF' => data(call('GET', '/me'))['csrf']];
+$oldN = nonce(); $newN = nonce(); $ru = upgrade_call($skC, $skN, $pubN, $HC, $oldN, $newN);
+ok(code($ru) === 200 && data($ru)['kind'] === 'signer' && data($ru)['pubkey'] === $pubN, 'two-key move accepted: account is now a signer account on the new key');
+ok(count(data($ru)['feeds']) === 1 && data($ru)['feeds'][0]['slug'] === 'no-money', 'feeds stay with the account (same slug, GUID and URL)');
+ok((int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_accounts WHERE pubkey = '$pubN'") === 1 && (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_accounts WHERE pubkey = '$pubC'") === 0, 'one account per key after the move (the old key has none)');
+$HC = ['X-PFG-CSRF' => data(call('GET', '/me'))['csrf']];
+ok(code(call('POST', '/me/feeds', ['slug' => 'now-paid', 'feed' => feed()], $HC)) === 201, 'payments unlocked after the upgrade');
+ok(code(upgrade_call($skN, $skA, $pubA, $HC)) === 409, 'a signer account cannot be "upgraded" again');
+ok(code(call('POST', '/auth/login', ['event' => sign($skC, "$B/auth/login", 'POST', nonce()), 'browserKey' => true])) === 200 && $wpdb->get_var("SELECT kind FROM wp_pfg_accounts WHERE pubkey = '$pubC'") === 'browser', 'the old key signing in again gets a fresh empty browser account, not the moved one');
 $_COOKIE['pfg_session'] = $savedCookie;
 // ---- logout, config
 ok(code(call('POST', '/auth/logout', null, $H)) === 200 && code(call('GET', '/me')) === 401, 'logout ends the session');

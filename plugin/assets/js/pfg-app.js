@@ -75,6 +75,7 @@
         'You are signed in with a key kept in this browser. Payments are not available, and this account is lost if you clear your browser data. For a lasting account that can set up payments, use a signer app or a browser extension. ',
         moreInfoLink(),
       ]));
+      kindEl.appendChild(h('div', { class: 'pfg-row' }, [btn('Upgrade my sign-in', 'pfg-btn-primary', function () { openLogin(view === 'editor' ? null : showHostedList, { upgrade: true }); })]));
     }
   }
   function moreInfoLink() {
@@ -215,6 +216,7 @@
   /* ---------------- sign-in window ---------------- */
   function openLogin(after, opts) {
     opts = opts || {};
+    var upgrade = !!opts.upgrade; // move this browser-key account to a signer app or extension (both keys sign)
     var npubOnly = !!opts.npubOnly; // read the public key only: no hosted session, signer forgotten afterwards
     var attempt = null, closed = false;
     var status = h('div', { 'aria-live': 'polite' });
@@ -235,7 +237,7 @@
 
     function finish(connectPromise, waitMsg) {
       status.replaceChildren(note('', waitMsg || 'Waiting for your signer to approve…'));
-      connectPromise.then(function (pk) { return npubOnly ? pk : Host.login(); }).then(function (res) {
+      connectPromise.then(function (pk) { return upgrade ? Host.upgradeAccount(connectPromise) : (npubOnly ? pk : Host.login()); }).then(function (res) {
         if (closed) return;
         if (npubOnly) {
           var npub = Host.npubOf(res);
@@ -245,6 +247,7 @@
           return;
         }
         close(); renderBar();
+        if (upgrade) setBanner('ok', 'Your account now uses your signer. Payments can be set up (reopen your feed if it is open), and your feeds and their addresses are unchanged.');
         if (typeof after === 'function') after();
       }).catch(function (e) {
         if (closed) return;
@@ -330,13 +333,15 @@
     function sel(t) { [tNew, tExt, tPaste, tQr].forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); }); }
     // An installed extension is the quickest way in, so it comes first and is preselected; otherwise it is the last option.
     var extFirst = Host.hasExtension();
-    var newFirst = !npubOnly && (Host.hasBrowserKey() || !extFirst);
+    var newFirst = !npubOnly && !upgrade && (Host.hasBrowserKey() || !extFirst);
     var order = extFirst ? [tExt, tPaste, tQr] : [tPaste, tQr, tExt];
-    if (!npubOnly) order = newFirst ? [tNew].concat(order) : order.concat([tNew]);
+    if (!npubOnly && !upgrade) order = newFirst ? [tNew].concat(order) : order.concat([tNew]);
     order.forEach(function (t) { tabs.appendChild(t); });
 
-    modal.appendChild(h('h2', { text: npubOnly ? 'Get your npub' : 'Sign in with Nostr' }));
-    modal.appendChild(h('p', { class: 'pfg-hint', text: npubOnly
+    modal.appendChild(h('h2', { text: upgrade ? 'Upgrade your sign-in' : (npubOnly ? 'Get your npub' : 'Sign in with Nostr') }));
+    modal.appendChild(h('p', { class: 'pfg-hint', text: upgrade
+      ? 'Connect a signer app or browser extension. Your account, feeds and feed addresses move to that key. You will be asked to approve the move, and the key kept in this browser is removed afterwards.'
+      : npubOnly
       ? 'Connect your signer app or browser extension so we can read your public key (npub). You are not signed in and nothing is saved on this site. Your private key stays in your signer.'
       : 'Your private key stays in your signer app or browser extension. This site never sees it.' }));
     modal.appendChild(tabs);

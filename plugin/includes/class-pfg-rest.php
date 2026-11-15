@@ -45,6 +45,7 @@ class PFG_Rest {
 		register_rest_route( self::NS, '/auth/login', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_login' ), 'permission_callback' => $hst ) );
 		register_rest_route( self::NS, '/auth/logout', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_logout' ), 'permission_callback' => $ses ) );
 		register_rest_route( self::NS, '/me', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'route_me' ), 'permission_callback' => $ses ) );
+		register_rest_route( self::NS, '/me/upgrade', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_upgrade' ), 'permission_callback' => $ses ) );
 		register_rest_route(
 			self::NS,
 			'/me/feeds',
@@ -153,6 +154,7 @@ class PFG_Rest {
 				'login'        => rest_url( self::NS . '/auth/login' ),
 				'logout'       => rest_url( self::NS . '/auth/logout' ),
 				'me'           => rest_url( self::NS . '/me' ),
+				'upgrade'      => rest_url( self::NS . '/me/upgrade' ),
 				'feeds'        => rest_url( self::NS . '/me/feeds' ),
 				'feedTemplate' => rest_url( self::NS . '/me/feeds/0' ),
 				'lookupFeed'   => rest_url( self::NS . '/lookup/feed' ),
@@ -400,6 +402,80 @@ class PFG_Rest {
 		PFG_Storage::update_feed_data( (int) $feed['id'], $res['model'] );
 		$row = PFG_Storage::get_feed( (int) $feed['id'] );
 		return rest_ensure_response( array_merge( self::feed_summary( $row ), array( 'feed' => $res['model'], 'xml' => $xml ) ) );
+	}
+
+	/**
+	 * Move a browser-key account to a safer key (a signer app or extension). Both keys must sign, so nobody can
+	 * take over an account without the old key and nobody can be given an account without agreeing to it:
+	 * - the old key signs a fresh NIP-98 event (X-PFG-Auth) and must be the key of this session;
+	 * - the new key signs a fresh NIP-98 event (X-PFG-Auth-New);
+	 * - both events are for this URL and bound to the same body, which names the new key.
+	 * Feeds stay with the account, so URLs and GUIDs do not change.
+	 */
+	public static function route_upgrade( WP_REST_Request $r ) {
+		$s   = PFG_Auth::load_session();
+		$acc = PFG_Storage::get_account( (int) $s['account_id'] );
+		if ( ! $acc || 'browser' !== $acc['kind'] ) {
+			return new WP_Error( 'pfg_upgrade', 'Only an account created with a key kept in the browser can be upgraded.', array( 'status' => 409 ) );
+		}
+		$rl = PFG_Auth::rate_limit( 'upgrade', 10, 600, (string) $acc['id'] );
+		if ( is_wp_error( $rl ) ) {
+			return $rl;
+		}
+		$body = $r->get_json_params();
+		$new  = is_array( $body ) && isset( $body['newPubkey'] ) && is_string( $body['newPubkey'] ) ? strtolower( $body['newPubkey'] ) : '';
+		if ( ! preg_match( '/^[0-9a-f]{64}$/', $new ) ) {
+			return new WP_Error( 'pfg_bad_request', 'Missing the new public key.', array( 'status' => 400 ) );
+		}
+		if ( hash_equals( $acc['pubkey'], $new ) ) {
+			return new WP_Error( 'pfg_upgrade', 'That is the same key you are signed in with. Connect a different signer.', array( 'status' => 422 ) );
+		}
+		$url = rest_url( self::NS . '/me/upgrade' );
+		$raw = $r->get_body();
+		// Old key: validated first, but its nonce is only spent once both signatures are good.
+		$hdr_old = $r->get_header( 'x-pfg-auth' );
+		$hdr_new = $r->get_header( 'x-pfg-auth-new' );
+		if ( ! $hdr_old || ! $hdr_new ) {
+			return new WP_Error( 'pfg_fresh_auth_required', 'Both your old and your new key must confirm this move.', array( 'status' => 428 ) );
+		}
+		$vs = array();
+		foreach ( array( 'old' => $hdr_old, 'new' => $hdr_new ) as $which => $hdr ) {
+			$json  = base64_decode( $hdr, true );
+			$event = false === $json ? null : json_decode( $json, true );
+			$v     = PFG_Nostr::validate_http_auth( $event, $url, 'POST', $raw );
+			if ( is_wp_error( $v ) ) {
+				return $v;
+			}
+			$vs[ $which ] = $v;
+		}
+		if ( ! hash_equals( $acc['pubkey'], $vs['old']['pubkey'] ) ) {
+			return new WP_Error( 'pfg_bad_auth', 'The first signature is not from the key you are signed in with.', array( 'status' => 403 ) );
+		}
+		if ( ! hash_equals( $new, $vs['new']['pubkey'] ) ) {
+			return new WP_Error( 'pfg_bad_auth', 'The second signature is not from the new key.', array( 'status' => 403 ) );
+		}
+		if ( hash_equals( $vs['old']['nonce'], $vs['new']['nonce'] ) ) {
+			return new WP_Error( 'pfg_bad_auth', 'Each key must sign its own request.', array( 'status' => 401 ) );
+		}
+		$existing = PFG_Storage::get_account_by_pubkey( $new );
+		if ( $existing && PFG_Storage::count_feeds_for_account( (int) $existing['id'] ) > 0 ) {
+			return new WP_Error( 'pfg_upgrade', 'That key already has an account with feeds here. Use a key that has not been used on this site, or ask the site owner to move the feeds for you.', array( 'status' => 409 ) );
+		}
+		foreach ( $vs as $v ) {
+			if ( ! PFG_Auth::consume_nonce( $v['nonce'] ) ) {
+				return new WP_Error( 'pfg_fresh_auth_required', 'That confirmation expired. Please confirm again.', array( 'status' => 428 ) );
+			}
+		}
+		if ( $existing ) {
+			// An empty account left by earlier sign-ins with the new key: the new key just proved it is theirs.
+			PFG_Storage::delete_empty_account( (int) $existing['id'] );
+		}
+		if ( ! PFG_Storage::change_account_key( (int) $acc['id'], $new ) ) {
+			return new WP_Error( 'pfg_upgrade', 'The account could not be moved.', array( 'status' => 500 ) );
+		}
+		$acc  = PFG_Storage::get_account( (int) $acc['id'] );
+		$csrf = PFG_Auth::rotate_csrf( (int) $s['session_id'] );
+		return rest_ensure_response( self::session_payload( $acc, $csrf, (int) $s['expires'] ) );
 	}
 
 	public static function route_delete( WP_REST_Request $r ) {

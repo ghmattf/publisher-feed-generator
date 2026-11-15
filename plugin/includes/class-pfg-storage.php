@@ -208,6 +208,32 @@ class PFG_Storage {
 		return $acc;
 	}
 
+	/**
+	 * Point an account at a new key (the two-key move). Feeds, GUIDs and URLs stay as they are because feeds belong
+	 * to the account, not to the key. The account becomes a normal signer account, so payments unlock.
+	 */
+	public static function change_account_key( $id, $new_pubkey ) {
+		global $wpdb;
+		return false !== $wpdb->update( PFG_Installer::table( 'accounts' ), array( 'pubkey' => $new_pubkey, 'kind' => 'signer' ), array( 'id' => (int) $id ), array( '%s', '%s' ), array( '%d' ) );
+	}
+
+	/** Delete an account that owns no feeds, with its sessions. */
+	public static function delete_empty_account( $id ) {
+		global $wpdb;
+		if ( self::count_feeds_for_account( (int) $id ) > 0 ) {
+			return false;
+		}
+		PFG_Auth::destroy_account_sessions( (int) $id );
+		$wpdb->delete( PFG_Installer::table( 'accounts' ), array( 'id' => (int) $id ), array( '%d' ) );
+		return true;
+	}
+
+	/** Give a feed to another account. The file, URL and GUID do not change. */
+	public static function reassign_feed( $feed_id, $account_id ) {
+		global $wpdb;
+		return false !== $wpdb->update( PFG_Installer::table( 'feeds' ), array( 'account_id' => (int) $account_id ), array( 'id' => (int) $feed_id ), array( '%d' ), array( '%d' ) );
+	}
+
 	public static function set_account_status( $id, $status ) {
 		global $wpdb;
 		$wpdb->update( PFG_Installer::table( 'accounts' ), array( 'status' => $status ), array( 'id' => (int) $id ), array( '%s' ), array( '%d' ) );

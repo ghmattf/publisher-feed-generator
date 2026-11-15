@@ -289,14 +289,15 @@
   }
 
   /** Build and sign a NIP-98 HTTP auth event bound to url, method, optional body, and a fresh nonce. */
-  async function signHttpAuth(url, method, bodyString) {
-    if (!hasSigner()) throw new Error('Your signer is not connected. Please sign in again.');
+  async function signHttpAuth(url, method, bodyString, withSigner) {
+    if (!withSigner && !hasSigner()) throw new Error('Your signer is not connected. Please sign in again.');
+    var sg = withSigner || signer;
     var nonce = await getNonce();
     var tags = [['u', url], ['method', method], ['nonce', nonce]];
     if (bodyString) tags.push(['payload', N.sha256Hex(bodyString)]);
     var template = { kind: 27235, created_at: Math.floor(Date.now() / 1000), tags: tags, content: '' };
     try {
-      return await signer.signEvent(template);
+      return await sg.signEvent(template);
     } catch (e) {
       throw new Error('Your signer did not approve the request: ' + (e && e.message ? e.message : e));
     }
@@ -348,6 +349,41 @@
     }
     if (!r.res.ok) throw apiError(r.res, r.data);
     return r.data;
+  }
+
+  /**
+   * Move a browser-key account to a safer signer. `connect` is one of the connect functions (extension, bunker or
+   * QR) and resolves with the new key. The old key (kept in this browser) and the new key each sign one request,
+   * and the server moves the account only if both are valid. On success the old key is removed from this browser.
+   * On any failure the browser key stays signed in.
+   */
+  async function upgradeAccount(connect) {
+    if (!session || session.kind !== 'browser') throw new Error('Only an account made with a key kept in this browser can be upgraded.');
+    var lk = localGet();
+    if (!lk) throw new Error('The key for this account is not kept in this browser, so it cannot be upgraded from here.');
+    var oldSigner = localSigner(lk.sk);
+    var newPk;
+    try {
+      newPk = await (typeof connect === 'function' ? connect() : connect);
+      var newSigner = signer;
+      if (String(newPk).toLowerCase() === session.pubkey) throw new Error('That is the same key you are signed in with. Connect a signer app or browser extension with a different key.');
+      var body = JSON.stringify({ newPubkey: String(newPk).toLowerCase() });
+      emit('progress', 'Confirm the move in your signer…');
+      var evOld = await signHttpAuth(cfg.urls.upgrade, 'POST', body, oldSigner);
+      var evNew = await withTimeout(signHttpAuth(cfg.urls.upgrade, 'POST', body, newSigner), Math.max(signerWait(), 120000), 'Your signer did not answer. Open your signer app, approve the request if it is waiting, then try again.');
+      var r = await rawFetch('POST', cfg.urls.upgrade, body, { 'X-PFG-CSRF': session.csrf, 'X-PFG-Auth': b64Json(evOld), 'X-PFG-Auth-New': b64Json(evNew) });
+      if (!r.res.ok) throw apiError(r.res, r.data);
+      session = r.data;
+      try { localStorage.removeItem(LOCAL_KEY); } catch (e) { /* ignore */ }
+      emit('session', session);
+      return session;
+    } catch (e) {
+      // Put the browser key back as the active signer so the person stays signed in.
+      clearSigner();
+      signer = oldSigner;
+      store({ local: true });
+      throw e;
+    }
   }
 
   async function logout() {
@@ -402,6 +438,7 @@
     hasBrowserKey: hasBrowserKey,
     browserKeyName: browserKeyName,
     forgetBrowserKey: forgetBrowserKey,
+    upgradeAccount: upgradeAccount,
     hasExtension: hasExtension,
     connectExtension: connectExtension,
     startNostrConnect: startNostrConnect,
