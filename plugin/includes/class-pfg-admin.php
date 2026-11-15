@@ -179,6 +179,13 @@ class PFG_Admin {
 						<td><label><input type="checkbox" name="<?php echo esc_attr( self::field_name( 'hosting_enabled' ) ); ?>" value="1" <?php checked( $s['hosting_enabled'] ); ?> /> Let people sign in with Nostr and host feeds on this site</label></td>
 					</tr>
 					<tr>
+						<th scope="row"><label for="pfg-moreinfo">More information page</label></th>
+						<td>
+							<input id="pfg-moreinfo" type="url" class="regular-text" name="<?php echo esc_attr( self::field_name( 'more_info_url' ) ); ?>" value="<?php echo esc_attr( $s['more_info_url'] ); ?>" placeholder="https://" />
+							<p class="description">Linked from the messages shown to people who sign in with a key kept in their browser, explaining why a signer app or browser extension is needed for payments. Leave empty to show no link.</p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row">Feed folder</th>
 						<td>
 							<code><?php echo esc_html( PFG_Storage::base_url() ); ?></code>

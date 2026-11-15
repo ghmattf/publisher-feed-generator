@@ -34,13 +34,13 @@ function wp_get_upload_dir(){ return ['basedir' => $GLOBALS['__up'], 'baseurl' =
 if(!defined('WP_CONTENT_DIR')) define('WP_CONTENT_DIR', $GLOBALS['__up'] . '/wp-content');
 function content_url($p = ''){ return 'https://phafe.com/wp-content/' . ltrim($p, '/'); }
 function wp_delete_file($f){ @unlink($f); }
-function esc_attr($s){ return htmlspecialchars($s, ENT_QUOTES); } function esc_html($s){ return htmlspecialchars($s, ENT_QUOTES); } function esc_url($s){ return $s; } function __($s){ return $s; } function esc_html__($s){ return $s; }
+function esc_attr($s){ return htmlspecialchars($s, ENT_QUOTES); } function esc_html($s){ return htmlspecialchars($s, ENT_QUOTES); } function esc_url($s){ return $s; } function esc_url_raw($s){ return $s; } function __($s){ return $s; } function esc_html__($s){ return $s; }
 // wpdb over sqlite
 class FakeWpdb {
   public $prefix = 'wp_', $insert_id = 0; public $pdo;
   function __construct(){ $this->pdo = new PDO('sqlite::memory:'); $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     foreach ([
-      'accounts' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, pubkey TEXT UNIQUE NOT NULL, status TEXT NOT NULL DEFAULT "active", created_at INT NOT NULL, last_login INT NOT NULL DEFAULT 0',
+      'accounts' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, pubkey TEXT UNIQUE NOT NULL, status TEXT NOT NULL DEFAULT "active", kind TEXT NOT NULL DEFAULT "signer", created_at INT NOT NULL, last_login INT NOT NULL DEFAULT 0',
       'sessions' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, token_hash TEXT UNIQUE NOT NULL, csrf_hash TEXT NOT NULL, account_id INT NOT NULL, created_at INT NOT NULL, expires INT NOT NULL',
       'nonces' => 'nonce_hash TEXT PRIMARY KEY, expires INT NOT NULL',
       'feeds' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INT NOT NULL, slug TEXT UNIQUE NOT NULL, guid TEXT UNIQUE NOT NULL, title TEXT NOT NULL DEFAULT "", status TEXT NOT NULL DEFAULT "pending", data TEXT NOT NULL, created_at INT NOT NULL, updated_at INT NOT NULL',

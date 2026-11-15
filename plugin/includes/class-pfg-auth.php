@@ -87,7 +87,7 @@ class PFG_Auth {
 	 *
 	 * @return array|WP_Error array( account, csrf, expires, token )
 	 */
-	public static function login( $event, $login_url ) {
+	public static function login( $event, $login_url, $kind = 'signer' ) {
 		$v = PFG_Nostr::validate_http_auth( $event, $login_url, 'POST', null );
 		if ( is_wp_error( $v ) ) {
 			return $v;
@@ -95,7 +95,7 @@ class PFG_Auth {
 		if ( ! self::consume_nonce( $v['nonce'] ) ) {
 			return new WP_Error( 'pfg_bad_auth', 'That sign-in request has expired or was already used. Please try again.', array( 'status' => 401 ) );
 		}
-		$acc = PFG_Storage::touch_account( $v['pubkey'] );
+		$acc = PFG_Storage::touch_account( $v['pubkey'], $kind ); // $kind only matters when the account is created.
 		if ( ! $acc || 'active' !== $acc['status'] ) {
 			return new WP_Error( 'pfg_blocked', 'This account is not allowed to sign in.', array( 'status' => 403 ) );
 		}

@@ -233,8 +233,10 @@
       npubStatus.textContent = 'This page cannot connect to a signer. Copy your npub (it starts with npub1) from your Nostr app and paste it above.';
     }
     fields.npub.wrap.insertBefore(h('div', { class: 'pfg-row', style: 'margin-top:6px' }, [btn('Get your npub', 'pfg-btn-small', getNpub), npubStatus]), fields.npub.input.nextSibling);
-    identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
-    identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
+    if (!ctx.paymentsLocked) {
+      identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
+      identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
+    }
     var identity = section('Identity and links', false, [h('div', { class: 'pfg-grid' }, identityKids)], true);
 
     /* payments */
@@ -286,7 +288,11 @@
         supportEl.appendChild(wrap);
       });
     }
-    var payments = section('Payments', false, [
+    var lockNote = h('div', { class: 'pfg-note' }, [
+      'Payments are not supported when you sign in with a key kept in this browser. To set up payments, sign in with a signer app or a browser extension.',
+      ctx.moreInfoUrl ? ' ' : '', ctx.moreInfoUrl ? h('a', { href: ctx.moreInfoUrl, target: '_blank', rel: 'noopener', text: 'More information' }) : null,
+    ]);
+    var payments = ctx.paymentsLocked ? section('Payments', false, [lockNote], true) : section('Payments', false, [
       h('p', { class: 'pfg-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),
       h('div', { class: 'pfg-grid' }, [field('Payment method', 'value.method', { select: ['lnaddress', 'keysend'] }), field('Suggested amount', 'value.suggested', { hint: 'Plain decimal, for example 0.000033333.' })]),
       recipsEl, totalEl,
@@ -296,7 +302,7 @@
       })]),
       supportEl,
     ], true);
-    if (hosted) payments.insertBefore(note('', 'Changing who gets paid needs a fresh approval from your signer when you save.'), payments.children[1]);
+    if (hosted && !ctx.paymentsLocked) payments.insertBefore(note('', 'Changing who gets paid needs a fresh approval from your signer when you save.'), payments.children[1]);
 
     /* releases */
     function copyText(t, done) {
@@ -649,6 +655,10 @@
     function prefillFromNostr() {
       var s = ctx.host.getSession ? ctx.host.getSession() : null;
       if (!s) return;
+      if (ctx.paymentsLocked) { // a key kept in this browser: nothing to look up, and its npub is not worth putting in the feed
+        if (ctx.suggestedName && fillIfEmpty('title', ctx.suggestedName)) changed(true);
+        return;
+      }
       var gotNpub = s.npub ? fillIfEmpty('npub', s.npub) : false;
       if (gotNpub) changed(true);
       if (!ctx.host.fetchProfile) return;
