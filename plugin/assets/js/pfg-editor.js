@@ -131,8 +131,10 @@
     /* ---------- sections ---------- */
     var banner = h('div', { 'aria-live': 'polite' });
     var summaryErr = h('div');
+    // The same messages are repeated just above the buttons, so they are seen without scrolling back up.
+    var bannerBottom = h('div', { 'aria-live': 'polite' });
+    var summaryErrBottom = h('div');
     var lintEl = h('div');
-    var doneEl = h('div', { 'aria-live': 'polite' }); // message about the download, shown under its button
     var totalEl = h('div', { class: 'pfg-total' });
     var recipsEl = h('div');
     var releasesEl = h('div');
@@ -232,7 +234,8 @@
       if (ctx.getNpub) { ctx.getNpub(function (npub) { setNpub(npub); npubStatus.textContent = 'Filled in from your signer.'; }); return; }
       npubStatus.textContent = 'This page cannot connect to a signer. Copy your npub (it starts with npub1) from your Nostr app and paste it above.';
     }
-    fields.npub.wrap.insertBefore(h('div', { class: 'pfg-row', style: 'margin-top:6px' }, [btn('Get your npub', 'pfg-btn-small', getNpub), npubStatus]), fields.npub.input.nextSibling);
+    // Not offered with a key kept in this browser: that key is not a lasting identity, so its npub does not belong in a feed.
+    if (!ctx.paymentsLocked) fields.npub.wrap.insertBefore(h('div', { class: 'pfg-row', style: 'margin-top:6px' }, [btn('Get your npub', 'pfg-btn-small', getNpub), npubStatus]), fields.npub.input.nextSibling);
     if (!ctx.paymentsLocked) {
       identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
       identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
@@ -526,8 +529,10 @@
         var f = fields[e.path];
         if (f && f.err && !f.err.textContent) { f.err.textContent = e.message; f.wrap.classList.add('pfg-invalid'); if (f.reveal) f.reveal(); } else loose.push(e);
       });
-      clear(summaryErr);
-      if (loose.length) summaryErr.appendChild(note('bad', h('ul', {}, loose.map(function (e) { return h('li', { text: e.message }); }))));
+      clear(summaryErr); clear(summaryErrBottom);
+      [summaryErr, summaryErrBottom].forEach(function (box) {
+        if (loose.length) box.appendChild(note('bad', h('ul', {}, loose.map(function (e) { return h('li', { text: e.message }); }))));
+      });
     }
     // Title and Description must be filled in before leaving Basics.
     function basicsGate() {
@@ -579,16 +584,21 @@
       return /\.xml$/i.test(last) ? last : 'publisher.xml';
     }
     function download() {
-      clear(doneEl); setBanner();
-      var r = build(); if (!r) { doneEl.appendChild(note('bad', 'Please fix the highlighted problems first.')); return; }
+      setBanner();
+      var r = build(); if (!r) { setBanner('bad', 'Please fix the highlighted problems first.'); return; }
       var blob = new Blob([r.xml], { type: 'application/rss+xml' });
       var a = h('a', { href: URL.createObjectURL(blob), download: fileName() });
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-      doneEl.appendChild(note('ok', 'Downloaded ' + fileName() + '. Upload it to ' + (m.feedUrl || 'your web server') + '.'));
+      setBanner('ok', 'Downloaded ' + fileName() + '. Upload it to ' + (m.feedUrl || 'your web server') + '.');
       ctx.clearDraft();
     }
-    function setBanner(kind, msg) { clear(banner); if (msg) banner.appendChild(note(kind, msg)); }
+    // msg is text, or a function that builds the content (called once for each place the message is shown).
+    function setBanner(kind, msg) {
+      clear(banner); clear(bannerBottom);
+      if (!msg) return;
+      [banner, bannerBottom].forEach(function (box) { box.appendChild(note(kind, typeof msg === 'function' ? msg() : msg)); });
+    }
     // Warn before a save removes data this plugin cannot keep (for example tags in a feed that was already on the server).
     function confirmDropped(proceed) {
       var items = hosted.dropped;
@@ -621,7 +631,7 @@
         hosted.id = res.id; hosted.slug = res.slug; hosted.status = res.status; hosted.url = res.url;
         hosted.dropped = []; hosted.dropOk = false; // the file now holds only what this plugin supports
         saveBtn.textContent = 'Save changes';
-        if (res.status === 'published') setBanner('ok', ['Published at ', h('a', { href: res.url, target: '_blank', rel: 'noopener', text: res.url })]);
+        if (res.status === 'published') setBanner('ok', function () { return ['Published at ', h('a', { href: res.url, target: '_blank', rel: 'noopener', text: res.url })]; });
         else setBanner('warn', 'Saved. This feed is waiting for review and is not public yet.');
       }).catch(function (e) {
         dirty = true; // not saved
@@ -630,7 +640,7 @@
           fields.slug.err.textContent = slugMsg; setBanner('bad', slugMsg); revealSlug();
         } else if (e.errors && e.errors.length) { showErrors(e.errors); setBanner('bad', e.message); revealError(e.errors); }
         else if (e.status === 401 || /sign in again|not connected/i.test(e.message)) {
-          setBanner('warn', h('span', {}, [e.message + ' ', btn('Sign in', 'pfg-btn-small', function () { ctx.needSignIn(function () { setBanner('ok', 'Signed in. Press save again.'); }); })]));
+          setBanner('warn', function () { return h('span', {}, [e.message + ' ', btn('Sign in', 'pfg-btn-small', function () { ctx.needSignIn(function () { setBanner('ok', 'Signed in. Press save again.'); }); })]); });
         } else { setBanner('bad', e.message); revealError([]); }
       }).then(function () { saving = false; saveBtn.disabled = false; });
     }
@@ -641,7 +651,7 @@
     container.appendChild(h('h2', { text: hosted ? (hosted.id ? 'Edit hosted feed' : 'New hosted feed') : 'Feed editor' }));
     if (hosted && hosted.status && hosted.status !== 'published') container.appendChild(note('warn', 'Status: ' + hosted.status + '. This feed is not public.'));
     kept.forEach(function (n) { container.appendChild(n); });
-    [banner, summaryErr, basics, identity, payments, releases, lintEl, actions, doneEl].forEach(function (n) { container.appendChild(n); });
+    [banner, summaryErr, basics, identity, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions].forEach(function (n) { container.appendChild(n); });
     renderRecipients(); renderSupport(); renderPersons(); renderReleases(); autoSlug(); refresh();
     dirty = false; // nothing to lose yet
 
@@ -656,14 +666,14 @@
       var s = ctx.host.getSession ? ctx.host.getSession() : null;
       if (!s) return;
       if (ctx.paymentsLocked) { // a key kept in this browser: nothing to look up, and its npub is not worth putting in the feed
-        if (ctx.suggestedName && fillIfEmpty('title', ctx.suggestedName)) changed(true);
+        if (ctx.suggestedName && fillIfEmpty('title', ctx.suggestedName)) { autoSlug(); changed(true); } // the feed name follows the title, so it stays hidden
         return;
       }
       var gotNpub = s.npub ? fillIfEmpty('npub', s.npub) : false;
       if (gotNpub) changed(true);
       if (!ctx.host.fetchProfile) return;
       // Hide the form until the profile has loaded, so nothing is typed into a form that is about to be filled in.
-      var hideEls = [basics, identity, payments, releases, lintEl, actions];
+      var hideEls = [basics, identity, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions];
       var loadingEl = h('p', { class: 'pfg-loading', role: 'status', 'aria-live': 'polite', text: 'Loading your Nostr profile to fill in the form…' });
       var loaded = false;
       function reveal() {

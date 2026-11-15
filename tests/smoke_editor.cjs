@@ -62,6 +62,28 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   click('Add recipient'); await tick(); click('Save changes'); await tick();
   ok(/total/i.test($('#c').textContent) && /97%/.test($('#c').textContent), 'once a recipient is added, totals are enforced again (97% with the default support)');
 }
+// --- browser-key account: the title is pre-filled and the feed name follows it (and stays hidden)
+{
+  let s3 = null;
+  const host3 = { getSession: () => ({ kind: 'browser', pubkey: 'ab' }), createFeed: async (slug, feed) => { s3 = { slug, feed }; return { id: 4, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }; } };
+  w.document.querySelector('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: host3, hostingOn: true, paymentsLocked: true, suggestedName: 'Mia Records', importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
+  await tick();
+  ok($('#pfg-f-title').value === 'Mia Records' && $('#pfg-f-slug').value === 'mia-records', 'browser-key account: feed name made from the pre-filled title');
+  ok($('#pfg-f-slug').parentNode.style.display === 'none', 'browser-key account: the feed name input is hidden');
+  set('#pfg-f-description', 'D'); click('Save and publish'); await tick();
+  ok(s3 && s3.slug === 'mia-records' && $('#pfg-f-slug').parentNode.style.display === 'none', 'browser-key account: saves without ever showing the feed name');
+  ok(![...$$('#c button')].some(b => b.textContent === 'Get your npub'), 'browser-key account: no "Get your npub" button');
+  const pubs = [...$$('#c .pfg-note-ok')].filter(n => /Published at/.test(n.textContent));
+  const saveB = [...$$('#c button')].find(b => /Save changes/.test(b.textContent));
+  ok(pubs.length === 2 && pubs.every(n => n.querySelector('a')) && (pubs[1].compareDocumentPosition(saveB) & 4), 'success message "Published at <url>" shown at the top and again just above the buttons');
+  w.document.querySelector('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: { getSession: () => ({ kind: 'signer', pubkey: 'ab', npub: 'npub1x' }) }, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
+  ok([...$$('#c button')].some(b => b.textContent === 'Get your npub'), 'signer account: "Get your npub" button still offered');
+  set('#pfg-f-title', 'Zed Records'); await tick(); click('Save and publish'); await tick();
+  const bad = [...$$('#c .pfg-note-bad')].filter(n => /highlighted problems/.test(n.textContent));
+  ok(bad.length === 2, 'error message shown at the top and again just above the buttons');
+}
 // --- sections: accordion with Next buttons, form wording
 {
   w.document.querySelector('#c').innerHTML = '';
@@ -105,7 +127,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   click('Download XML'); await tick();
   const dl = [...$$('.pfg-note-ok')].find(n => /Downloaded publisher\.xml/.test(n.textContent));
   const actionsRow = $$('button').find(b => b.textContent === 'Download XML').parentElement;
-  ok(dl && /Upload it to https:\/\/phafe\.com\/publisher\.xml/.test(dl.textContent) && (actionsRow.compareDocumentPosition(dl) & 4) && !$$('[aria-live] .pfg-note-ok').some(n => n === dl && n.parentElement === $('#c').firstChild), 'the download message is shown under the Download button, at the bottom');
+  ok(dl && /Upload it to https:\/\/phafe\.com\/publisher\.xml/.test(dl.textContent) && $$('.pfg-note-ok').filter(n => /Downloaded publisher\.xml/.test(n.textContent)).length === 2 && (actionsRow.compareDocumentPosition($$('.pfg-note-ok').filter(n => /Downloaded publisher\.xml/.test(n.textContent))[1]) & 2), 'the download message is shown at the top and again just above the Download button');
   const labels = $$('label').map(l => l.textContent);
   ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Feed maintainer (your name)') && labels.includes('Feed contact email (your email)') && !labels.includes('Owner name') && !labels.includes('Owner email'), 'Author and Keywords removed; owner fields renamed to Feed maintainer and Feed contact email');
 }
