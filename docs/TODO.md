@@ -12,5 +12,5 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 
 
 ## New (2026-11-15)
-35. Simple sign-in for non-technical people: "Create account" makes a Nostr key in the browser (never on the server), protected by a password, with a backup step (recovery file and/or copy of the key) and a restore route. Extension, QR and bunker stay as "I already use Nostr". Owner approved this direction on 2026-11-15 after asking how the key is handled and how other scripts on the site could reach it (see answers). Build in small steps: create + sign in first, then backup and restore.
-36. Admin action to move an adopted/hosted feed to a different account (for lost keys). Uses the existing "Adopt" screen idea.
+35. Simple on-ramp sign-in for non-technical people: "Create account" makes a Nostr key in the browser (never on the server) and signs the person in, with no extension or app. No backup or restore feature (owner, 2026-11-15): people who want a lasting account are directed to a remote signer (Amber, Primal, etc.) or a browser extension such as Sidecar. Extension, QR and bunker sign-in stay as "I already use Nostr".
+36. "Upgrade my sign-in": a signed-in browser-key user connects a safer signer (extension, Amber, QR/bunker) and the account moves to that key, proving both keys, so feeds and GUIDs are kept. Admin "move feed to another account" stays as the fallback for people who lose a browser key.
