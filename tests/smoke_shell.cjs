@@ -10,7 +10,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if 
 // fake nostr + hosting
 w.PFGNostr = {};
 let forgot = 0, extPresent = false, extUsed = 0, sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
-w.PFGHosting = { init: () => true, hasBrowserKey: () => false, browserKeyName: () => "", forgetBrowserKey() {}, createBrowserAccount: async () => ({}), connectBrowserKey: async () => ({}), on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
+w.PFGHosting = { init: () => true, upgraded: 0, upgradeAccount: async (p) => { await p; w.PFGHosting.upgraded++; sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [], kind: 'signer' }; return sess; }, hasBrowserKey: () => false, browserKeyName: () => "", forgetBrowserKey() {}, createBrowserAccount: async () => ({}), connectBrowserKey: async () => ({}), on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
   listFeeds: async () => listed, connectBunker: async () => 'pk', hasExtension: () => extPresent, connectExtension: async () => { extUsed++; return 'pk'; }, npubOf: pk => 'npub1for' + pk, forgetSigner: () => { forgot++; }, login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
   startNostrConnect: () => ({ uri: 'nostrconnect://x', qr: '<svg></svg>', done: new Promise(() => {}), cancel() {} }) };
 w.eval(fs.readFileSync(P + 'pfg-core.js', 'utf8'));
@@ -64,5 +64,11 @@ ok(!$('.pfg-overlay'), 'sign-in window closes after login');
 ok(/Hosted|Your hosted feeds/.test(w.document.body.textContent) && /acme/.test(w.document.body.textContent), 'hosted list shown with feed');
 ok(/Signed in as npub1abcdefg/.test($('.pfg-bar').textContent), 'bar shows signed-in identity');
 click('New hosted feed'); ok(opened.hosted && opened.hosted.id === null, 'new hosted feed opens editor in hosted mode');
+// ---- browser-key account: reminder bar and upgrade
+sess.kind = 'browser'; extPresent = true; opened.back();
+ok($$('button').some(b => b.textContent === 'Upgrade my sign-in') && /key kept in this browser/.test($('.pfg-bar').parentNode.textContent) && /Payments are not available/.test(w.document.body.textContent), 'browser-key account: persistent reminder with an Upgrade button');
+click('Upgrade my sign-in'); ok($('.pfg-overlay') && /Upgrade your sign-in/.test($('.pfg-overlay h2').textContent) && !tabNames().includes('Create account') && !tabNames().includes('This browser'), 'upgrade window offers only signer app / extension tabs');
+click('Sign in with extension'); await tick(); await tick();
+ok(w.PFGHosting.upgraded === 1 && !$('.pfg-overlay') && /Your account now uses your signer/.test(w.document.body.textContent) && !$$('button').some(b => b.textContent === 'Upgrade my sign-in'), 'upgrade: window closes, success message shown, reminder gone');
 console.log(fails ? fails + ' FAILURES' : 'shell smoke test passed'); process.exit(fails ? 1 : 0);
 })();

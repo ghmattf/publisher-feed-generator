@@ -12,4 +12,6 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 
 
 ## New (2026-11-15)
-36. "Upgrade my sign-in": a signed-in browser-key user connects a safer signer (extension, Amber, QR/bunker) and the account moves to that key, proving both keys, so feeds and GUIDs are kept. Admin "move feed to another account" stays as the fallback for people who lose a browser key.
+36. Admin "move feed to another account" (for people who lost a browser key or need a feed moved to a new key): a site admin action with a check that the new owner controls the feed's domain. The self-service upgrade is done. (Owner, 2026-11-15.)
+
+38. "Want to self-host?" section on the start page: change the "Start" button to "New Feed" and add a new button "Import Existing". (Owner, 2026-11-16.)
