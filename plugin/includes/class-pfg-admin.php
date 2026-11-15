@@ -16,6 +16,7 @@ class PFG_Admin {
 		add_action( 'admin_init', array( __CLASS__, 'register' ) );
 		add_action( 'admin_post_pfg_feed_action', array( __CLASS__, 'handle_action' ) );
 		add_action( 'admin_post_pfg_adopt', array( __CLASS__, 'handle_adopt' ) );
+		add_action( 'admin_post_pfg_move', array( __CLASS__, 'handle_move' ) );
 	}
 
 	public static function menu() {
@@ -130,6 +131,27 @@ class PFG_Admin {
 		exit;
 	}
 
+ 	/** Move a feed to another account (admin only). The new owner must show control of the feed's website. */
+	public static function handle_move() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Not allowed.', 403 );
+		}
+		check_admin_referer( 'pfg_move' );
+		$id   = isset( $_POST['move_feed'] ) ? (int) $_POST['move_feed'] : 0;
+		$key  = isset( $_POST['move_key'] ) ? sanitize_text_field( wp_unslash( $_POST['move_key'] ) ) : '';
+		$skip = ! empty( $_POST['move_skip'] );
+		$res  = PFG_Storage::move_feed( $id, $key, $skip );
+		$args = array( 'page' => 'pfg' );
+		if ( is_wp_error( $res ) ) {
+			$args['pfg_notice'] = 'adopt_error';
+			$args['pfg_msg']    = rawurlencode( $res->get_error_message() );
+		} else {
+			$args['pfg_notice'] = 'moved';
+		}
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'options-general.php' ) ) );
+		exit;
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* Page                                                                */
 	/* ------------------------------------------------------------------ */
@@ -150,6 +172,7 @@ class PFG_Admin {
 			'blocked'   => 'Account blocked, its sessions ended and its feeds suspended.',
 			'unblocked' => 'Account unblocked. Its feeds stay suspended until you unsuspend them.',
 			'adopted'   => 'Feed adopted. Its owner can now find it under Your hosted feeds and edit it. The file was not changed.',
+			'moved'     => 'Feed moved. Its new owner can now find it under Your hosted feeds. The file, address and GUID did not change.',
 			'adopted_untouched' => 'That adopted feed has not been edited yet, so its original file is left alone. Edit and save it first.',
 			'writefail' => 'The feed file could not be written. Check that wp-content is writable.',
 		);
@@ -315,6 +338,36 @@ class PFG_Admin {
 					</tr>
 				</table>
 				<?php submit_button( 'Adopt feed', 'secondary' ); ?>
+			</form>
+
+			<h2>Move a feed to another account</h2>
+			<p>For someone who lost their browser key, or who wants a feed on a different key. The feed keeps its file, address and GUID. Before moving it, the plugin checks that the new owner controls the website in the feed: their npub must appear on that page, or their key must be listed in the domain's <code>/.well-known/nostr.json</code> (NIP-05). The new owner does not need to have signed in before.</p>
+			<?php $movable = array_filter( (array) PFG_Storage::list_all_feeds(), function ( $f ) { return 'deleted' !== $f['status']; } ); ?>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" onsubmit="return confirm('Move this feed to the new owner? The previous owner will lose access to it.');">
+				<input type="hidden" name="action" value="pfg_move" />
+				<?php wp_nonce_field( 'pfg_move' ); ?>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="pfg-move-feed">Feed</label></th>
+						<td>
+							<select id="pfg-move-feed" name="move_feed" required>
+								<option value="">Choose a feed</option>
+								<?php foreach ( $movable as $f ) : ?>
+									<option value="<?php echo (int) $f['id']; ?>"><?php echo esc_html( $f['slug'] . ' (' . $f['title'] . ')' ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pfg-move-key">New owner</label></th>
+						<td><input id="pfg-move-key" type="text" class="regular-text" name="move_key" placeholder="npub1…" autocomplete="off" required /></td>
+					</tr>
+					<tr>
+						<th scope="row">Website check</th>
+						<td><label><input type="checkbox" name="move_skip" value="1" /> I have confirmed this person owns the feed another way: skip the website check</label></td>
+					</tr>
+				</table>
+				<?php submit_button( 'Move feed', 'secondary' ); ?>
 			</form>
 
 			<h2>Hosted feeds</h2>

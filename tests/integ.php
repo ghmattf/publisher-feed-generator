@@ -289,6 +289,30 @@ $HC = ['X-PFG-CSRF' => data(call('GET', '/me'))['csrf']];
 ok(code(call('POST', '/me/feeds', ['slug' => 'now-paid', 'feed' => feed()], $HC)) === 201, 'payments unlocked after the upgrade');
 ok(code(upgrade_call($skN, $skA, $pubA, $HC)) === 409, 'a signer account cannot be "upgraded" again');
 ok(code(call('POST', '/auth/login', ['event' => sign($skC, "$B/auth/login", 'POST', nonce()), 'browserKey' => true])) === 200 && $wpdb->get_var("SELECT kind FROM wp_pfg_accounts WHERE pubkey = '$pubC'") === 'browser', 'the old key signing in again gets a fresh empty browser account, not the moved one');
+// ---- admin: move a feed to another account (domain-control check)
+$mvId = (int) data($rc)['id']; $skZ = bin2hex(random_bytes(32)); $pubZ = pubof($skZ); $npubZ = PFG_Nostr::npub_encode($pubZ);
+$ownerOf = fn($id) => (string) $wpdb->get_var("SELECT a.pubkey FROM wp_pfg_feeds f JOIN wp_pfg_accounts a ON a.id = f.account_id WHERE f.id = " . (int) $id);
+$GLOBALS['__httplog'] = []; $GLOBALS['__http'] = fn($u, $a) => ['code' => 404, 'body' => ''];
+$r1 = PFG_Storage::move_feed($mvId, $npubZ); ok(is_wp_error($r1) && strpos($r1->get_error_message(), 'not shown control') === false ? true : is_wp_error($r1), 'move: refused when the website shows nothing');
+ok(is_wp_error($r1) && strpos($r1->get_error_message(), $npubZ) !== false && strpos($r1->get_error_message(), '/.well-known/nostr.json') !== false, 'move: the refusal tells the new owner what to publish');
+ok($ownerOf($mvId) === $pubN, 'move: the feed stays with its owner after a refusal');
+ok(array_reduce($GLOBALS['__httplog'], fn($c, $l) => $c && $l[0] === 'safe' && strpos($l[1], 'https://acme.example') === 0, true) && count($GLOBALS['__httplog']) === 2, 'move: only the feed\'s own https website is contacted, through the safe HTTP function (nostr.json and the page)');
+$GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 200, 'body' => json_encode(['names' => ['someone' => 'a' . substr($pubZ, 1)]])] : ['code' => 200, 'body' => '<html>no key here</html>'];
+ok(is_wp_error(PFG_Storage::move_feed($mvId, $npubZ)), 'move: a nostr.json that lists a different key does not pass');
+$GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 200, 'body' => json_encode(['names' => ['_' => $pubZ]])] : ['code' => 404, 'body' => ''];
+$GLOBALS['__tr'] = []; $mv = PFG_Storage::move_feed($mvId, $npubZ);
+ok(!is_wp_error($mv) && $ownerOf($mvId) === $pubZ && strpos($mv['how'], 'nostr.json') !== false, 'move: NIP-05 listing on the feed\'s domain proves control; the feed moves');
+ok(file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/no-money/no-money.xml') && (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_feeds WHERE id = $mvId") === 1, 'move: file and feed record unchanged (same address, same GUID)');
+// the page itself shows the npub (second proof)
+$GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 404, 'body' => ''] : ['code' => 200, 'body' => '<a href="https://njump.me/' . PFG_Nostr::npub_encode($pubN) . '">me</a>'];
+$mv2 = PFG_Storage::move_feed($mvId, $pubN); ok(!is_wp_error($mv2) && $ownerOf($mvId) === $pubN, 'move: npub shown on the website also proves control (moved back, key given as hex)'. ' ' . (is_wp_error($mv2) ? $mv2->get_error_message() : ''));
+$GLOBALS['__http'] = fn($u, $a) => ['code' => 404, 'body' => ''];
+$mv3 = PFG_Storage::move_feed($mvId, $npubZ, true); ok(!is_wp_error($mv3) && $ownerOf($mvId) === $pubZ, 'move: the administrator can skip the check explicitly');
+ok(is_wp_error(PFG_Storage::move_feed($mvId, $npubZ, true)), 'move: moving to the current owner is refused');
+ok(is_wp_error(PFG_Storage::move_feed($mvId, 'npub1notvalid', true)) && is_wp_error(PFG_Storage::move_feed(999999, $npubZ, true)), 'move: bad key or unknown feed refused');
+$accZ = PFG_Storage::get_account_by_pubkey($pubZ); PFG_Storage::set_account_status((int) $accZ['id'], 'blocked');
+ok(is_wp_error(PFG_Storage::move_feed((int) $f['id'], $npubZ, true)), 'move: a blocked account cannot be given a feed'); PFG_Storage::set_account_status((int) $accZ['id'], 'active');
+$GLOBALS['__http'] = null; $GLOBALS['__httplog'] = [];
 $_COOKIE['pfg_session'] = $savedCookie;
 // ---- logout, config
 ok(code(call('POST', '/auth/logout', null, $H)) === 200 && code(call('GET', '/me')) === 401, 'logout ends the session');
