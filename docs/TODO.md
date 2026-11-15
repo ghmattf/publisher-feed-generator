@@ -13,4 +13,5 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 
 ## New (2026-11-15)
 
-38. "Want to self-host?" section on the start page: change the "Start" button to "New Feed" and add a new button "Import Existing". (Owner, 2026-11-16.)
+38. "Want to self-host?" section on the start page: change the "Start" button to "New Feed" and add a new button "Existing Feed" that imports an existing feed from its URL only (no pasting XML). (Owner, 2026-11-16.)
+39. Warnings, errors and success messages (such as "Published at <url>") should be displayed at the bottom of the page, above the save button, as well as at the top. (Owner, 2026-11-16.)
