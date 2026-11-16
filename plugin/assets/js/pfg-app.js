@@ -102,12 +102,12 @@
         btn('Discard', 'pfg-btn-small', function () { draftStore.clear(); showStart(); }),
       ])));
     }
-    wrap.appendChild(h('p', { text: 'Create Podcasting 2.0 feeds for labels, studios, engineers, artists...' }));
+    wrap.appendChild(h('p', { class: 'pfg-intro', text: 'Create Podcasting 2.0 feeds for labels, studios, engineers, artists...' }));
     var cards = h('div', { class: 'pfg-cards' });
     if (hostingOn) {
       var s = Host.getSession();
       cards.appendChild(h('div', { class: 'pfg-card' }, [
-        h('p', { text: 'Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
+        h('p', { class: 'pfg-card-lead', text: 'Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
         btn(s ? 'My feeds' : 'Get started', 'pfg-btn-primary', function () { if (s) showHostedList(); else openLogin(showHostedList); }),
       ]));
     } else if (cfg.hostingNeedsGmp) {
