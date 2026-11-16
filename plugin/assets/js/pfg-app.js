@@ -174,9 +174,11 @@
         tbody.appendChild(h('tr', {}, [
           h('td', {}, [h('strong', { text: f.title || f.slug }), h('div', { class: 'pfg-hint pfg-mono', text: f.slug })]),
           h('td', {}, [h('span', { class: 'pfg-badge ' + (live ? 'pfg-badge-ok' : 'pfg-badge-warn'), text: f.status })]),
-          h('td', {}, live ? [h('a', { href: f.url, target: '_blank', rel: 'noopener', text: f.url })] : [h('span', { class: 'pfg-hint', text: 'Not public' })]),
+          h('td', {}, (live ? [h('a', { href: f.url, target: '_blank', rel: 'noopener', text: f.url })] : [h('span', { class: 'pfg-hint', text: 'Not public' })]).concat(
+            f.movedTo ? [h('div', { class: 'pfg-hint', text: 'Moved to ' + f.movedTo + ' on ' + new Date(f.movedAt * 1000).toISOString().slice(0, 10) })] : [])),
           h('td', {}, [h('div', { class: 'pfg-row' }, [
             btn('Edit', 'pfg-btn-small', function () { editHosted(f); }),
+            btn('Move feed', 'pfg-btn-small', function () { openMove(f); }),
             btn('Delete', 'pfg-btn-small pfg-btn-danger', function () { deleteHosted(f); }),
           ])]),
         ]));
@@ -204,6 +206,57 @@
       m.guid = r.guid; m.feedUrl = r.url;
       openEditor({ model: m, importNotes: notes, hosted: { id: r.id, slug: r.slug, status: r.status, url: r.url, dropped: dropped } });
     }).catch(function (e) { setBanner('bad', errText(e)); });
+  }
+
+  /* ---------------- move a feed to a new address ---------------- */
+  // Two steps in one window: explain and ask for the new address, then ask "Are you sure?". Moving writes the new
+  // address into the feed (itunes:new-feed-url) and publishes it; the feed stays here for cfg.keepMovedDays days.
+  function openMove(f) {
+    var days = cfg.keepMovedDays || 28;
+    var overlay = h('div', { class: 'pfg-app pfg-overlay' + (root && root.classList.contains('pfg-light') ? ' pfg-light' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Move feed' });
+    var modal = h('div', { class: 'pfg-modal' });
+    overlay.appendChild(modal);
+    function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); document.removeEventListener('keydown', onKey); }
+    function onKey(ev) { if (ev.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    var urlIn = h('input', { type: 'url', id: 'pfg-move-url', placeholder: 'https://', autocomplete: 'off', 'aria-label': 'New feed URL', value: f.movedTo || '' });
+    var msg = h('div');
+    function step1() {
+      clear(modal);
+      modal.appendChild(h('h2', { text: 'Move "' + (f.title || f.slug) + '"' }));
+      modal.appendChild(h('p', { text: 'This tells podcasting apps and Podcast Index that this feed has moved to a new URL, so they follow it there.' }));
+      modal.appendChild(h('p', { text: 'You also need to update every feed that already has a relationship to this feed (for example the publisher feed and the feeds it lists) so they point to the new URL.' }));
+      modal.appendChild(h('label', { for: 'pfg-move-url', text: 'New feed URL' }));
+      modal.appendChild(urlIn);
+      modal.appendChild(msg);
+      modal.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:12px' }, [
+        btn('Move', 'pfg-btn-primary', function () {
+          clear(msg);
+          var v = urlIn.value.trim();
+          if (!/^https:\/\/[^\s]+\.[^\s]+/i.test(v)) { msg.appendChild(note('bad', 'Enter the new address as a full https:// URL.')); urlIn.focus(); return; }
+          step2(v);
+        }),
+        btn('Cancel', '', close),
+      ]));
+      urlIn.focus();
+    }
+    function step2(newUrl) {
+      clear(modal);
+      var err = h('div');
+      modal.appendChild(h('h2', { text: 'Are you sure you want to move this feed?' }));
+      modal.appendChild(h('p', {}, ['It will be moved to ', h('strong', { class: 'pfg-mono', text: newUrl }), '.']));
+      modal.appendChild(h('p', { text: 'The feed will remain on here for a period of ' + days + ' ' + (days === 1 ? 'day' : 'days') + ' so apps can find the move. After that the site owner can delete it.' }));
+      modal.appendChild(err);
+      var go = btn('Yes, move it', 'pfg-btn-primary', function () {
+        go.disabled = true; clear(err); err.appendChild(note('', 'Waiting for your signer to confirm…'));
+        Host.moveFeed(f.id, newUrl).then(function () {
+          close(); setBanner('ok', 'Feed moved. Apps will now be told about the new address.'); showHostedList();
+        }).catch(function (e) { go.disabled = false; clear(err); err.appendChild(note('bad', errText(e))); });
+      });
+      modal.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:12px' }, [go, btn('Cancel', '', close)]));
+    }
+    document.body.appendChild(overlay);
+    step1();
   }
 
   function deleteHosted(f) {

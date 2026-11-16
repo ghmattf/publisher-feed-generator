@@ -184,6 +184,10 @@ class PFG_Admin {
 			<?php if ( isset( $notices[ $notice ] ) ) : ?>
 				<div class="notice notice-info is-dismissible"><p><?php echo esc_html( $notices[ $notice ] ); ?></p></div>
 			<?php endif; ?>
+			<?php $overdue = PFG_Storage::moved_ready_to_delete(); ?>
+			<?php if ( $overdue ) : ?>
+				<div class="notice notice-warning"><p><strong><?php echo esc_html( count( $overdue ) . ( 1 === count( $overdue ) ? ' moved feed is' : ' moved feeds are' ) ); ?> ready to be deleted.</strong> <?php echo esc_html( 1 === count( $overdue ) ? 'It was' : 'They were' ); ?> moved more than <?php echo (int) $s['keep_moved_days']; ?> days ago. They are highlighted in the list below.</p></div>
+			<?php endif; ?>
 			<?php if ( 'adopt_error' === $notice && isset( $_GET['pfg_msg'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
 				<div class="notice notice-error is-dismissible"><p><?php echo esc_html( sanitize_text_field( rawurldecode( wp_unslash( $_GET['pfg_msg'] ) ) ) ); // phpcs:ignore ?></p></div>
 			<?php endif; ?>
@@ -218,6 +222,13 @@ class PFG_Admin {
 					<tr>
 						<th scope="row">Approval</th>
 						<td><label><input type="checkbox" name="<?php echo esc_attr( self::field_name( 'require_approval' ) ); ?>" value="1" <?php checked( $s['require_approval'] ); ?> /> New hosted feeds stay unpublished until I approve them</label></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pfg-keepmoved">Number of days to keep a moved feed</label></th>
+						<td>
+							<input id="pfg-keepmoved" type="number" min="1" max="3650" name="<?php echo esc_attr( self::field_name( 'keep_moved_days' ) ); ?>" value="<?php echo esc_attr( $s['keep_moved_days'] ); ?>" /> days
+							<p class="description">After a feed owner moves a feed to a new address, the old feed stays here (with its new-address tag) for this long so apps can pick up the move. Then it is shown in the list, highlighted, ready for you to delete.</p>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="pfg-maxfeeds">Limits</label></th>
@@ -378,7 +389,7 @@ class PFG_Admin {
 			} else {
 				?>
 				<table class="widefat striped">
-					<thead><tr><th>Name</th><th>Title</th><th>Owner</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>
+					<thead><tr><th>Name</th><th>Title</th><th>Owner</th><th>Status</th><th>Updated</th><th>Moved</th><th>Actions</th></tr></thead>
 					<tbody>
 					<?php foreach ( $feeds as $f ) : ?>
 						<?php
@@ -399,12 +410,14 @@ class PFG_Admin {
 						}
 						$actions[ 'blocked' === $f['account_status'] ? 'unblock' : 'block' ] = 'blocked' === $f['account_status'] ? 'Unblock owner' : 'Block owner';
 						?>
-						<tr>
+						<?php $is_overdue = (int) $f['moved_at'] > 0 && 'deleted' !== $f['status'] && (int) $f['moved_at'] < time() - (int) $s['keep_moved_days'] * DAY_IN_SECONDS; ?>
+						<tr<?php echo $is_overdue ? ' style="background:#fcf0f1;outline:2px solid #d63638"' : ''; // phpcs:ignore ?>>
 							<td><?php echo 'published' === $f['status'] ? '<a href="' . esc_url( PFG_Storage::feed_url( $f['slug'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $f['slug'] ) . '</a>' : esc_html( $f['slug'] ); // phpcs:ignore ?></td>
 							<td><?php echo esc_html( $f['title'] ); ?></td>
 							<td><?php if ( $npub ) : ?><a href="<?php echo esc_url( 'https://njump.me/' . $npub ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $npub ); ?>"><code><?php echo esc_html( $short ); ?></code></a><?php else : ?><code><?php echo esc_html( $short ); ?></code><?php endif; ?><?php echo 'blocked' === $f['account_status'] ? ' <em>(blocked)</em>' : ''; ?></td>
 							<td><?php echo esc_html( $f['status'] ); ?></td>
 							<td><?php echo esc_html( wp_date( 'Y-m-d H:i', (int) $f['updated_at'] ) ); ?></td>
+							<td><?php echo (int) $f['moved_at'] > 0 ? esc_html( wp_date( 'Y-m-d', (int) $f['moved_at'] ) ) . ( $is_overdue ? ' <strong>(ready to delete)</strong>' : '' ) : '&ndash;'; // phpcs:ignore ?></td>
 							<td>
 								<?php foreach ( $actions as $do => $label ) : ?>
 									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline" <?php echo in_array( $do, array( 'delete', 'block' ), true ) ? 'onsubmit="return confirm(\'Are you sure?\');"' : ''; // phpcs:ignore ?>>

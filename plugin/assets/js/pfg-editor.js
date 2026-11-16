@@ -200,7 +200,8 @@
         changed();
       }), guidStatus]), fields.guid.err);
     }
-    identityKids.push(field('New feed URL (only if you are moving this feed)', 'newFeedUrl', { type: 'url', placeholder: 'https://', wide: true, hint: 'Tells Podcast Index and podcasting apps this feed now lives at a new address (itunes:new-feed-url). Keep this feed online at its old address, with the same GUID, until apps have switched. Leave empty otherwise.' }));
+    // Hosted feeds are moved from the "Your hosted feeds" list (Move feed), not from this form.
+    if (!ctx.hosted) identityKids.push(field('New feed URL (only if you are moving this feed)', 'newFeedUrl', { type: 'url', placeholder: 'https://', wide: true, hint: 'Tells Podcast Index and podcasting apps this feed now lives at a new address (itunes:new-feed-url). Keep this feed online at its old address, with the same GUID, until apps have switched. Leave empty otherwise.' }));
     var personsEl = h('div');
     function renderPersons() {
       clear(personsEl);

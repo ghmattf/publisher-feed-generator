@@ -302,14 +302,32 @@ class PFG_Storage {
 	public static function list_feeds_for_account( $account_id ) {
 		global $wpdb;
 		$t = PFG_Installer::table( 'feeds' );
-		return $wpdb->get_results( $wpdb->prepare( "SELECT id, slug, guid, title, status, created_at, updated_at FROM {$t} WHERE account_id = %d AND status <> 'deleted' ORDER BY id ASC", $account_id ), ARRAY_A ); // phpcs:ignore
+		return $wpdb->get_results( $wpdb->prepare( "SELECT id, slug, guid, title, status, created_at, updated_at, moved_at, data FROM {$t} WHERE account_id = %d AND status <> 'deleted' ORDER BY id ASC", $account_id ), ARRAY_A ); // phpcs:ignore
 	}
 
 	public static function list_all_feeds() {
 		global $wpdb;
 		$f = PFG_Installer::table( 'feeds' );
 		$a = PFG_Installer::table( 'accounts' );
-		return $wpdb->get_results( "SELECT f.id, f.slug, f.guid, f.title, f.status, f.created_at, f.updated_at, f.account_id, a.pubkey, a.status AS account_status FROM {$f} f LEFT JOIN {$a} a ON a.id = f.account_id ORDER BY f.id DESC LIMIT 500", ARRAY_A ); // phpcs:ignore
+		return $wpdb->get_results( "SELECT f.id, f.slug, f.guid, f.title, f.status, f.created_at, f.updated_at, f.moved_at, f.data, f.account_id, a.pubkey, a.status AS account_status FROM {$f} f LEFT JOIN {$a} a ON a.id = f.account_id ORDER BY f.id DESC LIMIT 500", ARRAY_A ); // phpcs:ignore
+	}
+
+	/** Record that a feed was moved to a new address (the time it was moved). */
+	public static function set_moved_at( $id, $when ) {
+		global $wpdb;
+		return false !== $wpdb->update( PFG_Installer::table( 'feeds' ), array( 'moved_at' => (int) $when ), array( 'id' => (int) $id ), array( '%d' ), array( '%d' ) );
+	}
+
+	/** Feeds that were moved more than `keep_moved_days` days ago, so the admin can delete them. */
+	public static function moved_ready_to_delete() {
+		$cutoff = time() - (int) PFG_Settings::get( 'keep_moved_days' ) * DAY_IN_SECONDS;
+		$out    = array();
+		foreach ( (array) self::list_all_feeds() as $f ) {
+			if ( 'deleted' !== $f['status'] && (int) $f['moved_at'] > 0 && (int) $f['moved_at'] < $cutoff ) {
+				$out[] = $f;
+			}
+		}
+		return $out;
 	}
 
 	public static function insert_feed( $account_id, $slug, $guid, $model, $status ) {

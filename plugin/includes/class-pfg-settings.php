@@ -26,6 +26,7 @@ class PFG_Settings {
 			'require_approval'         => 0,
 			'more_info_url'            => '',
 			'session_hours'            => 24,
+			'keep_moved_days'          => 28,
 			'relays'                   => array( 'wss://relay.primal.net', 'wss://relay.nsec.app', 'wss://relay.damus.io', 'wss://nos.lol' ),
 			// "Support the developers (optional)": shown to every feed creator with these default splits.
 			// The creator can change each split (0 to 99); name, address and type are fixed here.
@@ -136,6 +137,8 @@ class PFG_Settings {
 		$out['max_feeds_per_account'] = max( 1, min( 50, (int) ( isset( $in['max_feeds_per_account'] ) ? $in['max_feeds_per_account'] : $d['max_feeds_per_account'] ) ) );
 		$out['max_releases']          = max( 1, min( 1000, (int) ( isset( $in['max_releases'] ) ? $in['max_releases'] : $d['max_releases'] ) ) );
 		$out['session_hours']         = max( 1, min( 24 * 30, (int) ( isset( $in['session_hours'] ) ? $in['session_hours'] : $d['session_hours'] ) ) );
+
+		$out['keep_moved_days']       = max( 1, min( 3650, (int) ( isset( $in['keep_moved_days'] ) ? $in['keep_moved_days'] : $d['keep_moved_days'] ) ) );
 
 		$relays = array();
 		$raw    = isset( $in['relays'] ) ? (string) $in['relays'] : '';

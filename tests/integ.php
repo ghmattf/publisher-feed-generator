@@ -8,12 +8,12 @@ function nonce(){ return PFG_Auth::issue_nonce()['nonce']; }
 function call($method, $route, $body = null, $headers = []){
   PFG_Auth::$session = null;
   $req = new WP_REST_Request($method, '/pfg/v1' . $route, $body, $headers);
-  $id = null; if (preg_match('#^/me/feeds/(\d+)$#', $route, $m)) { $id = $m[1]; $req['id'] = $id; }
+  $id = null; if (preg_match('#^/me/feeds/(\d+)(/move)?$#', $route, $m)) { $id = $m[1]; $req['id'] = $id; }
   $perm = in_array($route, ['/auth/nonce', '/auth/login'], true) ? 'perm_hosting' : (strpos($route, '/lookup/') === 0 ? 'perm_lookup' : 'perm_session');
   $p = PFG_Rest::$perm($req); if (is_wp_error($p)) return $p;
   $map = ['POST /auth/nonce' => 'route_nonce', 'POST /auth/login' => 'route_login', 'POST /auth/logout' => 'route_logout', 'GET /me' => 'route_me', 'POST /lookup/feed' => 'route_lookup_feed', 'POST /lookup/search' => 'route_lookup_search', 'GET /me/feeds' => 'route_list', 'POST /me/feeds' => 'route_create', 'POST /me/upgrade' => 'route_upgrade'];
   $k = $method . ' ' . ($id ? '/me/feeds' : $route); 
-  if ($id) $h = ['GET' => 'route_get', 'PUT' => 'route_update', 'DELETE' => 'route_delete'][$method]; else $h = $map[$k];
+  if ($id && substr($route, -5) === '/move') $h = 'route_move'; elseif ($id) $h = ['GET' => 'route_get', 'PUT' => 'route_update', 'DELETE' => 'route_delete'][$method]; else $h = $map[$k];
   return PFG_Rest::$h($req);
 }
 function code($r){ return is_wp_error($r) ? ($r->data['status'] ?? 0) : $r->status; }
@@ -52,14 +52,42 @@ $xml = file_get_contents($path);
 ok(strpos($xml, '<podcast:medium>publisher</podcast:medium>') !== false && strpos($xml, 'phafe@phafe.com') !== false && strpos($xml, 'heycitizen@getalby.com') !== false && strpos($xml, 'podcastindex@getalby.com') !== false && strpos($xml, 'split="97"') !== false && substr_count($xml, 'split="1"') === 3, 'file is a publisher feed with the user (97) and three support (1 each) recipients');
 ok(strpos($xml, 'https://phafe.com/wp-content/pubfeeds/acme-records/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . PFG_Feed::guid_for_url('https://phafe.com/wp-content/pubfeeds/acme-records/acme-records.xml')) !== false, 'self URL and derived GUID in file');
 $d = new DOMDocument(); ok($d->loadXML($xml), 'published XML is well-formed');
+// the new feed address is only set by the Move action: an ordinary save ignores it
 $nfu = feed(); $nfu['newFeedUrl'] = 'https://new.example.com/acme.xml';
 $ru = call('PUT', '/me/feeds/' . $f['id'], ['feed' => $nfu], $H);
-ok(code($ru) === 200 && strpos(@file_get_contents($path), '<itunes:new-feed-url>https://new.example.com/acme.xml</itunes:new-feed-url>') !== false, 'moving a hosted feed: new feed URL is written into the file (no fresh signature needed)');
-$nfu['newFeedUrl'] = 'http://insecure.example.com/a.xml'; ok(code(call('PUT', '/me/feeds/' . $f['id'], ['feed' => $nfu], $H)) === 422, 'non-https new feed URL refused');
+ok(code($ru) === 200 && strpos(@file_get_contents($path), 'new-feed-url') === false, 'an ordinary save ignores newFeedUrl (only the Move action sets it)');
+// Move action
+$murl = "$B/me/feeds/" . $f['id'] . '/move'; $mpath = '/me/feeds/' . $f['id'] . '/move';
+$mb = json_encode(['newFeedUrl' => 'https://new.example.com/acme.xml']);
+ok(code(call('POST', $mpath, $mb, $H)) === 428, 'move: needs a fresh signature (428)');
+ok(strpos(@file_get_contents($path), 'new-feed-url') === false && (int) $wpdb->get_var("SELECT moved_at FROM wp_pfg_feeds WHERE id = " . (int) $f['id']) === 0, 'move: nothing changes without the signature');
+$bad = json_encode(['newFeedUrl' => 'http://insecure.example.com/a.xml']);
+ok(code(call('POST', $mpath, $bad, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $murl, 'POST', nonce(), $bad)))])) === 422, 'move: non-https address refused');
+$same = json_encode(['newFeedUrl' => PFG_Storage::feed_url($f['slug'])]);
+ok(code(call('POST', $mpath, $same, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $murl, 'POST', nonce(), $same)))])) === 422, 'move: the current address refused');
+$t0 = time(); $rm = call('POST', $mpath, $mb, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $murl, 'POST', nonce(), $mb)))]);
+ok(code($rm) === 200 && data($rm)['movedTo'] === 'https://new.example.com/acme.xml' && data($rm)['movedAt'] >= $t0, 'move: accepted with a fresh signature; response carries movedTo and movedAt');
+ok(strpos(@file_get_contents($path), '<itunes:new-feed-url>https://new.example.com/acme.xml</itunes:new-feed-url>') !== false, 'move: the tag is written into the published file');
+ok((int) $wpdb->get_var("SELECT moved_at FROM wp_pfg_feeds WHERE id = " . (int) $f['id']) >= $t0, 'move: the date moved is recorded');
+$ru = call('PUT', '/me/feeds/' . $f['id'], ['feed' => feed()], $H);
+ok(code($ru) === 200 && strpos(@file_get_contents($path), '<itunes:new-feed-url>https://new.example.com/acme.xml') !== false, 'move: later ordinary saves keep the tag');
+$lst = data(call('GET', '/me/feeds')); $mine = array_values(array_filter($lst, fn($x) => $x['id'] == $f['id']))[0] ?? null;
+ok($mine && $mine['movedTo'] === 'https://new.example.com/acme.xml' && $mine['movedAt'] >= $t0, 'move: the feed list shows where it moved and when');
+// ready to delete: only after KeepMoved days
+ok(PFG_Settings::get('keep_moved_days') === 28 && count(PFG_Storage::moved_ready_to_delete()) === 0, 'KeepMoved defaults to 28 days; a feed moved just now is not ready to delete');
+$wpdb->query("UPDATE wp_pfg_feeds SET moved_at = " . (time() - 27 * 86400) . " WHERE id = " . (int) $f['id']);
+ok(count(PFG_Storage::moved_ready_to_delete()) === 0, 'moved 27 days ago: not ready to delete yet');
+$wpdb->query("UPDATE wp_pfg_feeds SET moved_at = " . (time() - 29 * 86400) . " WHERE id = " . (int) $f['id']);
+$rdy = PFG_Storage::moved_ready_to_delete(); ok(count($rdy) === 1 && (int) $rdy[0]['id'] === (int) $f['id'], 'moved 29 days ago: ready to delete');
+update_option('pfg_settings', array_merge((array) get_option('pfg_settings', []), ['keep_moved_days' => 60])); ok(count(PFG_Storage::moved_ready_to_delete()) === 0, 'raising KeepMoved to 60 days: no longer ready');
+ok(PFG_Settings::sanitize(['keep_moved_days' => '0'])['keep_moved_days'] === 1 && PFG_Settings::sanitize(['keep_moved_days' => 'abc'])['keep_moved_days'] === 1 && PFG_Settings::sanitize(['keep_moved_days' => '14'])['keep_moved_days'] === 14, 'KeepMoved setting is a whole number of at least 1');
+update_option('pfg_settings', array_merge((array) get_option('pfg_settings', []), ['keep_moved_days' => 28])); $wpdb->query("UPDATE wp_pfg_feeds SET moved_at = 0 WHERE id = " . (int) $f['id']);
+$nfu = feed();
+$nfu['persons'] = [['name' => 'Matt Finlay', 'role' => 'content manager', 'group' => 'administration', 'href' => 'https://phafe.com/mattfinlay']];
 $nfu['newFeedUrl'] = ''; $nfu['persons'] = [['name' => 'Matt Finlay', 'role' => 'content manager', 'group' => 'administration', 'href' => 'https://phafe.com/mattfinlay']];
 $rp = call('PUT', '/me/feeds/' . $f['id'], ['feed' => $nfu], $H); $px = (string) @file_get_contents($path);
 ok(strpos($px, '<podcast:person href="https://phafe.com/mattfinlay" group="administration" role="content manager">Matt Finlay</podcast:person>') !== false && strpos($px, '<podcast:block>no</podcast:block>') !== false && strpos($px, '<category>Music</category>') !== false && strpos($px, '<podcast:complete>no</podcast:complete>') !== false, 'hosted file has the person and the fixed block / category / complete tags');
-$nfu['newFeedUrl'] = ''; call('PUT', '/me/feeds/' . $f['id'], ['feed' => $nfu], $H); ok(strpos(@file_get_contents($path), 'new-feed-url') === false, 'clearing the new feed URL removes the tag');
+
 ok(PFG_Storage::available_slug('acme-records') === 'acme-records1', 'a name already used gets the next free one (acme-records1) instead of an error');
 $r = call('POST', '/me/feeds', ['slug' => 'bad-split', 'feed' => feed(['value' => ['recipients' => [['split' => 50]]]])], $H); ok(code($r) === 422 && !empty($r->data['errors']), 'splits not totalling 97 -> 422 with errors');
 ok(!file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/bad-split'), 'nothing written for an invalid feed');

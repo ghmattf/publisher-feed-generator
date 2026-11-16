@@ -455,5 +455,7 @@
     createFeed: function (slug, feed) { return api('POST', cfg.urls.feeds, { slug: slug, feed: feed }); },
     updateFeed: function (id, feed) { return api('PUT', feedUrl(id), { feed: feed }); },
     deleteFeed: function (id) { return api('DELETE', feedUrl(id)); },
+    // Tell apps this feed has moved (writes itunes:new-feed-url and publishes). Needs a fresh signature.
+    moveFeed: function (id, newFeedUrl) { return api('POST', feedUrl(id) + '/move', { newFeedUrl: newFeedUrl }); },
   };
 })();

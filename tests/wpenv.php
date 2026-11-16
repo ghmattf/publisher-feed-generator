@@ -29,7 +29,7 @@ function add_action(){} function add_filter(){} function add_shortcode(){} funct
 $GLOBALS['__opts'] = []; $GLOBALS['__tr'] = [];
 function get_option($k, $d = false){ return $GLOBALS['__opts'][$k] ?? $d; } function update_option($k, $v){ $GLOBALS['__opts'][$k] = $v; return true; } function delete_option($k){ unset($GLOBALS['__opts'][$k]); }
 function get_transient($k){ return $GLOBALS['__tr'][$k] ?? false; } function set_transient($k, $v){ $GLOBALS['__tr'][$k] = $v; return true; }
-$UP = sys_get_temp_dir() . '/pfg_uploads_' . getmypid(); @mkdir($UP, 0755, true); $GLOBALS['__up'] = $UP;
+$UP = sys_get_temp_dir() . '/pfg_uploads_' . getmypid(); if (is_dir($UP)) { exec('rm -rf ' . escapeshellarg($UP)); } @mkdir($UP, 0755, true); $GLOBALS['__up'] = $UP; // clean every run: a leftover from an earlier process with the same pid would make feed names get numbered
 function wp_get_upload_dir(){ return ['basedir' => $GLOBALS['__up'], 'baseurl' => 'https://phafe.com/wp-content/uploads', 'path' => $GLOBALS['__up'], 'url' => 'https://phafe.com/wp-content/uploads', 'error' => false]; }
 if(!defined('WP_CONTENT_DIR')) define('WP_CONTENT_DIR', $GLOBALS['__up'] . '/wp-content');
 function content_url($p = ''){ return 'https://phafe.com/wp-content/' . ltrim($p, '/'); }
@@ -43,7 +43,7 @@ class FakeWpdb {
       'accounts' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, pubkey TEXT UNIQUE NOT NULL, status TEXT NOT NULL DEFAULT "active", kind TEXT NOT NULL DEFAULT "signer", created_at INT NOT NULL, last_login INT NOT NULL DEFAULT 0',
       'sessions' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, token_hash TEXT UNIQUE NOT NULL, csrf_hash TEXT NOT NULL, account_id INT NOT NULL, created_at INT NOT NULL, expires INT NOT NULL',
       'nonces' => 'nonce_hash TEXT PRIMARY KEY, expires INT NOT NULL',
-      'feeds' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INT NOT NULL, slug TEXT UNIQUE NOT NULL, guid TEXT UNIQUE NOT NULL, title TEXT NOT NULL DEFAULT "", status TEXT NOT NULL DEFAULT "pending", data TEXT NOT NULL, created_at INT NOT NULL, updated_at INT NOT NULL',
+      'feeds' => 'id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INT NOT NULL, slug TEXT UNIQUE NOT NULL, guid TEXT UNIQUE NOT NULL, title TEXT NOT NULL DEFAULT "", status TEXT NOT NULL DEFAULT "pending", data TEXT NOT NULL, created_at INT NOT NULL, updated_at INT NOT NULL, moved_at INT NOT NULL DEFAULT 0',
     ] as $t => $cols) $this->pdo->exec("CREATE TABLE wp_pfg_$t ($cols)"); }
   function get_charset_collate(){ return ''; }
   function prepare($sql, ...$args){ if (count($args) === 1 && is_array($args[0])) $args = $args[0]; $i = 0; return preg_replace_callback('/%[sd]/', function($m) use (&$i, $args){ $v = $args[$i++]; return $m[0] === '%d' ? (string)(int)$v : $this->pdo->quote((string)$v); }, $sql); }

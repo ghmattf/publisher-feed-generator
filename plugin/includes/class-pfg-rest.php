@@ -54,6 +54,7 @@ class PFG_Rest {
 				array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_create' ), 'permission_callback' => $ses ),
 			)
 		);
+		register_rest_route( self::NS, '/me/feeds/(?P<id>\d+)/move', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_move' ), 'permission_callback' => $ses ) );
 		register_rest_route(
 			self::NS,
 			'/me/feeds/(?P<id>\d+)',
@@ -162,6 +163,7 @@ class PFG_Rest {
 			),
 			'feedBaseUrl'            => PFG_Storage::base_url(),
 			'moreInfoUrl'            => (string) PFG_Settings::get( 'more_info_url' ),
+			'keepMovedDays'          => (int) PFG_Settings::get( 'keep_moved_days' ),
 			'relays'                 => array_values( (array) PFG_Settings::get( 'relays' ) ),
 			'platform'               => array_values( PFG_Settings::platform_recipients() ),
 			'defaults'               => array(
@@ -240,7 +242,14 @@ class PFG_Rest {
 	/* ------------------------------------------------------------------ */
 
 	private static function feed_summary( $row ) {
+		$moved_to = '';
+		if ( ! empty( $row['data'] ) ) {
+			$dm       = json_decode( $row['data'], true );
+			$moved_to = is_array( $dm ) && ! empty( $dm['newFeedUrl'] ) && ! empty( $row['moved_at'] ) ? (string) $dm['newFeedUrl'] : '';
+		}
 		return array(
+			'movedAt'   => (int) ( isset( $row['moved_at'] ) ? $row['moved_at'] : 0 ),
+			'movedTo'   => $moved_to,
 			'id'        => (int) $row['id'],
 			'slug'      => $row['slug'],
 			'guid'      => $row['guid'],
@@ -334,6 +343,9 @@ class PFG_Rest {
 		if ( PFG_Storage::count_feeds_for_account( (int) $s['account_id'] ) >= (int) PFG_Settings::get( 'max_feeds_per_account' ) ) {
 			return new WP_Error( 'pfg_limit', 'You have reached the maximum number of hosted feeds.', array( 'status' => 403 ) );
 		}
+		if ( isset( $body['feed'] ) && is_array( $body['feed'] ) ) {
+			$body['feed']['newFeedUrl'] = ''; // a new feed has not moved anywhere.
+		}
 		$guid = PFG_Feed::guid_for_url( PFG_Storage::feed_url( $slug ) );
 		if ( PFG_Storage::slug_or_guid_taken( $slug, $guid ) ) {
 			return new WP_Error( 'pfg_taken', 'That feed name is already taken. Please choose another.', array( 'status' => 409 ) );
@@ -380,6 +392,11 @@ class PFG_Rest {
 		$body = $r->get_json_params();
 		if ( ! is_array( $body ) ) {
 			return new WP_Error( 'pfg_bad_request', 'Invalid request.', array( 'status' => 400 ) );
+		}
+		// The new feed address is only ever set by the "Move feed" action, never by an ordinary save.
+		$stored_model = PFG_Storage::decode_model( $feed );
+		if ( isset( $body['feed'] ) && is_array( $body['feed'] ) ) {
+			$body['feed']['newFeedUrl'] = isset( $stored_model['newFeedUrl'] ) ? (string) $stored_model['newFeedUrl'] : '';
 		}
 		$res = PFG_Feed::normalize( isset( $body['feed'] ) ? $body['feed'] : array(), self::norm_opts( $feed['slug'], $feed['guid'] ) );
 		if ( $res['errors'] ) {
@@ -481,6 +498,46 @@ class PFG_Rest {
 		$acc  = PFG_Storage::get_account( (int) $acc['id'] );
 		$csrf = PFG_Auth::rotate_csrf( (int) $s['session_id'] );
 		return rest_ensure_response( self::session_payload( $acc, $csrf, (int) $s['expires'] ) );
+	}
+
+	/**
+	 * Tell apps that a feed has moved: writes <itunes:new-feed-url> into the feed and publishes it. The feed stays
+	 * on this site (the admin deletes it after `keep_moved_days`). Needs a fresh signature like other sensitive changes.
+	 */
+	public static function route_move( WP_REST_Request $r ) {
+		$s    = PFG_Auth::load_session();
+		$feed = self::owned_feed( $r['id'], $s );
+		if ( is_wp_error( $feed ) ) {
+			return $feed;
+		}
+		if ( PFG_Storage::is_adopted_pending( $feed ) ) {
+			return new WP_Error( 'pfg_move', 'Open this feed and save it once before moving it, so the file is rebuilt with the new address.', array( 'status' => 409 ) );
+		}
+		$body = $r->get_json_params();
+		$new  = is_array( $body ) && isset( $body['newFeedUrl'] ) && is_string( $body['newFeedUrl'] ) ? trim( $body['newFeedUrl'] ) : '';
+		if ( '' === $new || strlen( $new ) > 2000 || ! PFG_Feed::is_https_url( $new ) ) {
+			return self::invalid( array( array( 'path' => 'newFeedUrl', 'message' => 'The new address must be a full https:// URL.' ) ) );
+		}
+		if ( $new === PFG_Storage::feed_url( $feed['slug'] ) ) {
+			return self::invalid( array( array( 'path' => 'newFeedUrl', 'message' => 'That is this feed\'s current address.' ) ) );
+		}
+		$fresh = self::verify_fresh_auth( $r, rest_url( self::NS . '/me/feeds/' . (int) $feed['id'] . '/move' ), 'POST', $s );
+		if ( is_wp_error( $fresh ) ) {
+			return $fresh;
+		}
+		$model               = PFG_Storage::decode_model( $feed );
+		$model['newFeedUrl'] = $new;
+		$xml                 = null;
+		if ( 'published' === $feed['status'] ) {
+			$xml = PFG_Storage::publish( $feed, $model );
+			if ( is_wp_error( $xml ) ) {
+				return $xml;
+			}
+		}
+		// Podping: not built yet. When it is, it is sent here, right after the feed is published.
+		PFG_Storage::update_feed_data( (int) $feed['id'], $model );
+		PFG_Storage::set_moved_at( (int) $feed['id'], time() );
+		return rest_ensure_response( self::feed_summary( PFG_Storage::get_feed( (int) $feed['id'] ) ) );
 	}
 
 	public static function route_delete( WP_REST_Request $r ) {
