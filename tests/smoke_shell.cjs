@@ -43,7 +43,7 @@ ok(extUsed === 1 && sess === null && !$('.pfg-overlay'), 'npub-only via extensio
 ok(forgot === 2, 'npub-only via extension: signer forgotten afterwards');
 opened.getNpub(() => {}); ok(tabNames().join('|') === 'Browser extension|Paste bunker link|Scan QR code' && selTab().join() === 'Browser extension', 'extension detected: tab is first and preselected'); click('Cancel');
 extUsed = 0; sess = null; opened.needSignIn(() => {});
-ok(/Sign in with Nostr/.test($('.pfg-overlay h2').textContent) && selTab().join() === 'Create account', 'normal sign-in window opens on Create account even when an extension is present');
+ok($('.pfg-overlay h2').textContent === 'Sign in' && selTab().join() === 'Create account', 'normal sign-in window opens on Create account even when an extension is present');
 click('Browser extension'); ok(/approve the sign-in/.test($('.pfg-overlay').textContent), 'extension tab available');
 click('Sign in with extension'); await tick(); await tick();
 ok(extUsed === 1 && sess && !$('.pfg-overlay'), 'sign in with extension: hosted session created and window closed');
@@ -58,8 +58,8 @@ click('Discard'); ok(!w.localStorage.getItem('pfg_draft_v1'), 'discard clears dr
 ok(!$$('button').some(b => b.textContent === 'Paste XML') && !/Edit an existing feed/.test($('#pfg-app, .pfg-app').textContent), 'no "Edit an existing feed" card or Paste XML button on the start screen');
 opened.back();
 click('Get started'); ok($('.pfg-overlay') && $('#pfg-newname') && selTab().join() === 'Create account', 'sign-in window opens on the Create account tab when no extension');
-ok(tabNames().join('|') === 'Create account|Scan QR code|Browser extension|Paste bunker link', 'sign-in tabs: Create account first, then Scan QR code, then extension and paste');
-ok(/Important! You will only be able to make changes from this browser or until you clear the browser cache\./.test($('.pfg-overlay').textContent) && /You can get started with this and move to a permanent solution later\./.test($('.pfg-overlay').textContent) && /Already have a Nostr profile\? Choose a different sign in option\./.test($('.pfg-overlay').textContent) && !/No app or extension needed/.test($('.pfg-overlay').textContent), 'Create account explains the browser-only limit');
+ok(tabNames().join('|') === 'Create account|Browser extension|Scan QR code|Paste bunker link', 'sign-in tabs: Create account first, then Browser extension, Scan QR code, Paste bunker link');
+ok(!/You will only be able to make changes from this browser/.test($('.pfg-overlay').textContent) && /IMPORTANT! This account only works in this browser, and is lost if you clear your browser data\./.test($('.pfg-overlay').textContent) && /You can simply "Create account" to get up and running but you should consider moving to a Nostr authentication method for continued use\./.test($('.pfg-overlay').textContent) && !/Your private key stays in your signer app or browser extension/.test($('.pfg-overlay').textContent) && /You can get started with this and move to a permanent solution later\./.test($('.pfg-overlay').textContent) && /Already have a Nostr profile\? Choose a different sign in option\./.test($('.pfg-overlay').textContent) && !/No app or extension needed/.test($('.pfg-overlay').textContent), 'Create account explains the browser-only limit');
 click('Browser extension'); ok(/for example Sidecar, Alby or nos2x/.test($('.pfg-overlay').textContent), 'extension tab text names Sidecar, Alby or nos2x');
 click('Paste bunker link'); ok($('#pfg-bunker') && /for example Clave, Amber, Primal/.test($('.pfg-overlay').textContent), 'bunker field available on its tab, with the new signer app names');
 ok($('.pfg-overlay').classList.contains('pfg-app') && $('.pfg-overlay').parentNode === w.document.body, 'sign-in overlay is outside #pfg-app and carries .pfg-app (so the colour variables apply)');
