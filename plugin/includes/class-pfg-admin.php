@@ -54,19 +54,8 @@ class PFG_Admin {
 				case 'approve':
 				case 'unsuspend':
 					if ( 'deleted' !== $feed['status'] ) {
-						$model = PFG_Storage::decode_model( $feed );
-						if ( ! empty( $model['adopted'] ) ) { // the original file is still in place and untouched.
-							PFG_Storage::set_feed_status( $id, 'published' );
-							$notice = 'published';
-							break;
-						}
-						$res   = $model ? PFG_Storage::publish( $feed, $model ) : new WP_Error( 'x', 'No data' );
-						if ( is_wp_error( $res ) ) {
-							$notice = 'writefail';
-						} else {
-							PFG_Storage::set_feed_status( $id, 'published' );
-							$notice = 'published';
-						}
+						$res    = PFG_Storage::unsuspend_feed( $feed );
+						$notice = is_wp_error( $res ) ? 'writefail' : 'published';
 					}
 					break;
 				case 'suspend':
@@ -74,8 +63,7 @@ class PFG_Admin {
 						$notice = 'adopted_untouched';
 						break;
 					}
-					PFG_Storage::delete_file( $feed['slug'] );
-					PFG_Storage::set_feed_status( $id, 'suspended' );
+					PFG_Storage::suspend_feed( $feed );
 					$notice = 'suspended';
 					break;
 				case 'delete':
@@ -96,8 +84,7 @@ class PFG_Admin {
 						if ( PFG_Storage::is_adopted_pending( PFG_Storage::get_feed( (int) $row['id'] ) ) ) {
 							continue; // an adopted feed that has not been edited yet: leave its original file alone.
 						}
-						PFG_Storage::delete_file( $row['slug'] );
-						PFG_Storage::set_feed_status( (int) $row['id'], 'suspended' );
+						PFG_Storage::suspend_feed( PFG_Storage::get_feed( (int) $row['id'] ) );
 					}
 					$notice = 'blocked';
 					break;
@@ -167,9 +154,9 @@ class PFG_Admin {
 		$s       = PFG_Settings::all();
 		$notices = array(
 			'published' => 'Feed published.',
-			'suspended' => 'Feed suspended and its file removed.',
+			'suspended' => 'Feed suspended. Its file was moved out of public view and can be restored by unsuspending.',
 			'deleted'   => 'Feed deleted. Its name stays reserved.',
-			'blocked'   => 'Account blocked, its sessions ended and its feeds suspended.',
+			'blocked'   => 'Account blocked, its sessions ended and its feeds suspended (their files were kept and can be restored by unsuspending).',
 			'unblocked' => 'Account unblocked. Its feeds stay suspended until you unsuspend them.',
 			'adopted'   => 'Feed adopted. Its owner can now find it under Your hosted feeds and edit it. The file was not changed.',
 			'moved'     => 'Feed moved. Its new owner can now find it under Your hosted feeds. The file, address and GUID did not change.',
