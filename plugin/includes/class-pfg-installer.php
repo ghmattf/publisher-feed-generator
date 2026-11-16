@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PFG_Installer {
 
 	const DB_VERSION_OPTION = 'pfg_db_version';
-	const DB_VERSION        = '3';
+	const DB_VERSION        = '4';
 
 	/**
 	 * Table name helper.
@@ -112,6 +112,7 @@ class PFG_Installer {
 				data longtext NOT NULL,
 				created_at int(10) unsigned NOT NULL,
 				updated_at int(10) unsigned NOT NULL,
+				moved_at int(10) unsigned NOT NULL DEFAULT 0,
 				PRIMARY KEY  (id),
 				UNIQUE KEY slug (slug),
 				UNIQUE KEY guid (guid),

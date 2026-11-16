@@ -2,7 +2,7 @@
 const { JSDOM } = require('../build/node_modules/jsdom');
 const fs = require('fs');
 const P = __dirname + '/../plugin/assets/js/';
-const cfg = { siteName: 'Phafe', hostingAvailable: true, hostingNeedsGmp: false, requireApproval: false, urls: { nonce: 'n', login: 'l', logout: 'o', me: 'm', feeds: 'f', feedTemplate: 'f/0' }, relays: ['wss://x'], platform: [{ name: 'PI', address: 'a@b.co', split: 1, type: 'lnaddress' }], applyPlatformToExports: false, defaults: { method: 'lnaddress', suggested: '0.000033333' }, limits: { maxFeeds: 3, maxReleases: 200 } };
+const cfg = { keepMovedDays: 28, siteName: 'Phafe', hostingAvailable: true, hostingNeedsGmp: false, requireApproval: false, urls: { nonce: 'n', login: 'l', logout: 'o', me: 'm', feeds: 'f', feedTemplate: 'f/0' }, relays: ['wss://x'], platform: [{ name: 'PI', address: 'a@b.co', split: 1, type: 'lnaddress' }], applyPlatformToExports: false, defaults: { method: 'lnaddress', suggested: '0.000033333' }, limits: { maxFeeds: 3, maxReleases: 200 } };
 const dom = new JSDOM(`<div id="pfg-app"></div><script type="application/json" id="pfg-config">${JSON.stringify(cfg)}</script>`, { runScripts: 'outside-only', url: 'https://phafe.com/page/' });
 const w = dom.window;
 w.Element.prototype.scrollIntoView = () => {}; w.scrollTo = () => {};
@@ -10,7 +10,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if 
 // fake nostr + hosting
 w.PFGNostr = {};
 let forgot = 0, extPresent = false, extUsed = 0, sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
-w.PFGHosting = { init: () => true, upgraded: 0, upgradeAccount: async (p) => { await p; w.PFGHosting.upgraded++; sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [], kind: 'signer' }; return sess; }, hasBrowserKey: () => false, browserKeyName: () => "", forgetBrowserKey() {}, createBrowserAccount: async () => ({}), connectBrowserKey: async () => ({}), on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
+w.PFGHosting = { init: () => true, upgraded: 0, upgradeAccount: async (p) => { await p; w.PFGHosting.upgraded++; sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [], kind: 'signer' }; return sess; }, moves: [], moveFeed: async (id, u) => { w.PFGHosting.moves.push([id, u]); }, hasBrowserKey: () => false, browserKeyName: () => "", forgetBrowserKey() {}, createBrowserAccount: async () => ({}), connectBrowserKey: async () => ({}), on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
   listFeeds: async () => listed, connectBunker: async () => 'pk', hasExtension: () => extPresent, connectExtension: async () => { extUsed++; return 'pk'; }, npubOf: pk => 'npub1for' + pk, forgetSigner: () => { forgot++; }, login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
   startNostrConnect: () => ({ uri: 'nostrconnect://x', qr: '<svg></svg>', done: new Promise(() => {}), cancel() {} }) };
 w.eval(fs.readFileSync(P + 'pfg-core.js', 'utf8'));
@@ -64,6 +64,20 @@ ok(!$('.pfg-overlay'), 'sign-in window closes after login');
 ok(/Hosted|Your hosted feeds/.test(w.document.body.textContent) && /acme/.test(w.document.body.textContent), 'hosted list shown with feed');
 ok(/Signed in as npub1abcdefg/.test($('.pfg-bar').textContent), 'bar shows signed-in identity');
 click('New hosted feed'); ok(opened.hosted && opened.hosted.id === null, 'new hosted feed opens editor in hosted mode');
+// ---- Move feed (from Your hosted feeds)
+opened.back(); await tick(); await tick();
+ok($$('button').some(b => b.textContent === 'Move feed'), 'hosted list has a Move feed button');
+click('Move feed'); const mv = $('.pfg-overlay');
+ok(mv && /tells podcasting apps and Podcast Index that this feed has moved/.test(mv.textContent) && /update every feed that already has a relationship/.test(mv.textContent), 'Move window explains what moving does and the need to update related feeds');
+ok(mv.querySelectorAll('input').length === 1 && [...mv.querySelectorAll('button')].map(b => b.textContent).join('|') === 'Move|Cancel', 'only a new URL field and Move / Cancel buttons');
+const mvBtn = t => [...$('.pfg-overlay').querySelectorAll('button')].find(b => b.textContent === t);
+$('#pfg-move-url').value = 'http://nope'; mvBtn('Move').click();
+ok(/full https:\/\/ URL/.test($('.pfg-overlay').textContent) && !/Are you sure/.test($('.pfg-overlay').textContent), 'a bad address is refused before the confirmation');
+$('#pfg-move-url').value = 'https://new.example.com/acme.xml'; mvBtn('Move').click();
+ok(/Are you sure you want to move this feed\?/.test($('.pfg-overlay').textContent) && /remain on here for a period of 28 days/.test($('.pfg-overlay').textContent) && /new\.example\.com\/acme\.xml/.test($('.pfg-overlay').textContent), 'second confirmation names the new address and the 28-day period');
+mvBtn('Cancel').click(); ok(!$('.pfg-overlay') && w.PFGHosting.moves.length === 0, 'Cancel closes the window and moves nothing');
+click('Move feed'); $('#pfg-move-url').value = 'https://new.example.com/acme.xml'; mvBtn('Move').click(); mvBtn('Yes, move it').click(); await tick(); await tick();
+ok(w.PFGHosting.moves.length === 1 && w.PFGHosting.moves[0][0] === 7 && w.PFGHosting.moves[0][1] === 'https://new.example.com/acme.xml' && !$('.pfg-overlay') && /Feed moved/.test(w.document.body.textContent), 'confirming moves the feed, closes the window and shows a message');
 // ---- browser-key account: reminder bar and upgrade
 sess.kind = 'browser'; extPresent = true; opened.back();
 ok($$('button').some(b => b.textContent === 'Upgrade my sign-in') && /key kept in this browser/.test($('.pfg-bar').parentNode.textContent) && /Payments are not available/.test(w.document.body.textContent), 'browser-key account: persistent reminder with an Upgrade button');
