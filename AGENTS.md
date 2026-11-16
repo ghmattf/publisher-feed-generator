@@ -30,7 +30,7 @@ A WordPress plugin for phafe.com. One page (shortcode) where labels, studios, en
 11. Completed items are deleted from docs/TODO.md (not ticked off).
 12. **Every owner request goes into docs/TODO.md first, before any work on it starts** (one entry per item, in the owner's wording). Then work on it, and delete the entries when done (rule 11). Requests that are only questions need no entry.
 
-13. **Whenever you commit changes, always give the owner a new test build zip** of the plugin (the contents of `plugin/` inside a `publisher-feed-generator/` folder, built from the committed code) and send it with the reply. Name it with the version and "test". A commit without a zip is unfinished.
+13. **Commit every new TODO item** as soon as it is added to docs/TODO.md. A commit triggers a **new test build zip** (the contents of `plugin/` inside a `publisher-feed-generator/` folder, built from the committed code, named with the version and "test") only if the commit changes plugin code (anything under `plugin/`); commits that change only docs, tests or the TODO get no zip. When a release has been triggered (the owner said "release"), do **not** make a test build zip: keep the usual reply with the release URL and the changes.
 
 ## Verify before you say it works
 Run `tests/run-all.sh`. It runs the real PHP classes against SQLite with real Nostr signatures, and the JS in jsdom. It does **not** run a real WordPress, a real signer app, or the live Music Index API; say so when reporting.
