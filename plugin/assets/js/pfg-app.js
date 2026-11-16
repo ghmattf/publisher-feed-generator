@@ -62,7 +62,7 @@
   function renderBar() {
     clear(barEl);
     var s = hostingOn ? Host.getSession() : null;
-    barEl.appendChild(h('h1', { class: 'pfg-bar-title', text: 'Roles feed generator' }));
+    barEl.appendChild(h('h1', { class: 'pfg-bar-title', text: 'Get your music credits linked!' }));
     var actions = h('div', { class: 'pfg-bar-actions' });
     if (s) {
       actions.appendChild(h('span', { class: 'pfg-who', text: 'Signed in as ' + s.npub.slice(0, 12) + '…' + s.npub.slice(-6) }));
@@ -102,13 +102,13 @@
         btn('Discard', 'pfg-btn-small', function () { draftStore.clear(); showStart(); }),
       ])));
     }
-    wrap.appendChild(h('p', { text: 'Build a Podcasting 2.0 publisher feed for your label, studio, host or artist page.' }));
+    wrap.appendChild(h('p', { text: 'Create Podcasting 2.0 feeds for labels, studios, engineers, artists...' }));
     var cards = h('div', { class: 'pfg-cards' });
     if (hostingOn) {
       var s = Host.getSession();
       cards.appendChild(h('div', { class: 'pfg-card' }, [
         h('h3', { text: 'Hosted feeds' }),
-        h('p', { text: 'We host your feed at ' + (cfg.siteName || 'this site') + ' and keep it updated as you add releases. Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
+        h('p', { text: 'Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
         btn(s ? 'My feeds' : 'Get started', 'pfg-btn-primary', function () { if (s) showHostedList(); else openLogin(showHostedList); }),
       ]));
     } else if (cfg.hostingNeedsGmp) {
