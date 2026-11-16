@@ -321,20 +321,20 @@
       clear(panel);
       if (Host.hasExtension()) {
         panel.appendChild(h('p', { text: npubOnly
-          ? 'Use your Nostr browser extension (for example Alby or nos2x). It will ask you to share your public key.'
-          : 'Use your Nostr browser extension (for example Alby or nos2x). It will ask you to approve the sign-in.' }));
+          ? 'Use your Nostr browser extension (for example Sidecar, Alby or nos2x). It will ask you to share your public key.'
+          : 'Use your Nostr browser extension (for example Sidecar, Alby or nos2x). It will ask you to approve the sign-in.' }));
         panel.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [
           btn(npubOnly ? 'Get npub from extension' : 'Sign in with extension', 'pfg-btn-primary', function () { finish(Host.connectExtension(), 'Waiting for your extension to approve…'); }),
         ]));
       } else {
-        panel.appendChild(h('p', { text: 'No Nostr browser extension was found on this page. Install one (for example Alby or nos2x), allow it on this site, then press Check again. You can also use a signer app with the other options.' }));
+        panel.appendChild(h('p', { text: 'No Nostr browser extension was found on this page. Install one (for example Sidecar, Alby or nos2x), allow it on this site, then press Check again. You can also use a signer app with the other options.' }));
         panel.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [btn('Check again', '', function () { tabExtension(); })]));
       }
     }
     function tabPaste() {
       var input = h('input', { type: 'text', id: 'pfg-bunker', placeholder: 'bunker://…', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Bunker link' });
       clear(panel);
-      panel.appendChild(h('p', { text: 'In your signer app (for example nsec.app or Amber), copy the connection link that starts with bunker:// and paste it here.' }));
+      panel.appendChild(h('p', { text: 'In your signer app (for example Clave, Amber, Primal), copy the connection link that starts with bunker:// and paste it here.' }));
       panel.appendChild(input);
       panel.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [
         btn('Connect', 'pfg-btn-primary', function () { finish(Host.connectBunker(input.value)); }),
@@ -345,7 +345,7 @@
       clear(panel);
       if (attempt) { attempt.cancel(); }
       attempt = Host.startNostrConnect();
-      panel.appendChild(h('p', { text: 'Scan this code with your signer app, or copy the link into it.' }));
+      panel.appendChild(h('p', { text: 'Scan this code with your signer app (eg. Primal, Amber, Clave), or copy the link into it.' }));
       var qr = h('div', { class: 'pfg-qr' });
       qr.innerHTML = attempt.qr; // generated locally from the connection link
       panel.appendChild(qr);
@@ -371,7 +371,9 @@
         return;
       }
       var input = h('input', { type: 'text', id: 'pfg-newname', placeholder: 'Your name', autocomplete: 'off', 'aria-label': 'Your name' });
-      panel.appendChild(h('p', { text: 'No app or extension needed. We make a key for you and keep it in this browser only.' }));
+      panel.appendChild(h('p', {}, [h('strong', { text: 'Important!' }), ' You will only be able to make changes from this browser or until you clear the browser cache.']));
+      panel.appendChild(h('p', { text: 'You can get started with this and move to a permanent solution later.' }));
+      panel.appendChild(h('p', { text: 'Already have a Nostr profile? Choose a different sign in option.' }));
       panel.appendChild(input);
       panel.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [
         btn('Create account', 'pfg-btn-primary', function () { finish(Host.createBrowserAccount(input.value), 'Creating your account…'); }),
@@ -386,9 +388,9 @@
     function sel(t) { [tNew, tExt, tPaste, tQr].forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); }); }
     // An installed extension is the quickest way in, so it comes first and is preselected; otherwise it is the last option.
     var extFirst = Host.hasExtension();
-    var newFirst = !npubOnly && !upgrade && (Host.hasBrowserKey() || !extFirst);
-    var order = extFirst ? [tExt, tPaste, tQr] : [tPaste, tQr, tExt];
-    if (!npubOnly && !upgrade) order = newFirst ? [tNew].concat(order) : order.concat([tNew]);
+    // Create account is first and the default (when it is offered), then Scan QR code, then the rest.
+    var newFirst = !npubOnly && !upgrade;
+    var order = newFirst ? [tNew, tQr, tExt, tPaste] : (extFirst ? [tExt, tPaste, tQr] : [tPaste, tQr, tExt]);
     order.forEach(function (t) { tabs.appendChild(t); });
 
     modal.appendChild(h('h2', { text: upgrade ? 'Upgrade your sign-in' : (npubOnly ? 'Get your npub' : 'Sign in with Nostr') }));
