@@ -207,6 +207,75 @@ class PFG_Storage {
 	}
 
 	/* ------------------------------------------------------------------ */
+	/* Suspended feeds: the file is moved out of public view, not deleted */
+	/* ------------------------------------------------------------------ */
+
+	/** Folder that holds the files of suspended feeds. Closed to web access, and the file names cannot be guessed. */
+	private static function quarantine_path( $slug ) {
+		$dir  = wp_normalize_path( WP_CONTENT_DIR ) . '/pubfeeds-suspended';
+		$salt = function_exists( 'wp_salt' ) ? wp_salt( 'auth' ) : 'pfg';
+		return array(
+			'dir'  => $dir,
+			'file' => $dir . '/' . $slug . '-' . substr( hash_hmac( 'sha256', $slug, $salt ), 0, 16 ) . '.xml',
+		);
+	}
+
+	/** Take a feed offline but keep its file, so it can be put back exactly as it was. */
+	public static function suspend_feed( $feed ) {
+		$p = self::feed_path( $feed['slug'] );
+		if ( $p && file_exists( $p['file'] ) ) {
+			$q = self::quarantine_path( $feed['slug'] );
+			if ( wp_mkdir_p( $q['dir'] ) ) {
+				if ( ! file_exists( $q['dir'] . '/index.html' ) ) {
+					@file_put_contents( $q['dir'] . '/index.html', '' ); // phpcs:ignore
+				}
+				if ( ! file_exists( $q['dir'] . '/.htaccess' ) ) {
+					@file_put_contents( $q['dir'] . "/.htaccess", "Require all denied\nDeny from all\n" ); // phpcs:ignore
+				}
+				if ( ! @rename( $p['file'], $q['file'] ) ) { // phpcs:ignore
+					@copy( $p['file'], $q['file'] ); // phpcs:ignore
+					@unlink( $p['file'] ); // phpcs:ignore
+				}
+			} else {
+				self::delete_file( $feed['slug'] ); // could not make the folder: still take it offline; unsuspending rebuilds it from the saved settings.
+			}
+		}
+		self::set_feed_status( (int) $feed['id'], 'suspended' );
+	}
+
+	/**
+	 * Put a suspended (or waiting for approval) feed back online. The file kept at suspension is put back as it
+	 * was; if there is none, the file is rebuilt from the saved settings. Returns true or a WP_Error.
+	 */
+	public static function unsuspend_feed( $feed ) {
+		$q = self::quarantine_path( $feed['slug'] );
+		$p = self::feed_path( $feed['slug'] );
+		if ( $p && file_exists( $q['file'] ) ) {
+			$xml = file_get_contents( $q['file'] ); // phpcs:ignore
+			if ( false !== $xml && '' !== $xml ) {
+				$res = self::write_file( $feed['slug'], $xml );
+				if ( is_wp_error( $res ) ) {
+					return $res;
+				}
+				@unlink( $q['file'] ); // phpcs:ignore
+				self::set_feed_status( (int) $feed['id'], 'published' );
+				return true;
+			}
+		}
+		$model = self::decode_model( $feed );
+		if ( ! empty( $model['adopted'] ) ) { // the original file is still in place and untouched.
+			self::set_feed_status( (int) $feed['id'], 'published' );
+			return true;
+		}
+		$res = $model ? self::publish( $feed, $model ) : new WP_Error( 'pfg_nodata', 'No data' );
+		if ( is_wp_error( $res ) ) {
+			return $res;
+		}
+		self::set_feed_status( (int) $feed['id'], 'published' );
+		return true;
+	}
+
+	/* ------------------------------------------------------------------ */
 	/* Accounts                                                            */
 	/* ------------------------------------------------------------------ */
 
@@ -376,6 +445,10 @@ class PFG_Storage {
 	public static function tombstone_feed( $feed ) {
 		global $wpdb;
 		self::delete_file( $feed['slug'] );
+		$q = self::quarantine_path( $feed['slug'] );
+		if ( file_exists( $q['file'] ) ) {
+			@unlink( $q['file'] ); // phpcs:ignore -- deleting is final: the kept copy goes too.
+		}
 		$wpdb->update(
 			PFG_Installer::table( 'feeds' ),
 			array(

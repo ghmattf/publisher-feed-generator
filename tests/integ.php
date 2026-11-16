@@ -350,6 +350,18 @@ ok(is_wp_error(PFG_Storage::move_feed($mvId, 'npub1notvalid', true)) && is_wp_er
 $accZ = PFG_Storage::get_account_by_pubkey($pubZ); PFG_Storage::set_account_status((int) $accZ['id'], 'blocked');
 ok(is_wp_error(PFG_Storage::move_feed((int) $f['id'], $npubZ, true)), 'move: a blocked account cannot be given a feed'); PFG_Storage::set_account_status((int) $accZ['id'], 'active');
 $GLOBALS['__http'] = null; $GLOBALS['__httplog'] = [];
+// ---- suspend keeps the file (recoverable); delete is final
+$sf = PFG_Storage::get_feed($mvId); $pubFile = $GLOBALS['__up'] . '/wp-content/pubfeeds/' . $sf['slug'] . '/' . $sf['slug'] . '.xml'; $before = file_get_contents($pubFile);
+PFG_Storage::suspend_feed($sf);
+$qd = $GLOBALS['__up'] . '/wp-content/pubfeeds-suspended'; $qfiles = glob($qd . '/' . $sf['slug'] . '-*.xml');
+ok(!file_exists($pubFile) && PFG_Storage::get_feed($mvId)['status'] === 'suspended', 'suspend: the public file is gone and the feed is suspended');
+ok(count($qfiles) === 1 && file_get_contents($qfiles[0]) === $before, 'suspend: the file was moved (kept byte for byte), not deleted');
+ok(file_exists($qd . '/.htaccess') && file_exists($qd . '/index.html') && preg_match('/-[0-9a-f]{16}\.xml$/', $qfiles[0]), 'suspended files are in a closed folder with a name that cannot be guessed');
+ok(PFG_Storage::unsuspend_feed(PFG_Storage::get_feed($mvId)) === true && file_get_contents($pubFile) === $before && PFG_Storage::get_feed($mvId)['status'] === 'published' && !glob($qd . '/' . $sf['slug'] . '-*.xml'), 'unsuspend: the same file is put back and the kept copy is cleared');
+PFG_Storage::suspend_feed(PFG_Storage::get_feed($mvId)); array_map('unlink', glob($qd . '/' . $sf['slug'] . '-*.xml'));
+ok(PFG_Storage::unsuspend_feed(PFG_Storage::get_feed($mvId)) === true && file_exists($pubFile) && strpos(file_get_contents($pubFile), '<rss') !== false, 'unsuspend with no kept file: rebuilt from the saved settings');
+PFG_Storage::suspend_feed(PFG_Storage::get_feed($mvId)); PFG_Storage::tombstone_feed(PFG_Storage::get_feed($mvId));
+ok(!glob($qd . '/' . $sf['slug'] . '-*.xml') && !file_exists($pubFile), 'delete is final: the kept copy is removed too');
 $_COOKIE['pfg_session'] = $savedCookie;
 // ---- logout, config
 ok(code(call('POST', '/auth/logout', null, $H)) === 200 && code(call('GET', '/me')) === 401, 'logout ends the session');
