@@ -107,7 +107,6 @@
     if (hostingOn) {
       var s = Host.getSession();
       cards.appendChild(h('div', { class: 'pfg-card' }, [
-        h('h3', { text: 'Hosted feeds' }),
         h('p', { text: 'Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
         btn(s ? 'My feeds' : 'Get started', 'pfg-btn-primary', function () { if (s) showHostedList(); else openLogin(showHostedList); }),
       ]));
