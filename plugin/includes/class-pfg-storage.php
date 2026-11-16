@@ -26,6 +26,44 @@ class PFG_Storage {
 		return '';
 	}
 
+	/**
+	 * Is this feed name usable for a new feed? A real check, not just the reserved list: it must not be reserved,
+	 * not be in the database (a feed or a deleted feed that keeps its name), not match a feed address already
+	 * used, and no folder or file of that name may exist on disk (in the feed folder or a recorded legacy folder).
+	 */
+	public static function slug_is_free( $slug ) {
+		if ( self::slug_error( $slug ) ) {
+			return false;
+		}
+		if ( self::slug_or_guid_taken( $slug, PFG_Feed::guid_for_url( self::feed_url( $slug ) ) ) ) {
+			return false;
+		}
+		$map = self::legacy_map();
+		if ( isset( $map[ $slug ] ) ) {
+			return false;
+		}
+		$dir = wp_normalize_path( WP_CONTENT_DIR ) . '/' . self::DIR . '/' . $slug;
+		return ! file_exists( $dir ) && ! file_exists( $dir . '.xml' );
+	}
+
+	/**
+	 * The first free feed name starting from `$slug`: test, test1, test2 ... (the base is shortened if the number
+	 * would make the name longer than 40 characters). Returns '' if the name is not well formed or none is free.
+	 */
+	public static function available_slug( $slug ) {
+		if ( ! preg_match( '/^[a-z0-9][a-z0-9_-]{2,39}$/', $slug ) ) {
+			return '';
+		}
+		for ( $n = 0; $n <= 500; $n++ ) {
+			$suffix    = 0 === $n ? '' : (string) $n;
+			$candidate = substr( $slug, 0, 40 - strlen( $suffix ) ) . $suffix;
+			if ( self::slug_is_free( $candidate ) ) {
+				return $candidate;
+			}
+		}
+		return '';
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* Paths                                                               */
 	/* ------------------------------------------------------------------ */

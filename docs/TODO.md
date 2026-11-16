@@ -18,3 +18,4 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 42. Improve the explanation of People for publisher feeds. (Owner, 2026-11-16.)
 43. Do not go into the payment being disabled on the in-browser key login screen. (Owner, 2026-11-16.)
 45. Improve the initial screen. (Owner, 2026-11-16.)
+47. When creating or editing a feed, make the errors and warnings clickable so they take the user to the field that needs to be fixed. (Owner, 2026-11-16.)

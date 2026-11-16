@@ -322,9 +322,14 @@ class PFG_Rest {
 			return new WP_Error( 'pfg_bad_request', 'Invalid request.', array( 'status' => 400 ) );
 		}
 		$slug  = strtolower( trim( isset( $body['slug'] ) && is_string( $body['slug'] ) ? $body['slug'] : '' ) );
-		$slug_error = PFG_Storage::slug_error( $slug );
-		if ( $slug_error ) {
-			return self::invalid( array( array( 'path' => 'slug', 'message' => $slug_error ) ) );
+		if ( ! preg_match( '/^[a-z0-9][a-z0-9_-]{2,39}$/', $slug ) ) {
+			return self::invalid( array( array( 'path' => 'slug', 'message' => PFG_Storage::slug_error( $slug ) ) ) );
+		}
+		// A name that is reserved, already used or already on disk is not an error: the next free one is used
+		// (test, test1, test2 ...). The response carries the name that was used.
+		$slug = PFG_Storage::available_slug( $slug );
+		if ( '' === $slug ) {
+			return new WP_Error( 'pfg_taken', 'That feed name is already taken. Please choose another.', array( 'status' => 409 ) );
 		}
 		if ( PFG_Storage::count_feeds_for_account( (int) $s['account_id'] ) >= (int) PFG_Settings::get( 'max_feeds_per_account' ) ) {
 			return new WP_Error( 'pfg_limit', 'You have reached the maximum number of hosted feeds.', array( 'status' => 403 ) );
