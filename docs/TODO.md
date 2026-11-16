@@ -22,3 +22,4 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 50. "Your hosted feeds": replace the URL with the feed name, and add a "Feed URL" button that shows the feed name and the URL (copyable) in a popup, along with a "Go to Feed URL" button. (Owner, 2026-11-16.)
 51. Make "Feed contact email" a mandatory field for in-browser key sign-ins. This can be a way to adopt feeds without the in-browser key. (Owner, 2026-11-16.)
 53. Podping: send a Podping for any feed that is updated (published, saved or moved), not only moved feeds. (Owner, 2026-11-16.)
+54. Split the plugin settings page into tabs. (Owner, 2026-11-16.)
