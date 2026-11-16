@@ -86,6 +86,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 19. (Item 36, step 3, owner choices 2026-11-15.) Admin "Move a feed to another account" (Settings, Publisher Feeds): for people who lost a browser key or want a feed on a new key. Only the feed's `account_id` changes; file, URL and GUID stay. The new owner (an npub, or hex) need not have signed in before. The plugin checks that the new owner controls the website in the feed (the channel link, read from the file for adopted feeds): their key is listed in `https://<host>/.well-known/nostr.json` (NIP-05), or their npub appears on the feed's website page. Both fetches are https only through the safe HTTP functions. The administrator can tick a box to skip the check when they have confirmed the person another way (the plugin does not record that). Blocked accounts cannot receive feeds.
 
+20. (Item 48, owner request 2026-11-16.) A new hosted feed whose name is reserved, already used (including deleted feeds, which keep their name), recorded as a legacy feed, or already present on disk (a folder or file of that name in the feed folder) is saved under the next free name instead of failing: `test` becomes `test1`, then `test2`, and so on (the base is shortened to stay within 40 characters). The check looks at the real folder, not only the lists. The response and editor show the name that was used. Malformed names are still refused. Adopted and existing feeds are never renamed.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

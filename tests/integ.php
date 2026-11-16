@@ -44,7 +44,7 @@ function feed($over = []){ return array_replace_recursive(['title' => 'Acme Reco
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()])) === 403, 'create without CSRF header -> 403');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], ['X-PFG-CSRF' => str_repeat('a', 48)])) === 403, 'create with wrong CSRF -> 403');
 ok(code(call('POST', '/me/feeds', 'slug=x', $H + ['Content-Type' => 'application/x-www-form-urlencoded'])) === 415, 'form-encoded body rejected (415)');
-foreach (['../etc', 'ab', 'Acme Records', 'admin', 'x/../y', str_repeat('a', 41)] as $bs) ok(code(call('POST', '/me/feeds', ['slug' => $bs, 'feed' => feed()], $H)) === 422, "bad/reserved slug refused: $bs");
+foreach (['../etc', 'ab', 'Acme Records', 'x/../y', str_repeat('a', 41)] as $bs) ok(code(call('POST', '/me/feeds', ['slug' => $bs, 'feed' => feed()], $H)) === 422, "bad/reserved slug refused: $bs");
 $r = call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H); ok(code($r) === 201, 'create hosted feed -> 201 (' . (is_wp_error($r) ? $r->message : '') . ')');
 $f = data($r); $path = $GLOBALS['__up'] . '/wp-content/pubfeeds/acme-records/acme-records.xml';
 ok(file_exists($path), 'XML written to wp-content/pubfeeds/acme-records/');
@@ -60,7 +60,7 @@ $nfu['newFeedUrl'] = ''; $nfu['persons'] = [['name' => 'Matt Finlay', 'role' => 
 $rp = call('PUT', '/me/feeds/' . $f['id'], ['feed' => $nfu], $H); $px = (string) @file_get_contents($path);
 ok(strpos($px, '<podcast:person href="https://phafe.com/mattfinlay" group="administration" role="content manager">Matt Finlay</podcast:person>') !== false && strpos($px, '<podcast:block>no</podcast:block>') !== false && strpos($px, '<category>Music</category>') !== false && strpos($px, '<podcast:complete>no</podcast:complete>') !== false, 'hosted file has the person and the fixed block / category / complete tags');
 $nfu['newFeedUrl'] = ''; call('PUT', '/me/feeds/' . $f['id'], ['feed' => $nfu], $H); ok(strpos(@file_get_contents($path), 'new-feed-url') === false, 'clearing the new feed URL removes the tag');
-ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H)) === 409, 'duplicate slug -> 409');
+ok(PFG_Storage::available_slug('acme-records') === 'acme-records1', 'a name already used gets the next free one (acme-records1) instead of an error');
 $r = call('POST', '/me/feeds', ['slug' => 'bad-split', 'feed' => feed(['value' => ['recipients' => [['split' => 50]]]])], $H); ok(code($r) === 422 && !empty($r->data['errors']), 'splits not totalling 97 -> 422 with errors');
 ok(!file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/bad-split'), 'nothing written for an invalid feed');
 $r = call('POST', '/me/feeds', ['slug' => 'inj', 'feed' => feed(['title' => "<script>x</script> & \"q\"", 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://x.example/a.xml', 'rel' => ['label'], 'attrs' => ['onload' => 'evil']]]])], $H);
@@ -108,7 +108,7 @@ ok(code(call('DELETE', "/me/feeds/$id", null, $H)) === 428, 'delete without fres
 ok(file_exists($path), 'file still present after refused delete');
 $r = call('DELETE', "/me/feeds/$id", null, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $url, 'DELETE', nonce())))]); ok(code($r) === 200, 'delete with fresh signature');
 ok(!file_exists($path) || strpos(file_get_contents($path), 'podcast:medium') === false, 'published file removed or neutralised');
-ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H)) === 409, 'deleted slug cannot be re-registered');
+ok(PFG_Storage::available_slug('acme-records') === 'acme-records1' && !PFG_Storage::slug_is_free('acme-records'), 'deleted slug cannot be re-registered (the next free name is offered instead)');
 ok(code(call('GET', "/me/feeds/$id")) === 404, 'deleted feed no longer readable');
 
 
@@ -287,6 +287,15 @@ ok(count(data($ru)['feeds']) === 1 && data($ru)['feeds'][0]['slug'] === 'no-mone
 ok((int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_accounts WHERE pubkey = '$pubN'") === 1 && (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_accounts WHERE pubkey = '$pubC'") === 0, 'one account per key after the move (the old key has none)');
 $HC = ['X-PFG-CSRF' => data(call('GET', '/me'))['csrf']];
 ok(code(call('POST', '/me/feeds', ['slug' => 'now-paid', 'feed' => feed()], $HC)) === 201, 'payments unlocked after the upgrade');
+// feed names: reserved or used names are bumped to the next free one, checking the real folder as well as the list
+$rs = call('POST', '/me/feeds', ['slug' => 'admin', 'feed' => feed()], $HC);
+ok(code($rs) === 201 && data($rs)['slug'] === 'admin1' && file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/admin1/admin1.xml'), 'reserved name "admin" is silently saved as admin1 (the response carries the name used)');
+ok(PFG_Storage::available_slug('test') === 'test1', 'reserved name test becomes test1');
+mkdir($GLOBALS['__up'] . '/wp-content/pubfeeds/diskonly', 0755, true); mkdir($GLOBALS['__up'] . '/wp-content/pubfeeds/diskonly1', 0755, true); file_put_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/diskonly2.xml', 'x');
+ok(PFG_Storage::slug_is_free('diskonly') === false && PFG_Storage::available_slug('diskonly') === 'diskonly3', 'a folder or file that exists on disk (but not in the database) is skipped: diskonly, diskonly1, diskonly2 taken, diskonly3 used');
+$long = str_repeat('a', 40); $av = PFG_Storage::available_slug($long); ok($av === $long, 'a free 40-character name is kept'); mkdir($GLOBALS['__up'] . '/wp-content/pubfeeds/' . $long, 0755, true);
+$av = PFG_Storage::available_slug($long); ok($av === str_repeat('a', 39) . '1' && strlen($av) === 40, 'a 40-character name that is taken stays within 40 characters when numbered');
+ok(PFG_Storage::available_slug('ab') === '' && PFG_Storage::available_slug('Bad Name') === '', 'malformed names are not "fixed" by numbering');
 ok(code(upgrade_call($skN, $skA, $pubA, $HC)) === 409, 'a signer account cannot be "upgraded" again');
 ok(code(call('POST', '/auth/login', ['event' => sign($skC, "$B/auth/login", 'POST', nonce()), 'browserKey' => true])) === 200 && $wpdb->get_var("SELECT kind FROM wp_pfg_accounts WHERE pubkey = '$pubC'") === 'browser', 'the old key signing in again gets a fresh empty browser account, not the moved one');
 // ---- admin: move a feed to another account (domain-control check)
@@ -297,7 +306,7 @@ $r1 = PFG_Storage::move_feed($mvId, $npubZ); ok(is_wp_error($r1) && strpos($r1->
 ok(is_wp_error($r1) && strpos($r1->get_error_message(), $npubZ) !== false && strpos($r1->get_error_message(), '/.well-known/nostr.json') !== false, 'move: the refusal tells the new owner what to publish');
 ok($ownerOf($mvId) === $pubN, 'move: the feed stays with its owner after a refusal');
 ok(array_reduce($GLOBALS['__httplog'], fn($c, $l) => $c && $l[0] === 'safe' && strpos($l[1], 'https://acme.example') === 0, true) && count($GLOBALS['__httplog']) === 2, 'move: only the feed\'s own https website is contacted, through the safe HTTP function (nostr.json and the page)');
-$GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 200, 'body' => json_encode(['names' => ['someone' => 'a' . substr($pubZ, 1)]])] : ['code' => 200, 'body' => '<html>no key here</html>'];
+$GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 200, 'body' => json_encode(['names' => ['someone' => ($pubZ[0] === 'a' ? 'b' : 'a') . substr($pubZ, 1)]])] : ['code' => 200, 'body' => '<html>no key here</html>'];
 ok(is_wp_error(PFG_Storage::move_feed($mvId, $npubZ)), 'move: a nostr.json that lists a different key does not pass');
 $GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 200, 'body' => json_encode(['names' => ['_' => $pubZ]])] : ['code' => 404, 'body' => ''];
 $GLOBALS['__tr'] = []; $mv = PFG_Storage::move_feed($mvId, $npubZ);
