@@ -153,6 +153,19 @@ class PFG_Lookup {
 		return preg_match( '#^https://[^\s<>"\']+$#i', $u ) ? $u : '';
 	}
 
+	/** Details for one feed GUID from Music Index (cached). Used by the credit invitation link. */
+	public static function details_for_guid( $guid ) {
+		$guid = is_string( $guid ) ? trim( $guid ) : '';
+		if ( ! self::is_guid( $guid ) ) {
+			return new WP_Error( 'pfg_bad_guid', 'That is not a valid feed GUID.', array( 'status' => 400 ) );
+		}
+		$d = self::feed_details( $guid );
+		if ( ! $d ) {
+			return new WP_Error( 'pfg_not_found', 'That feed was not found in Music Index.', array( 'status' => 404 ) );
+		}
+		return $d;
+	}
+
 	/** Details for one album/feed GUID (cached). */
 	private static function feed_details( $guid ) {
 		$key    = 'pfg_mi_' . md5( strtolower( $guid ) );

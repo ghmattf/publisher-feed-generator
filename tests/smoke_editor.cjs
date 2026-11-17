@@ -305,5 +305,19 @@ ok(asked === 1 && $('#pfg-f-npub').value === NPUB && /signed-in account/.test($(
 $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, host: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
 getBtn().click(); await tick();
 ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').textContent), 'no signer available: helpful message instead of a dead button');
+// --- credit invitation: option sits before the releases, disappears once added
+{
+  const GUID = '11111111-2222-4333-8444-555555555555';
+  $('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, importNotes: [], credit: { guid: GUID, title: 'Night Songs', artist: 'Mia', image: '', feedUrl: '', medium: 'music' }, saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+  const addB = () => $$('button').find(b => b.textContent === 'Add Night Songs by Mia');
+  ok(!!addB(), 'credit: "Add <feed title> by <artist>" option is shown');
+  ok(addB().closest('.pfg-credit-option').nextSibling === null || !$('#c').querySelector('.pfg-item'), 'credit: option comes before any release');
+  addB().click(); await tick();
+  ok(!addB(), 'credit: option disappears once the release is in the feed');
+  ok(/Night Songs by Mia/.test($('#c').textContent), 'credit: release was added with its title and artist');
+  const rm = $$('button').find(b => b.textContent === 'Remove'); rm.click(); await tick();
+  ok(!!addB(), 'credit: option is offered again if the release is removed');
+}
 console.log(fails ? fails + ' FAILURES' : 'editor smoke test passed'); process.exit(fails ? 1 : 0);
 })();

@@ -358,8 +358,31 @@
       el.appendChild(snippetBox(r));
     }
     function isPopulated(r) { return Core.isUuid(r.feedGuid || '') && Core.isHttpsUrl(r.feedUrl || ''); }
+    /** Releases added from a credit invitation: read their feed once the item is drawn. */
+    var autoRead = new Set();
+    function creditOption() {
+      var c = ctx.credit;
+      if (!c || !c.guid) return null;
+      var have = m.releases.some(function (o) { return o.feedGuid && o.feedGuid.toLowerCase() === c.guid.toLowerCase(); });
+      if (have) return null;
+      var label = c.title + (c.artist ? ' by ' + c.artist : '');
+      return h('div', { class: 'pfg-note pfg-note-ok pfg-credit-option' }, [
+        h('div', { class: 'pfg-row' }, [
+          h('span', { text: 'Invited: ' + label }),
+          h('span', { class: 'pfg-spacer' }),
+          btn('Add ' + label, 'pfg-btn-primary pfg-btn-small', function () {
+            var r = { feedGuid: c.guid, feedUrl: c.feedUrl || '', medium: (cfg.mediums || []).indexOf(c.medium) >= 0 ? c.medium : 'music', title: c.title, feedImg: c.image || '', rel: [], attrs: {} };
+            m.releases.unshift(r);
+            ui.set(r, { artist: c.artist || '', msg: c.feedUrl ? null : ['warn', 'Music Index did not give this release\'s feed address. Paste the feed\'s https address in the search box to finish adding it.'] });
+            if (c.feedUrl) autoRead.add(r);
+            renderReleases(); changed();
+          }),
+        ]),
+      ]);
+    }
     function renderReleases() {
       clear(releasesEl);
+      var co = creditOption(); if (co) releasesEl.appendChild(co);
       if (!m.releases.length) releasesEl.appendChild(h('p', { class: 'pfg-hint', text: 'No releases yet. Add the albums, singles or shows you are involved in.' }));
       m.releases.forEach(function (r, i) {
         var base = 'releases.' + i;
@@ -483,6 +506,7 @@
         fields[base + '.rel'] = { wrap: item, err: item.querySelector('#pfg-rel-err-' + i) };
         releasesEl.appendChild(item);
         refreshReleaseHelp(r);
+        if (autoRead.has(r)) { autoRead.delete(r); readFeed(r.feedUrl); }
       });
     }
     var releases = section('Releases', false, [
