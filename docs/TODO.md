@@ -27,3 +27,4 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 57. Check for music feeds that reference one of the feeds referenced by the currently logged-in account. (Owner, 2026-11-17.)
 58. Add a "Get credited!" button for each feed in the "Your hosted feeds" area. (Owner, 2026-11-17.)
 59. Add a title attribute to the podcast:remoteItem in the code snippet "Text for the release owner to add to their feed" (the publisher feed already has it). (Owner, 2026-11-17.)
+60. Accept a URL parameter that names a feed, so an artist can send a link that invites a contributor to be added to their feed. (Owner, 2026-11-17.)
