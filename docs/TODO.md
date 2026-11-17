@@ -26,3 +26,4 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 56. Make the "Feed contact email (your email)" field mandatory for all logins. (Owner, 2026-11-17.)
 57. Check for music feeds that reference one of the feeds referenced by the currently logged-in account. (Owner, 2026-11-17.)
 58. Add a "Get credited!" button for each feed in the "Your hosted feeds" area. (Owner, 2026-11-17.)
+59. Add a title attribute to podcast:remoteItem, both in the publisher feed and in the code snippet "Text for the release owner to add to their feed". (Owner, 2026-11-17.)
