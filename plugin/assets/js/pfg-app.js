@@ -79,12 +79,21 @@
     try { g = new URLSearchParams(window.location.search).get('credit') || ''; } catch (e) { return; }
     g = g.trim();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(g) || !cfg.urls || !cfg.urls.lookupGuid) return;
-    credit = { guid: g, pending: true };
+    // Roles to tick by default: ?roles=Engineer,Mixer (or repeated roles= / role=), matched to the known role names.
+    var known = cfg.relTokens || [], roles = [];
+    try {
+      var q = new URLSearchParams(window.location.search);
+      q.getAll('roles').concat(q.getAll('role')).join(',').split(',').forEach(function (t) {
+        t = t.trim().toLowerCase();
+        for (var i = 0; i < known.length; i++) if (known[i].toLowerCase() === t && roles.indexOf(known[i]) < 0) roles.push(known[i]);
+      });
+    } catch (e) {}
+    credit = { guid: g, pending: true, roles: roles };
     renderCredit();
     fetch(cfg.urls.lookupGuid, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ guid: g }) })
       .then(function (res) { return res.ok ? res.json() : null; })
       .then(function (d) {
-        if (d && d.feed && d.feed.title) { credit = d.feed; renderCredit(); creditWatchers.slice().forEach(function (f) { try { f(); } catch (e) {} }); }
+        if (d && d.feed && d.feed.title) { d.feed.roles = credit.roles; credit = d.feed; renderCredit(); creditWatchers.slice().forEach(function (f) { try { f(); } catch (e) {} }); }
         else { credit = null; renderCredit(); }
       })
       .catch(function () { credit = null; renderCredit(); });
@@ -177,6 +186,7 @@
       paymentsLocked: !!(opts.hosted && hostingOn && Host.getSession() && Host.getSession().kind === 'browser'),
       moreInfoUrl: cfg.moreInfoUrl || '',
       getCredit: function () { return credit && !credit.pending ? credit : null; },
+      creditInFeed: function () { if (creditShown) { creditShown = false; renderCredit(); } },
       onCredit: function (f) { creditWatchers.push(f); },
       suggestedName: Host.browserKeyName ? Host.browserKeyName() : '',
       h: h, btn: btn, note: note, clear: clear,

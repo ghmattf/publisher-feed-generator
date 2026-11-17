@@ -328,5 +328,17 @@ ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').te
   cr = { guid: GUID, title: 'Night Songs', artist: 'Mia', image: '', feedUrl: '', medium: 'music' }; cb();
   ok(!!$$('button').find(b => b.textContent === 'Add Night Songs by Mia'), 'credit: option appears when the data arrives after the editor opened');
 }
+// --- credit: roles are ticked by default, message dismissed when the release is in the feed
+{
+  const GUID = '11111111-2222-4333-8444-555555555555'; let dismissed = 0;
+  const role = cfg.relTokens[0];
+  $('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, importNotes: [], getCredit: () => ({ guid: GUID, title: 'Night Songs', artist: 'Mia', image: '', feedUrl: '', medium: 'music', roles: [role] }), creditInFeed: () => dismissed++, saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+  ok(dismissed === 0, 'credit: message stays while the release is not in the feed');
+  $$('button').find(b => b.textContent === 'Add Night Songs by Mia').click(); await tick();
+  ok(dismissed >= 1, 'credit: message dismissed once the release is in the feed');
+  const chip = $$('button.pfg-chip').find(b => b.textContent === role);
+  ok(chip && chip.getAttribute('aria-pressed') === 'true', 'credit: the roles from the link are selected by default');
+}
 console.log(fails ? fails + ' FAILURES' : 'editor smoke test passed'); process.exit(fails ? 1 : 0);
 })();
