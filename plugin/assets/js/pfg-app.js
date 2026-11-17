@@ -56,8 +56,32 @@
   var bannerEl = h('div', { 'aria-live': 'polite' });
   root.appendChild(barEl);
   root.appendChild(kindEl);
+
   root.appendChild(bannerEl);
   root.appendChild(bodyEl);
+  /* ---------------- credit invitation (?credit=<feed GUID>) ---------------- */
+  var credit = null; // {guid, title, artist, image, feedUrl, medium} once Music Index has answered
+  var creditEl = h('div');
+  root.insertBefore(creditEl, bodyEl);
+  function renderCredit() {
+    clear(creditEl);
+    if (!credit) return;
+    creditEl.appendChild(note('ok', h('div', { class: 'pfg-row' }, [
+      h('span', { text: 'Congratulations! ' + (credit.artist || 'An artist') + ' wants to credit you for your work on ' + credit.title + '.' }),
+      h('span', { class: 'pfg-spacer' }),
+      btn('Dismiss', 'pfg-btn-small', function () { credit = null; renderCredit(); }),
+    ])));
+  }
+  (function readCreditParam() {
+    var g = '';
+    try { g = new URLSearchParams(window.location.search).get('credit') || ''; } catch (e) { return; }
+    g = g.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(g) || !cfg.urls || !cfg.urls.lookupGuid) return;
+    fetch(cfg.urls.lookupGuid, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ guid: g }) })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (d) { if (d && d.feed && d.feed.title) { credit = d.feed; renderCredit(); } })
+      .catch(function () {});
+  })();
 
   function renderBar() {
     clear(barEl);
@@ -144,6 +168,7 @@
       // A key kept in this browser cannot set up payments (the server enforces this too).
       paymentsLocked: !!(opts.hosted && hostingOn && Host.getSession() && Host.getSession().kind === 'browser'),
       moreInfoUrl: cfg.moreInfoUrl || '',
+      credit: credit,
       suggestedName: Host.browserKeyName ? Host.browserKeyName() : '',
       h: h, btn: btn, note: note, clear: clear,
     });

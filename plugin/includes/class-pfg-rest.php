@@ -40,6 +40,7 @@ class PFG_Rest {
 		register_rest_route( self::NS, '/config', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'route_config' ), 'permission_callback' => $pub ) );
 		$lkp = array( __CLASS__, 'perm_lookup' );
 		register_rest_route( self::NS, '/lookup/feed', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_lookup_feed' ), 'permission_callback' => $lkp ) );
+		register_rest_route( self::NS, '/lookup/guid', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_lookup_guid' ), 'permission_callback' => $lkp ) );
 		register_rest_route( self::NS, '/lookup/search', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_lookup_search' ), 'permission_callback' => $lkp ) );
 		register_rest_route( self::NS, '/auth/nonce', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_nonce' ), 'permission_callback' => $hst ) );
 		register_rest_route( self::NS, '/auth/login', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'route_login' ), 'permission_callback' => $hst ) );
@@ -87,6 +88,16 @@ class PFG_Rest {
 		$body = $r->get_json_params();
 		$xml  = PFG_Lookup::fetch_feed( is_array( $body ) && isset( $body['url'] ) ? $body['url'] : '' );
 		return is_wp_error( $xml ) ? $xml : rest_ensure_response( array( 'xml' => $xml ) );
+	}
+
+	public static function route_lookup_guid( WP_REST_Request $r ) {
+		$rl = PFG_Auth::rate_limit( 'search', 20, 300 );
+		if ( is_wp_error( $rl ) ) {
+			return $rl;
+		}
+		$body = $r->get_json_params();
+		$res  = PFG_Lookup::details_for_guid( is_array( $body ) && isset( $body['guid'] ) ? $body['guid'] : '' );
+		return is_wp_error( $res ) ? $res : rest_ensure_response( array( 'feed' => $res ) );
 	}
 
 	public static function route_lookup_search( WP_REST_Request $r ) {
@@ -160,6 +171,7 @@ class PFG_Rest {
 				'feedTemplate' => rest_url( self::NS . '/me/feeds/0' ),
 				'lookupFeed'   => rest_url( self::NS . '/lookup/feed' ),
 				'lookupSearch' => rest_url( self::NS . '/lookup/search' ),
+				'lookupGuid'   => rest_url( self::NS . '/lookup/guid' ),
 			),
 			'feedBaseUrl'            => PFG_Storage::base_url(),
 			'moreInfoUrl'            => (string) PFG_Settings::get( 'more_info_url' ),

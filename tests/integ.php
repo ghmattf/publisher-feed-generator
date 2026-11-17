@@ -11,7 +11,7 @@ function call($method, $route, $body = null, $headers = []){
   $id = null; if (preg_match('#^/me/feeds/(\d+)(/move)?$#', $route, $m)) { $id = $m[1]; $req['id'] = $id; }
   $perm = in_array($route, ['/auth/nonce', '/auth/login'], true) ? 'perm_hosting' : (strpos($route, '/lookup/') === 0 ? 'perm_lookup' : 'perm_session');
   $p = PFG_Rest::$perm($req); if (is_wp_error($p)) return $p;
-  $map = ['POST /auth/nonce' => 'route_nonce', 'POST /auth/login' => 'route_login', 'POST /auth/logout' => 'route_logout', 'GET /me' => 'route_me', 'POST /lookup/feed' => 'route_lookup_feed', 'POST /lookup/search' => 'route_lookup_search', 'GET /me/feeds' => 'route_list', 'POST /me/feeds' => 'route_create', 'POST /me/upgrade' => 'route_upgrade'];
+  $map = ['POST /auth/nonce' => 'route_nonce', 'POST /auth/login' => 'route_login', 'POST /auth/logout' => 'route_logout', 'GET /me' => 'route_me', 'POST /lookup/feed' => 'route_lookup_feed', 'POST /lookup/search' => 'route_lookup_search', 'POST /lookup/guid' => 'route_lookup_guid', 'GET /me/feeds' => 'route_list', 'POST /me/feeds' => 'route_create', 'POST /me/upgrade' => 'route_upgrade'];
   $k = $method . ' ' . ($id ? '/me/feeds' : $route); 
   if ($id && substr($route, -5) === '/move') $h = 'route_move'; elseif ($id) $h = ['GET' => 'route_get', 'PUT' => 'route_update', 'DELETE' => 'route_delete'][$method]; else $h = $map[$k];
   return PFG_Rest::$h($req);
@@ -245,6 +245,12 @@ $r = call('POST', '/lookup/feed', ['url' => 'https://phafe.com/x/some_songs.xml'
 ok(code($r) === 200 && data($r)['xml'] === $xmlOk, 'feed URL fetched on the server and XML returned');
 ok($GLOBALS['__httplog'][0][0] === 'safe' && $GLOBALS['__httplog'][0][2]['redirection'] <= 3 && $GLOBALS['__httplog'][0][2]['limit_response_size'] > 0, 'fetch uses the SSRF-safe WordPress HTTP function with size limit');
 foreach (['http://phafe.com/x.xml', 'ftp://x/y', 'https://', '', 'file:///etc/passwd', 'javascript:alert(1)', "https://a.com/x y"] as $bad) { $GLOBALS['__httplog'] = []; ok(code(call('POST', '/lookup/feed', ['url' => $bad])) === 422 && !$GLOBALS['__httplog'], 'bad feed URL refused without fetching: ' . var_export($bad, true)); }
+foreach (['', 'nope', '../x', "11111111-2222-4333-8444-55555555555g"] as $badg) { $GLOBALS['__httplog'] = []; ok(code(call('POST', '/lookup/guid', ['guid' => $badg])) === 400 && !$GLOBALS['__httplog'], 'bad credit GUID refused without a lookup: ' . var_export($badg, true)); }
+$GLOBALS['__http'] = fn($u, $a) => ['code' => 200, 'body' => json_encode(['data' => ['title' => 'Night Songs', 'release_artist' => 'Mia', 'image_url' => 'https://x.test/a.jpg', 'medium' => 'music']])];
+$rg = call('POST', '/lookup/guid', ['guid' => '11111111-2222-4333-8444-555555555555']);
+ok(code($rg) === 200 && (data($rg)['feed']['title'] ?? '') === 'Night Songs' && (data($rg)['feed']['artist'] ?? '') === 'Mia', 'credit GUID: title and artist come from Music Index');
+$GLOBALS['__http'] = fn($u, $a) => ['code' => 404, 'body' => ''];
+ok(code(call('POST', '/lookup/guid', ['guid' => '99999999-2222-4333-8444-555555555555'])) === 404, 'credit GUID: unknown feed gives 404');
 $GLOBALS['__http'] = fn($u, $a) => ['code' => 404, 'body' => '']; ok(code(call('POST', '/lookup/feed', ['url' => 'https://phafe.com/gone.xml'])) === 502, 'upstream 404 -> clear 502 error');
 $GLOBALS['__http'] = fn($u, $a) => new WP_Error('http_request_failed', 'blocked'); ok(code(call('POST', '/lookup/feed', ['url' => 'https://127.0.0.1/x.xml'])) === 502, 'blocked/unreachable address -> 502');
 $GLOBALS['__http'] = fn($u, $a) => ['code' => 200, 'body' => str_repeat('a', 2097153)]; ok(code(call('POST', '/lookup/feed', ['url' => 'https://phafe.com/big.xml'])) === 413, 'oversized feed refused');
