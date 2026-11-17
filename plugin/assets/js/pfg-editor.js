@@ -364,14 +364,14 @@
       var c = ctx.getCredit ? ctx.getCredit() : ctx.credit;
       if (!c || !c.guid) return null;
       var have = m.releases.some(function (o) { return o.feedGuid && o.feedGuid.toLowerCase() === c.guid.toLowerCase(); });
-      if (have) return null;
+      if (have) { if (ctx.creditInFeed) ctx.creditInFeed(); return null; }
       var label = c.title + (c.artist ? ' by ' + c.artist : '');
       return h('div', { class: 'pfg-note pfg-note-ok pfg-credit-option' }, [
         h('div', { class: 'pfg-row' }, [
           h('span', { text: 'Invited: ' + label }),
           h('span', { class: 'pfg-spacer' }),
           btn('Add ' + label, 'pfg-btn-primary pfg-btn-small', function () {
-            var r = { feedGuid: c.guid, feedUrl: c.feedUrl || '', medium: (cfg.mediums || []).indexOf(c.medium) >= 0 ? c.medium : 'music', title: c.title, feedImg: c.image || '', rel: [], attrs: {} };
+            var r = { feedGuid: c.guid, feedUrl: c.feedUrl || '', medium: (cfg.mediums || []).indexOf(c.medium) >= 0 ? c.medium : 'music', title: c.title, feedImg: c.image || '', rel: (c.roles || []).slice(), attrs: {} };
             m.releases.unshift(r);
             ui.set(r, { artist: c.artist || '', msg: c.feedUrl ? null : ['warn', 'Music Index did not give this release\'s feed address. Paste the feed\'s https address in the search box to finish adding it.'] });
             if (c.feedUrl) autoRead.add(r);
