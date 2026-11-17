@@ -23,3 +23,6 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 51. Make "Feed contact email" a mandatory field for in-browser key sign-ins. This can be a way to adopt feeds without the in-browser key. (Owner, 2026-11-16.)
 53. Podping: send a Podping for any feed that is updated (published, saved or moved), not only moved feeds. (Owner, 2026-11-16.)
 54. Split the plugin settings page into tabs. (Owner, 2026-11-16.)
+55. Change the reminder text for in-browser key sign-ins from "You are signed in with a key kept in this browser. Payments are not available, and this account is lost if you clear your browser data. For a lasting account that can set up payments, use a signer app or a browser extension" to "You are signed in with a key kept in this browser. For a permanent account use a signer app or a browser extension". (Owner, 2026-11-17.)
+56. Make the "Feed contact email (your email)" field mandatory for all logins. (Owner, 2026-11-17.)
+57. Check for music feeds that reference one of the feeds referenced by the currently logged-in account. (Owner, 2026-11-17.)
