@@ -60,16 +60,18 @@
   root.appendChild(bannerEl);
   root.appendChild(bodyEl);
   /* ---------------- credit invitation (?credit=<feed GUID>) ---------------- */
-  var credit = null; // {guid, title, artist, image, feedUrl, medium} once Music Index has answered
+  var credit = null; // {guid, pending, title, artist, image, feedUrl, medium}; pending until Music Index has answered
+  var creditShown = true, creditWatchers = [];
   var creditEl = h('div');
-  root.insertBefore(creditEl, bodyEl);
+  root.insertBefore(creditEl, kindEl); // above the "signed in with a key kept in this browser" reminder
   function renderCredit() {
     clear(creditEl);
-    if (!credit) return;
+    if (!credit || !creditShown) return;
+    var detail = credit.pending ? 'Someone wants to credit you.' : (credit.artist || 'Someone') + ' wants to credit you for your work on ' + credit.title + '.';
     creditEl.appendChild(note('ok', h('div', { class: 'pfg-row' }, [
-      h('span', { text: 'Congratulations! ' + (credit.artist || 'An artist') + ' wants to credit you for your work on ' + credit.title + '.' }),
+      h('div', {}, [h('strong', { text: 'Congratulations!' }), h('br'), h('span', { text: detail })]),
       h('span', { class: 'pfg-spacer' }),
-      btn('Dismiss', 'pfg-btn-small', function () { credit = null; renderCredit(); }),
+      btn('Dismiss', 'pfg-btn-small', function () { creditShown = false; renderCredit(); }),
     ])));
   }
   (function readCreditParam() {
@@ -77,10 +79,15 @@
     try { g = new URLSearchParams(window.location.search).get('credit') || ''; } catch (e) { return; }
     g = g.trim();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(g) || !cfg.urls || !cfg.urls.lookupGuid) return;
+    credit = { guid: g, pending: true };
+    renderCredit();
     fetch(cfg.urls.lookupGuid, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ guid: g }) })
       .then(function (res) { return res.ok ? res.json() : null; })
-      .then(function (d) { if (d && d.feed && d.feed.title) { credit = d.feed; renderCredit(); } })
-      .catch(function () {});
+      .then(function (d) {
+        if (d && d.feed && d.feed.title) { credit = d.feed; renderCredit(); creditWatchers.slice().forEach(function (f) { try { f(); } catch (e) {} }); }
+        else { credit = null; renderCredit(); }
+      })
+      .catch(function () { credit = null; renderCredit(); });
   })();
 
   function renderBar() {
@@ -150,6 +157,7 @@
   function openEditor(opts) {
     if (!window.PFGEditor) { setBanner('bad', 'The editor failed to load. Please reload the page.'); return; }
     var wrap = h('div');
+    creditWatchers = [];
     view = 'editor';
     mount(wrap);
     window.PFGEditor.render(wrap, {
@@ -168,7 +176,8 @@
       // A key kept in this browser cannot set up payments (the server enforces this too).
       paymentsLocked: !!(opts.hosted && hostingOn && Host.getSession() && Host.getSession().kind === 'browser'),
       moreInfoUrl: cfg.moreInfoUrl || '',
-      credit: credit,
+      getCredit: function () { return credit && !credit.pending ? credit : null; },
+      onCredit: function (f) { creditWatchers.push(f); },
       suggestedName: Host.browserKeyName ? Host.browserKeyName() : '',
       h: h, btn: btn, note: note, clear: clear,
     });

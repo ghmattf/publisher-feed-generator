@@ -361,7 +361,7 @@
     /** Releases added from a credit invitation: read their feed once the item is drawn. */
     var autoRead = new Set();
     function creditOption() {
-      var c = ctx.credit;
+      var c = ctx.getCredit ? ctx.getCredit() : ctx.credit;
       if (!c || !c.guid) return null;
       var have = m.releases.some(function (o) { return o.feedGuid && o.feedGuid.toLowerCase() === c.guid.toLowerCase(); });
       if (have) return null;
@@ -509,6 +509,7 @@
         if (autoRead.has(r)) { autoRead.delete(r); readFeed(r.feedUrl); }
       });
     }
+    if (ctx.onCredit) ctx.onCredit(function () { renderReleases(); });
     var releases = section('Releases', false, [
       h('p', { class: 'pfg-hint', text: 'Albums, singles and shows you published or worked on. Each one is confirmed when its own feed links back to this feed.' }),
       releasesEl,
