@@ -319,5 +319,14 @@ ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').te
   const rm = $$('button').find(b => b.textContent === 'Remove'); rm.click(); await tick();
   ok(!!addB(), 'credit: option is offered again if the release is removed');
 }
+// --- credit data arriving after the editor is open still shows the option
+{
+  const GUID = '11111111-2222-4333-8444-555555555555'; let cr = null, cb = null;
+  $('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, importNotes: [], getCredit: () => cr, onCredit: f => { cb = f; }, saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+  ok(!$$('button').find(b => b.textContent === 'Add Night Songs by Mia'), 'credit: nothing shown while the lookup is pending');
+  cr = { guid: GUID, title: 'Night Songs', artist: 'Mia', image: '', feedUrl: '', medium: 'music' }; cb();
+  ok(!!$$('button').find(b => b.textContent === 'Add Night Songs by Mia'), 'credit: option appears when the data arrives after the editor opened');
+}
 console.log(fails ? fails + ' FAILURES' : 'editor smoke test passed'); process.exit(fails ? 1 : 0);
 })();
