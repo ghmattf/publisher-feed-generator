@@ -142,7 +142,7 @@
     var releasesEl = h('div');
 
     var basicsGrid = h('div', { class: 'pfg-grid' }, [
-      field('Name / title', 'title', { hint: 'Your label, studio or business name.', onchange: function () { autoSlug(); } }),
+      field('Your name / Business name', 'title', { hint: 'Your label, studio or business name.', onchange: function () { autoSlug(); } }),
       field('Description', 'description', { textarea: true, wide: true }),
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
       field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
@@ -177,10 +177,7 @@
       slugField.appendChild(slugInputs); slugField.appendChild(serr); slugField.appendChild(urlOut);
       fields.slug = { wrap: slugField, err: serr, input: si };
       identityKids.push(slugField);
-    } else if (hosted) {
-      identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [h('span', { class: 'pfg-label', text: 'Feed URL' }), h('div', { class: 'pfg-mono', text: hosted.url })]));
-      identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [h('span', { class: 'pfg-label', text: 'Feed GUID' }), h('div', { class: 'pfg-mono', text: m.guid })]));
-    } else {
+    } else if (!hosted) { // self-hosting: the feed's own address and GUID are needed
       var nostrSession = ctx.host && ctx.host.getSession ? ctx.host.getSession() : null; // signed in with Nostr: assume the feed will be hosted
       identityKids.push(field(nostrSession ? 'Feed URL' : 'Feed URL (where you will host it)', 'feedUrl', {
         type: 'url', placeholder: 'https://example.com/publisher.xml', wide: true,
@@ -203,31 +200,6 @@
         changed();
       }), guidStatus]), fields.guid.err);
     }
-    // Hosted feeds are moved from the "Your hosted feeds" list (Move feed), not from this form.
-    if (!ctx.hosted) identityKids.push(field('New feed URL (only if you are moving this feed)', 'newFeedUrl', { type: 'url', placeholder: 'https://', wide: true, hint: 'Tells Podcast Index and podcasting apps this feed now lives at a new address (itunes:new-feed-url). Keep this feed online at its old address, with the same GUID, until apps have switched. Leave empty otherwise.' }));
-    var personsEl = h('div');
-    function renderPersons() {
-      clear(personsEl);
-      m.persons.forEach(function (pr, i) {
-        var base = 'persons.' + i;
-        personsEl.appendChild(h('div', { class: 'pfg-item' }, [
-          h('div', { class: 'pfg-item-head' }, [h('strong', { text: 'Person ' + (i + 1) }), btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { m.persons.splice(i, 1); renderPersons(); changed(); })]),
-          h('div', { class: 'pfg-grid' }, [
-            field('Name', base + '.name'),
-            field('Role', base + '.role', { placeholder: 'e.g. content manager' }),
-            field('Group', base + '.group', { placeholder: 'e.g. administration' }),
-            field('Link', base + '.href', { type: 'url', placeholder: 'https://' }),
-            field('Image URL', base + '.img', { type: 'url', placeholder: 'https://' }),
-          ]),
-        ]));
-      });
-    }
-    identityKids.push(h('div', { class: 'pfg-field pfg-wide' }, [
-      h('h4', { class: 'pfg-subhead', text: 'People (optional)' }),
-      h('p', { class: 'pfg-hint', text: 'Credit the people behind this feed (podcast:person), for example the person who looks after it.' }),
-      personsEl,
-      btn('Add person', 'pfg-btn-small', function () { if (m.persons.length >= 20) return; m.persons.push({ name: '', role: '', group: '', href: '', img: '' }); renderPersons(); changed(); }),
-    ]));
     var npubField = field('Include npub in the feed? (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' });
     // "Get your npub": from the signed-in account, or by asking a signer for its public key (nothing is saved).
     var npubStatus = h('span', { class: 'pfg-hint', 'aria-live': 'polite' });
@@ -240,10 +212,6 @@
     }
     // Not offered with a key kept in this browser: that key is not a lasting identity, so its npub does not belong in a feed.
     if (!ctx.paymentsLocked) fields.npub.wrap.insertBefore(h('div', { class: 'pfg-row', style: 'margin-top:6px' }, [btn('Get your npub', 'pfg-btn-small', getNpub), npubStatus]), fields.npub.input.nextSibling);
-    if (!ctx.paymentsLocked) {
-      identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
-      identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
-    }
     // The old "Identity and links" section is gone: the npub follows the contact email, the rest follows it in Basics.
     basicsGrid.appendChild(npubField);
     identityKids.forEach(function (k) { basicsGrid.appendChild(k); });
@@ -696,11 +664,11 @@
     /* ---------- assemble ---------- */
     syncHostedIdentity();
     clear(container);
-    container.appendChild(h('h2', { text: hosted ? (hosted.id ? 'Edit hosted feed' : 'New hosted feed') : 'Feed editor' }));
+    container.appendChild(h('h2', { text: hosted ? (hosted.id ? 'Edit feed' : 'New feed') : 'Feed editor' }));
     if (hosted && hosted.status && hosted.status !== 'published') container.appendChild(note('warn', 'Status: ' + hosted.status + '. This feed is not public.'));
     kept.forEach(function (n) { container.appendChild(n); });
     [banner, summaryErr, basics, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions].forEach(function (n) { container.appendChild(n); });
-    renderRecipients(); renderSupport(); renderPersons(); renderReleases(); autoSlug(); refresh();
+    renderRecipients(); renderSupport(); renderReleases(); autoSlug(); refresh();
     dirty = false; // nothing to lose yet
 
     /* ---------- new hosted feed: start from the signed-in Nostr profile ---------- */
