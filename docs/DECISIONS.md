@@ -100,6 +100,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 26. (Owner request 2026-11-18.) "Forget this key" closes and redraws the whole Get started window, so Create account is offered again. In the editor's Receiving payment note for in-browser-key accounts, the link is "More...": it scrolls to the "You are signed in with a key kept in this browser" message and flashes its background green twice (the message itself keeps its "More information" link).
 
+27. (Items 50, 54 and 61, owner requests.) My feeds has no URL column: each row shows the feed name (with its folder name below) and a "Feed URL" button (disabled until the feed is public) that opens a window with the name, the address (read-only, with Copy) and a "Go to Feed URL" link. Each release in the editor has a Collapse / Expand button that folds it down to its heading; saving with an error inside a folded release opens it. The plugin settings page is split into tabs: Hosting (with the uninstall option), Payments, Roles, Hosted feeds and Adopt or move a feed. All settings stay in one form with one Save button (shown on the first three tabs), so saving on any tab saves them all; without JavaScript every section is shown. After a moderation action the page opens on the tab it belongs to, and the address hash (for example #feeds) selects a tab.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

@@ -230,19 +230,19 @@
       feeds.forEach(function (f) {
         var live = f.status === 'published';
         tbody.appendChild(h('tr', {}, [
-          h('td', {}, [h('strong', { text: f.title || f.slug }), h('div', { class: 'pfg-hint pfg-mono', text: f.slug })]),
-          h('td', {}, [h('span', { class: 'pfg-badge ' + (live ? 'pfg-badge-ok' : 'pfg-badge-warn'), text: f.status })]),
-          h('td', {}, (live ? [h('a', { href: f.url, target: '_blank', rel: 'noopener', text: f.url })] : [h('span', { class: 'pfg-hint', text: 'Not public' })]).concat(
+          h('td', {}, [h('strong', { text: f.title || f.slug }), h('div', { class: 'pfg-hint pfg-mono', text: f.slug })].concat(
             f.movedTo ? [h('div', { class: 'pfg-hint', text: 'Moved to ' + f.movedTo + ' on ' + new Date(f.movedAt * 1000).toISOString().slice(0, 10) })] : [])),
+          h('td', {}, [h('span', { class: 'pfg-badge ' + (live ? 'pfg-badge-ok' : 'pfg-badge-warn'), text: f.status })]),
           h('td', {}, [h('div', { class: 'pfg-row' }, [
             btn('Edit', 'pfg-btn-small', function () { editHosted(f); }),
+            btn('Feed URL', 'pfg-btn-small', function () { openFeedUrl(f); }, live ? {} : { disabled: true, title: 'Not public yet' }),
             btn('Move feed', 'pfg-btn-small', function () { openMove(f); }),
             btn('Delete', 'pfg-btn-small pfg-btn-danger', function () { deleteHosted(f); }),
           ])]),
         ]));
       });
       wrap.appendChild(h('table', { class: 'pfg-table' }, [
-        h('thead', {}, [h('tr', {}, ['Feed', 'Status', 'URL', ''].map(function (t) { return h('th', { text: t }); }))]),
+        h('thead', {}, [h('tr', {}, ['Feed', 'Status', ''].map(function (t) { return h('th', { text: t }); }))]),
         tbody,
       ]));
     }).catch(function (e) {
@@ -277,6 +277,37 @@
   /* ---------------- move a feed to a new address ---------------- */
   // Two steps in one window: explain and ask for the new address, then ask "Are you sure?". Moving writes the new
   // address into the feed (itunes:new-feed-url) and publishes it; the feed stays here for cfg.keepMovedDays days.
+  /** A window with the feed name and its address (copyable) and a button to open it. */
+  function openFeedUrl(f) {
+    var overlay = h('div', { class: 'pfg-app pfg-overlay' + (root && root.classList.contains('pfg-light') ? ' pfg-light' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Feed URL' });
+    var modal = h('div', { class: 'pfg-modal' });
+    overlay.appendChild(modal);
+    function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); document.removeEventListener('keydown', onKey); }
+    function onKey(ev) { if (ev.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    var urlIn = h('input', { type: 'text', readonly: true, id: 'pfg-feedurl', value: f.url || '', 'aria-label': 'Feed URL' });
+    urlIn.addEventListener('focus', function () { urlIn.select(); });
+    var msg = h('div', { 'aria-live': 'polite' });
+    function copy() {
+      urlIn.select();
+      var done = function () { clear(msg); msg.appendChild(note('ok', 'Copied.')); };
+      var fail = function () { clear(msg); msg.appendChild(note('warn', 'Could not copy automatically. The address is selected: press Ctrl+C.')); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(f.url).then(done, fail);
+      else { try { document.execCommand('copy') ? done() : fail(); } catch (e) { fail(); } }
+    }
+    modal.appendChild(h('h2', { text: f.title || f.slug }));
+    modal.appendChild(h('label', { for: 'pfg-feedurl', text: 'Feed URL' }));
+    modal.appendChild(urlIn);
+    modal.appendChild(msg);
+    modal.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:12px' }, [
+      btn('Copy', 'pfg-btn-primary', copy),
+      h('a', { class: 'pfg-btn', href: f.url, target: '_blank', rel: 'noopener', text: 'Go to Feed URL' }),
+      btn('Close', '', close),
+    ]));
+    document.body.appendChild(overlay);
+    urlIn.focus();
+  }
+
   function openMove(f) {
     var days = cfg.keepMovedDays || 28;
     var overlay = h('div', { class: 'pfg-app pfg-overlay' + (root && root.classList.contains('pfg-light') ? ' pfg-light' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Move feed' });

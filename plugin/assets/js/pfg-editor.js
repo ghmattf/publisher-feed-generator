@@ -31,6 +31,7 @@
     var slug = hosted && hosted.slug ? hosted.slug : '';
     var fields = {};      // path -> {wrap, err}
     var showDet = new Set(); // releases whose feed details are expanded
+    var collapsedRel = new Set(); // releases folded up to just their heading
     var ui = new Map();   // release object -> {status, info, open}
     var timer = null, saving = false, slugMsg = '', dirty = false; // dirty: changed since the last save
     var slugAuto = !!(hosted && !hosted.id); // the feed name follows the title until the user types their own
@@ -486,13 +487,10 @@
         function setDetails(on) { if (on) showDet.add(r); else showDet.delete(r); detailsGrid.hidden = !on; detailsToggle.textContent = on ? 'Hide feed details' : 'Show feed details'; detailsToggle.setAttribute('aria-expanded', on ? 'true' : 'false'); }
         setDetails(showDet.has(r));
         ['title', 'medium', 'feedGuid', 'feedUrl', 'feedImg'].forEach(function (k) { if (fields[base + '.' + k]) fields[base + '.' + k].reveal = function () { setDetails(true); }; });
-        var item = h('div', { class: 'pfg-item' }, [
-          h('div', { class: 'pfg-item-head' }, [
-            h('strong', { text: (r.title || 'Release ' + (i + 1)) + (((ui.get(r) || {}).artist) ? ' by ' + ui.get(r).artist : '') }),
-            i > 0 ? btn('Up', 'pfg-btn-small', function () { m.releases.splice(i - 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
-            i < m.releases.length - 1 ? btn('Down', 'pfg-btn-small', function () { m.releases.splice(i + 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
-            btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { ui.delete(r); m.releases.splice(i, 1); renderReleases(); changed(); }),
-          ]),
+        var foldBtn = btn('', 'pfg-btn-small', function () { setFold(!collapsedRel.has(r)); });
+        foldBtn.setAttribute('aria-controls', 'pfg-relbody-' + i);
+        function setFold(on) { if (on) collapsedRel.add(r); else collapsedRel.delete(r); bodyEl.hidden = !!on; foldBtn.textContent = on ? 'Expand' : 'Collapse'; foldBtn.setAttribute('aria-expanded', on ? 'false' : 'true'); }
+        var bodyEl = h('div', { class: 'pfg-item-body', hidden: collapsedRel.has(r), id: 'pfg-relbody-' + i }, [
           h('div', { hidden: pop }, [
             h('div', { class: 'pfg-row' }, [searchIn, btn('Search', 'pfg-btn-small', runSearch)]),
             h('div', { class: 'pfg-hint', text: 'Search by name or paste the feed url above.' }),
@@ -503,6 +501,18 @@
           h('div', { class: 'pfg-field', hidden: !pop }, [h('span', { class: 'pfg-label', text: 'Your role on this release' }), roleChips(r), h('div', { class: 'pfg-hint', text: 'Pick every role that applies. The release feed must list the same roles.' }), h('div', { class: 'pfg-error', id: 'pfg-rel-err-' + i })]),
           h('div', { hidden: !pop }, [helpEl]),
         ]);
+        var item = h('div', { class: 'pfg-item' }, [
+          h('div', { class: 'pfg-item-head' }, [
+            h('strong', { text: (r.title || 'Release ' + (i + 1)) + (((ui.get(r) || {}).artist) ? ' by ' + ui.get(r).artist : '') }),
+            foldBtn,
+            i > 0 ? btn('Up', 'pfg-btn-small', function () { m.releases.splice(i - 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
+            i < m.releases.length - 1 ? btn('Down', 'pfg-btn-small', function () { m.releases.splice(i + 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
+            btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { ui.delete(r); m.releases.splice(i, 1); renderReleases(); changed(); }),
+          ]),
+          bodyEl,
+        ]);
+        item._expand = function () { setFold(false); };
+        setFold(collapsedRel.has(r));
         fields[base + '.rel'] = { wrap: item, err: item.querySelector('#pfg-rel-err-' + i) };
         releasesEl.appendChild(item);
         refreshReleaseHelp(r);
@@ -572,6 +582,8 @@
     // to point at (a general message), scroll to the message instead.
     function revealError(errs) {
       var first = errs && errs.length ? fields[errs[0].path] : null;
+      var rit = first && first.wrap && first.wrap.closest ? first.wrap.closest('.pfg-item') : null;
+      if (rit && rit._expand) rit._expand();
       var sec = first && first.wrap && first.wrap.closest ? first.wrap.closest('details.pfg-section') : null;
       if (sec) openSection(sec);
       if (first && first.input && first.input.focus) { try { first.input.focus({ preventScroll: true }); } catch (e) { first.input.focus(); } }
