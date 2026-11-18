@@ -159,11 +159,9 @@
       var si = h('input', { type: 'text', id: 'pfg-f-slug', autocomplete: 'off', spellcheck: 'false', placeholder: 'my-label' });
       si.value = slug;
       var serr = h('div', { class: 'pfg-error', id: 'pfg-f-slug-err' });
-      var urlOut = h('div', { class: 'pfg-hint pfg-mono' });
       function slugChanged() {
         slug = si.value.trim().toLowerCase();
         syncHostedIdentity();
-        urlOut.textContent = m.feedUrl ? 'Your feed will be at ' + m.feedUrl : '';
         slugMsg = slug && !SLUG_RE.test(slug) ? 'Use 3 to 40 lowercase letters, numbers, "-" or "_", starting with a letter or number.' : '';
         serr.textContent = slugMsg;
         changed();
@@ -174,7 +172,7 @@
       slugInputs = h('div', {}, [h('label', { for: 'pfg-f-slug', text: 'Feed name (web address)' }), si,
         h('div', { class: 'pfg-hint', text: 'Made from your name; change it if you like. After you save it cannot be changed, and the address can never be reused if you delete the feed.' })]);
       slugInputs.style.display = 'none';
-      slugField.appendChild(slugInputs); slugField.appendChild(serr); slugField.appendChild(urlOut);
+      slugField.appendChild(slugInputs); slugField.appendChild(serr);
       fields.slug = { wrap: slugField, err: serr, input: si };
       identityKids.push(slugField);
     } else if (!hosted) { // self-hosting: the feed's own address and GUID are needed
@@ -318,7 +316,7 @@
     }
     function snippetBox(r) {
       if (!m.guid) return h('p', { class: 'pfg-hint', text: 'Set your feed URL and GUID to get the text for the release owner.' });
-      var txt = Core.snippetFor({ guid: m.guid, feedUrl: m.feedUrl }, r.rel);
+      var txt = Core.snippetFor({ guid: m.guid, feedUrl: m.feedUrl, title: m.title }, r.rel);
       var b = btn('Copy text', 'pfg-btn-small', function () { copyText(txt, function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy text'; }, 1500); }); });
       return h('div', {}, [h('div', { class: 'pfg-label', text: 'Text for the release owner to add to their feed' }), h('pre', { class: 'pfg-snippet', text: txt }), b]);
     }

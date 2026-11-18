@@ -467,6 +467,9 @@ class PFG_Feed {
 				$tokens = array_slice( $tokens, 0, 8 );
 			}
 			$row['rel'] = $tokens;
+			if ( 0 === count( $tokens ) ) {
+				self::err( $errors, $p . '.rel', 'Release ' . ( (int) $i + 1 ) . ' has no role. Add one (for example "label" or "producer") so both feeds can confirm the link.' );
+			}
 			if ( $opts['allow_attrs'] ) {
 				$extra = self::get( $r, 'attrs' );
 				if ( is_array( $extra ) ) {
