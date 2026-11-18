@@ -102,6 +102,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 27. (Items 50, 54 and 61, owner requests.) My feeds has no URL column: each row shows the feed name (with its folder name below) and a "Feed URL" button (disabled until the feed is public) that opens a window with the name, the address (read-only, with Copy) and a "Go to Feed URL" link. Each release in the editor has a Collapse / Expand button that folds it down to its heading; saving with an error inside a folded release opens it. The plugin settings page is split into tabs: Hosting (with the uninstall option), Payments, Roles, Hosted feeds and Adopt or move a feed. All settings stay in one form with one Save button (shown on the first three tabs), so saving on any tab saves them all; without JavaScript every section is shown. After a moderation action the page opens on the tab it belongs to, and the address hash (for example #feeds) selects a tab.
 
+28. (Owner request 2026-11-18.) Hosted feeds table on the settings page: a filter row sits directly under the header, with text filters for Name, Title and Owner (matches the owner's npub) and a Status drop-down; they work live in the browser and combine. A feed whose status is "deleted" has a "Permanently delete" button (with a confirmation) that removes its row from the table entirely and deletes its now-empty feed folder, so its name can be used again. Until then a deleted feed keeps its name reserved. Only deleted feeds can be purged; the server refuses anything else.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

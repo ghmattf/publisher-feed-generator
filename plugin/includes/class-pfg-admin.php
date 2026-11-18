@@ -74,6 +74,9 @@ class PFG_Admin {
 					PFG_Storage::tombstone_feed( $feed );
 					$notice = 'deleted';
 					break;
+				case 'purge':
+					$notice = ( 'deleted' === $feed['status'] && PFG_Storage::purge_feed( $feed ) ) ? 'purged' : 'nothing';
+					break;
 				case 'block':
 					PFG_Storage::set_account_status( (int) $feed['account_id'], 'blocked' );
 					PFG_Auth::destroy_account_sessions( (int) $feed['account_id'] );
@@ -156,6 +159,7 @@ class PFG_Admin {
 			'published' => 'Feed published.',
 			'suspended' => 'Feed suspended. Its file was moved out of public view and can be restored by unsuspending.',
 			'deleted'   => 'Feed deleted. Its name stays reserved.',
+			'purged'    => 'Feed permanently deleted and removed from the list. Its name can be used again.',
 			'blocked'   => 'Account blocked, its sessions ended and its feeds suspended (their files were kept and can be restored by unsuspending).',
 			'unblocked' => 'Account unblocked. Its feeds stay suspended until you unsuspend them.',
 			'adopted'   => 'Feed adopted. Its owner can now find it under Your hosted feeds and edit it. The file was not changed.',
@@ -164,7 +168,7 @@ class PFG_Admin {
 			'writefail' => 'The feed file could not be written. Check that wp-content is writable.',
 		);
 		$notice  = isset( $_GET['pfg_notice'] ) ? sanitize_key( wp_unslash( $_GET['pfg_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		$tab_for = array( 'adopted' => 'tools', 'moved' => 'tools', 'adopted_untouched' => 'tools', 'adopt_error' => 'tools', 'published' => 'feeds', 'suspended' => 'feeds', 'deleted' => 'feeds', 'blocked' => 'feeds', 'unblocked' => 'feeds', 'writefail' => 'feeds' );
+		$tab_for = array( 'adopted' => 'tools', 'moved' => 'tools', 'adopted_untouched' => 'tools', 'adopt_error' => 'tools', 'published' => 'feeds', 'suspended' => 'feeds', 'deleted' => 'feeds', 'purged' => 'feeds', 'blocked' => 'feeds', 'unblocked' => 'feeds', 'writefail' => 'feeds' );
 		$tab     = isset( $tab_for[ $notice ] ) ? $tab_for[ $notice ] : 'hosting';
 		?>
 		<div class="wrap" data-pfg-default-tab="<?php echo esc_attr( $tab ); ?>">
@@ -394,7 +398,23 @@ class PFG_Admin {
 			} else {
 				?>
 				<table class="widefat striped">
-					<thead><tr><th>Name</th><th>Title</th><th>Owner</th><th>Status</th><th>Updated</th><th>Moved</th><th>Actions</th></tr></thead>
+					<thead>
+						<tr><th>Name</th><th>Title</th><th>Owner</th><th>Status</th><th>Updated</th><th>Moved</th><th>Actions</th></tr>
+						<tr class="pfg-filter-row">
+							<td><input type="search" class="pfg-filter" data-pfg-filter="name" placeholder="Filter name" aria-label="Filter by name" style="width:100%" /></td>
+							<td><input type="search" class="pfg-filter" data-pfg-filter="title" placeholder="Filter title" aria-label="Filter by title" style="width:100%" /></td>
+							<td><input type="search" class="pfg-filter" data-pfg-filter="owner" placeholder="Filter owner" aria-label="Filter by owner" style="width:100%" /></td>
+							<td>
+								<select class="pfg-filter" data-pfg-filter="status" aria-label="Filter by status">
+									<option value="">All</option>
+									<?php foreach ( array_unique( array_map( function ( $x ) { return $x['status']; }, $feeds ) ) as $st ) : ?>
+										<option value="<?php echo esc_attr( $st ); ?>"><?php echo esc_html( $st ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+							<td></td><td></td><td></td>
+						</tr>
+					</thead>
 					<tbody>
 					<?php foreach ( $feeds as $f ) : ?>
 						<?php
@@ -412,11 +432,13 @@ class PFG_Admin {
 								$actions['suspend'] = 'Suspend';
 							}
 							$actions['delete'] = 'Delete';
+						} else {
+							$actions['purge'] = 'Permanently delete';
 						}
 						$actions[ 'blocked' === $f['account_status'] ? 'unblock' : 'block' ] = 'blocked' === $f['account_status'] ? 'Unblock owner' : 'Block owner';
 						?>
 						<?php $is_overdue = (int) $f['moved_at'] > 0 && 'deleted' !== $f['status'] && (int) $f['moved_at'] < time() - (int) $s['keep_moved_days'] * DAY_IN_SECONDS; ?>
-						<tr<?php echo $is_overdue ? ' style="background:#fcf0f1;outline:2px solid #d63638"' : ''; // phpcs:ignore ?>>
+						<tr class="pfg-feed-row" data-name="<?php echo esc_attr( strtolower( $f['slug'] ) ); ?>" data-title="<?php echo esc_attr( strtolower( $f['title'] ) ); ?>" data-owner="<?php echo esc_attr( strtolower( $npub ) ); ?>" data-status="<?php echo esc_attr( $f['status'] ); ?>"<?php echo $is_overdue ? ' style="background:#fcf0f1;outline:2px solid #d63638"' : ''; // phpcs:ignore ?>>
 							<td><?php echo 'published' === $f['status'] ? '<a href="' . esc_url( PFG_Storage::feed_url( $f['slug'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $f['slug'] ) . '</a>' : esc_html( $f['slug'] ); // phpcs:ignore ?></td>
 							<td><?php echo esc_html( $f['title'] ); ?></td>
 							<td><?php if ( $npub ) : ?><a href="<?php echo esc_url( 'https://njump.me/' . $npub ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $npub ); ?>"><code><?php echo esc_html( $short ); ?></code></a><?php else : ?><code><?php echo esc_html( $short ); ?></code><?php endif; ?><?php echo 'blocked' === $f['account_status'] ? ' <em>(blocked)</em>' : ''; ?></td>
@@ -425,7 +447,7 @@ class PFG_Admin {
 							<td><?php echo (int) $f['moved_at'] > 0 ? esc_html( wp_date( 'Y-m-d', (int) $f['moved_at'] ) ) . ( $is_overdue ? ' <strong>(ready to delete)</strong>' : '' ) : '&ndash;'; // phpcs:ignore ?></td>
 							<td>
 								<?php foreach ( $actions as $do => $label ) : ?>
-									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline" <?php echo in_array( $do, array( 'delete', 'block' ), true ) ? 'onsubmit="return confirm(\'Are you sure?\');"' : ''; // phpcs:ignore ?>>
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline" <?php echo in_array( $do, array( 'delete', 'block', 'purge' ), true ) ? 'onsubmit="return confirm(\'' . ( 'purge' === $do ? 'Permanently delete this feed? It is removed from the list and cannot be recovered. Its name becomes free to use again.' : 'Are you sure?' ) . '\');"' : ''; // phpcs:ignore ?>>
 										<input type="hidden" name="action" value="pfg_feed_action" />
 										<input type="hidden" name="feed_id" value="<?php echo esc_attr( (int) $f['id'] ); ?>" />
 										<input type="hidden" name="do" value="<?php echo esc_attr( $do ); ?>" />
@@ -460,6 +482,18 @@ class PFG_Admin {
 						[].forEach.call( panels, function ( p ) { p.classList.toggle( 'is-active', p.getAttribute( 'data-pfg-tab' ) === name ); } );
 						[].forEach.call( saves, function ( p ) { p.classList.toggle( 'is-active', p.getAttribute( 'data-pfg-for' ).split( ' ' ).indexOf( name ) >= 0 ); } );
 					}
+					var filters = wrap.querySelectorAll( '.pfg-filter' );
+					var rows = wrap.querySelectorAll( '.pfg-feed-row' );
+					function applyFilters() {
+						var want = {};
+						[].forEach.call( filters, function ( f ) { want[ f.getAttribute( 'data-pfg-filter' ) ] = f.value.trim().toLowerCase(); } );
+						[].forEach.call( rows, function ( r ) {
+							var ok = [ 'name', 'title', 'owner' ].every( function ( k ) { return ! want[ k ] || r.getAttribute( 'data-' + k ).indexOf( want[ k ] ) >= 0; } )
+								&& ( ! want.status || r.getAttribute( 'data-status' ) === want.status );
+							r.style.display = ok ? '' : 'none';
+						} );
+					}
+					[].forEach.call( filters, function ( f ) { f.addEventListener( 'input', applyFilters ); f.addEventListener( 'change', applyFilters ); } );
 					[].forEach.call( links, function ( a ) {
 						a.addEventListener( 'click', function ( ev ) { ev.preventDefault(); var n = a.getAttribute( 'data-pfg-tab' ); show( n ); try { history.replaceState( null, '', '#' + n ); } catch ( e ) {} } );
 					} );
