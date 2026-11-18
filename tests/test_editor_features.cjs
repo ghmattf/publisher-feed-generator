@@ -60,4 +60,14 @@ ok(/<itunes:author>Acme &amp; Co<\/itunes:author>/.test(axml) && !/Someone Else/
 const dm = C.normalize(Object.assign({}, m, { created: 1700000000 }), { platform: [] }).model;
 ok(/<pubDate>Tue, 14 Nov 2023 22:13:20 GMT<\/pubDate>\s*<lastBuildDate>/.test(C.buildXml(dm, [], 1794000000000)), 'pubDate is the creation date, just before lastBuildDate');
 ok(!/pubDate/.test(C.buildXml(C.normalize(Object.assign({}, m, { created: 0 }), { platform: [] }).model, [], 1794000000000)), 'no creation date, no pubDate');
+// a release must have a role (error, not just advice); the release-owner snippet carries the publisher feed title
+{ const mm = C.emptyModel({}); mm.guid = m.guid; mm.feedUrl = m.feedUrl; mm.title = 'T'; mm.description = 'D'; mm.link = 'https://x.example';
+  mm.releases = [{ feedGuid: '07adf84f-c1fa-47a7-a121-0fb544e859bd', feedUrl: 'https://x.example/a.xml', medium: 'music', title: 'A', rel: [] }];
+  const r = C.normalize(mm, { hosted: false });
+  ok(r.errors.some(e => e.path === 'releases.0.rel' && /Release 1 has no role/.test(e.message)), 'a release without a role is an error');
+  ok(!C.lint(r.model).some(x => /has no role/.test(x)), 'the missing-role message is no longer advice');
+  mm.releases[0].rel = ['label']; ok(!C.normalize(mm, { hosted: false }).errors.some(e => e.path === 'releases.0.rel'), 'with a role there is no error');
+  const sn = C.snippetFor({ guid: m.guid, feedUrl: m.feedUrl, title: 'Acme "Records" & Co' }, ['label']);
+  ok(/title="Acme &quot;Records&quot; &amp; Co"/.test(sn) && /feedGuid="/.test(sn), 'release-owner snippet has the title attribute');
+  ok(!/title=/.test(C.snippetFor({ guid: m.guid, feedUrl: m.feedUrl }, ['label'])), 'no title attribute when there is no title'); }
 console.log(fails ? fails + ' FAILURES' : 'editor feature tests passed'); process.exit(fails ? 1 : 0);

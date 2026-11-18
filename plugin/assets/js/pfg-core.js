@@ -528,6 +528,7 @@
       });
       if (tokens.length > 8) { err(p + '.rel', 'At most 8 roles per release.'); tokens = tokens.slice(0, 8); }
       row.rel = tokens;
+      if (tokens.length === 0) err(p + '.rel', 'Release ' + (i + 1) + ' has no role. Add one (for example "label" or "producer") so both feeds can confirm the link.');
       if (opts.allowAttrs) {
         var extra = get(r, 'attrs');
         if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
@@ -556,9 +557,6 @@
     if (!m.image) w.push('Add a feed image so apps can show your artwork.');
     if (!m.link) w.push('Add your website so listeners can find you.');
     if (!m.npub) w.push('Optional: add your npub so people can find you on Nostr.');
-    (m.releases || []).forEach(function (r, i) {
-      if (!r.rel || !r.rel.length) w.push('Release ' + (i + 1) + ' has no role. Add one (for example "label" or "producer") so both feeds can confirm the link.');
-    });
     return w;
   }
 
@@ -856,6 +854,7 @@
   function snippetFor(m, rel) {
     var a = ' medium="publisher" feedGuid="' + escAttr(m.guid) + '"';
     if (m.feedUrl) a += ' feedUrl="' + escAttr(m.feedUrl) + '"';
+    if (m.title) a += ' title="' + escAttr(m.title) + '"';
     if (rel && rel.length) a += ' rel="' + escAttr(rel.join(' ')) + '"';
     return '<podcast:publisher>\n    <podcast:remoteItem' + a + ' />\n</podcast:publisher>';
   }

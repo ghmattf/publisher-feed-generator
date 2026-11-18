@@ -99,6 +99,8 @@ ok(code(call('POST', '/me/feeds', ['slug' => 'fourth-one', 'feed' => feed()], $H
 // ---- update
 $id = $f['id']; $url = "$B/me/feeds/$id";
 $r = call('PUT', "/me/feeds/$id", ['feed' => feed(['title' => 'Acme Renamed'])], $H); ok(code($r) === 200, 'edit title without a fresh signature works');
+$noRole = feed(['title' => 'Acme Renamed']); $noRole['releases'] = [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://x.example/a.xml', 'medium' => 'music', 'title' => 'A', 'rel' => []]];
+$r = call('PUT', "/me/feeds/$id", ['feed' => $noRole], $H); ok(code($r) === 422, 'server: a release without a role is refused');
 $r = call('PUT', "/me/feeds/$id", ['feed' => feed(['ownerEmail' => ''])], $H); ok(code($r) === 422, 'hosted feed without a contact email is refused');
 ok(strpos(file_get_contents($path), 'Acme Renamed') !== false, 'published file updated');
 $body = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Evil', 'address' => 'evil@x.com', 'split' => 97, 'type' => 'lnaddress']]]])]);

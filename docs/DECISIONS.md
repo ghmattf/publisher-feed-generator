@@ -112,6 +112,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 32. (Owner request 2026-11-18.) What was left of "Identity and links" after item 31 is dropped from the editor: the People list, the support link, the "moving this feed" URL and the read-only feed URL and GUID of a hosted feed. Kept, because a feed cannot be made without them: the feed name for a new hosted feed (made from the title, shown only when it needs fixing) and, for self-hosting, the feed URL and GUID. People and the funding link that already exist in an imported or adopted feed are still read and written back unchanged; they just cannot be edited here. Headings are "New feed" and "Edit feed"; "Name / title" is now "Your name / Business name".
 
+33. (Owner request 2026-11-18; item 59.) A release with no role is now an error that blocks saving (in both validators, shown on the release), not advice, because both feeds need a role to confirm the link. The "Your feed will be at …" line under the feed name is removed. The "Text for the release owner" snippet carries a `title` attribute with this feed's title (the publisher feed already did).
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.
