@@ -110,6 +110,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 31. (Owner request 2026-11-18.) The "Want to self-host?" card is shown only when the person is not signed in. The editor's "Identity and links" section is gone: the npub option (with "Get your npub") now follows the contact email in Basics, and the rest of what was there (feed name for a new hosted feed, feed URL and GUID, the move-to URL for self-hosters, People, the support link) follows it at the end of Basics. The editor now has three sections: Basics, Receiving payment, Releases. TODO 43 was withdrawn.
 
+32. (Owner request 2026-11-18.) What was left of "Identity and links" after item 31 is dropped from the editor: the People list, the support link, the "moving this feed" URL and the read-only feed URL and GUID of a hosted feed. Kept, because a feed cannot be made without them: the feed name for a new hosted feed (made from the title, shown only when it needs fixing) and, for self-hosting, the feed URL and GUID. People and the funding link that already exist in an imported or adopted feed are still read and written back unchanged; they just cannot be edited here. Headings are "New feed" and "Edit feed"; "Name / title" is now "Your name / Business name".
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

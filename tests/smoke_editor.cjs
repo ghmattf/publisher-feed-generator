@@ -21,7 +21,7 @@ w.DOMParser = D.DOMParser; w.XMLSerializer = D.XMLSerializer;
 const imp = w.PFGCore.parseXml(fs.readFileSync('feeds/phafe_like.xml', 'utf8'), D);
 let drafts = 0;
 w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.liftSupport(imp.model, cfg.platform), hosted: null, importNotes: imp.notes, saveDraft: () => drafts++, clearDraft() {}, back() {}, h, btn, note, clear });
-ok(!!$('#pfg-f-newFeedUrl') && /moving this feed/.test($('#pfg-f-newFeedUrl').closest('.pfg-field').textContent), 'self-host editor: New feed URL field exists in Identity and links');
+ok(!$('#pfg-f-newFeedUrl') && !!$('#pfg-f-feedUrl') && !!$('#pfg-f-guid'), 'self-host editor: no New feed URL field any more; the feed URL and GUID are still there');
 await tick();
 ok($('#pfg-f-title').value === 'Phafe' && $('#pfg-f-guid').value === 'a9ce0ee9-fe9f-4495-b7b8-ebae25ff2112', 'imported values shown in the form');
 ok($$('.pfg-item').length === 3 + 2 - 3 + 0 || true, 'rows rendered');
@@ -213,8 +213,8 @@ set('#pfg-support-1', '0'); await tick(); ok(/of 98%/.test($('.pfg-total').textC
 set('#pfg-support-1', '1'); await tick();
 set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-ownerEmail', 'a@b.co'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '97');
 ok($('#pfg-f-slug').value === 'acme', 'feed name made from the title as it is typed');
-ok(!$('#pfg-f-newFeedUrl'), 'hosted editor: no New feed URL field (it is the Move feed button in Your hosted feeds)');
-{ const addP = [...$$('button')].find(b => b.textContent === 'Add person'); addP.click(); ok(!!$('#pfg-f-persons-0-name') || !!$('[id*="persons"][id$="name"]'), 'People: Add person adds a row with a Name field'); [...$$('button')].filter(b => b.textContent === 'Remove').pop().click(); }
+ok(!$('#pfg-f-newFeedUrl'), 'hosted editor: no New feed URL field (it is the Move feed button in My feeds)');
+ok(![...$$('button')].some(b => b.textContent === 'Add person') && !$('#pfg-f-funding-url'), 'the People and Support link entries are gone from the editor');
 ok($('#pfg-f-slug').parentNode.style.display === 'none', 'the Feed name input is hidden while it is fine');
 set('#pfg-f-slug', '');
 const scrolled2 = []; w.HTMLElement.prototype.scrollIntoView = function () { const i = this.querySelector && this.querySelector('input,textarea,select'); scrolled2.push(i ? i.id : (this.className || this.tagName)); };
