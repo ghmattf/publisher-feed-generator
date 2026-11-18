@@ -40,7 +40,7 @@ $csrf = data(call('GET', '/me'))['csrf']; $H = ['X-PFG-CSRF' => $csrf];
 ok(code(call('GET', '/me/feeds')) === 200 && data(call('GET', '/me/feeds')) === [], 'empty feed list');
 
 // ---- create
-function feed($over = []){ return array_replace_recursive(['title' => 'Acme Records', 'author' => 'Acme', 'created' => 1000000000, 'description' => 'We make records.', 'link' => 'https://acme.example', 'language' => 'en', 'category' => 'Music', 'value' => ['method' => 'lnaddress', 'suggested' => '0.000033333', 'recipients' => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => 97, 'type' => 'lnaddress']]], 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://phafe.com/x/some_songs.xml', 'medium' => 'music', 'title' => 'Some Songs', 'rel' => ['label', 'studio']]]], $over); }
+function feed($over = []){ return array_replace_recursive(['title' => 'Acme Records', 'author' => 'Acme', 'created' => 1000000000, 'description' => 'We make records.', 'link' => 'https://acme.example', 'language' => 'en', 'ownerEmail' => 'acme@example.com', 'category' => 'Music', 'value' => ['method' => 'lnaddress', 'suggested' => '0.000033333', 'recipients' => [['name' => 'Acme', 'address' => 'acme@getalby.com', 'split' => 97, 'type' => 'lnaddress']]], 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://phafe.com/x/some_songs.xml', 'medium' => 'music', 'title' => 'Some Songs', 'rel' => ['label', 'studio']]]], $over); }
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()])) === 403, 'create without CSRF header -> 403');
 ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], ['X-PFG-CSRF' => str_repeat('a', 48)])) === 403, 'create with wrong CSRF -> 403');
 ok(code(call('POST', '/me/feeds', 'slug=x', $H + ['Content-Type' => 'application/x-www-form-urlencoded'])) === 415, 'form-encoded body rejected (415)');
@@ -99,6 +99,7 @@ ok(code(call('POST', '/me/feeds', ['slug' => 'fourth-one', 'feed' => feed()], $H
 // ---- update
 $id = $f['id']; $url = "$B/me/feeds/$id";
 $r = call('PUT', "/me/feeds/$id", ['feed' => feed(['title' => 'Acme Renamed'])], $H); ok(code($r) === 200, 'edit title without a fresh signature works');
+$r = call('PUT', "/me/feeds/$id", ['feed' => feed(['ownerEmail' => ''])], $H); ok(code($r) === 422, 'hosted feed without a contact email is refused');
 ok(strpos(file_get_contents($path), 'Acme Renamed') !== false, 'published file updated');
 $body = json_encode(['feed' => feed(['value' => ['recipients' => [['name' => 'Evil', 'address' => 'evil@x.com', 'split' => 97, 'type' => 'lnaddress']]]])]);
 $r = call('PUT', "/me/feeds/$id", $body, $H); ok(code($r) === 428, 'changing a payment recipient -> 428 fresh signature required');

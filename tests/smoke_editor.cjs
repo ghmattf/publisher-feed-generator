@@ -57,7 +57,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   const host2 = { createFeed: async (slug, feed) => { s2 = { slug, feed }; return { id: 3, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }; } };
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: host2, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
-  set('#pfg-f-title', 'No Pay'); set('#pfg-f-description', 'D'); set('#pfg-f-slug', 'no-pay-label'); await tick();
+  set('#pfg-f-title', 'No Pay'); set('#pfg-f-description', 'D'); set('#pfg-f-slug', 'no-pay-label'); set('#pfg-f-ownerEmail', 'a@b.co'); await tick();
   click('Save and publish'); await tick();
   ok(s2 && s2.feed.value.recipients.length === 0, 'feed with no payments saves (client sends no recipients)');
   click('Add recipient'); await tick(); click('Save changes'); await tick();
@@ -72,7 +72,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   await tick();
   ok($('#pfg-f-title').value === 'Mia Records' && $('#pfg-f-slug').value === 'mia-records', 'browser-key account: feed name made from the pre-filled title');
   ok($('#pfg-f-slug').parentNode.style.display === 'none', 'browser-key account: the feed name input is hidden');
-  set('#pfg-f-description', 'D'); click('Save and publish'); await tick();
+  set('#pfg-f-description', 'D'); set('#pfg-f-ownerEmail', 'a@b.co'); click('Save and publish'); await tick();
   ok(s3 && s3.slug === 'mia-records' && $('#pfg-f-slug').parentNode.style.display === 'none', 'browser-key account: saves without ever showing the feed name');
   ok(![...$$('#c button')].some(b => b.textContent === 'Get your npub'), 'browser-key account: no "Get your npub" button');
   const pubs = [...$$('#c .pfg-note-ok')].filter(n => /Published at/.test(n.textContent));
@@ -211,7 +211,7 @@ ok([0, 1, 2].map(i => $('#pfg-support-' + i)).every(e => e && e.value === '1' &&
 ok(/97%/.test($('.pfg-total').textContent) && /takes 3%/.test($('.pfg-total').textContent), 'recipient total target is 97%');
 set('#pfg-support-1', '0'); await tick(); ok(/of 98%/.test($('.pfg-total').textContent), 'setting a support share to 0 raises the target to 98%');
 set('#pfg-support-1', '1'); await tick();
-set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '97');
+set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-ownerEmail', 'a@b.co'); set('#pfg-f-value-recipients-0-name', 'Acme'); set('#pfg-f-value-recipients-0-address', 'acme@getalby.com'); set('#pfg-f-value-recipients-0-split', '97');
 ok($('#pfg-f-slug').value === 'acme', 'feed name made from the title as it is typed');
 ok(!$('#pfg-f-newFeedUrl'), 'hosted editor: no New feed URL field (it is the Move feed button in Your hosted feeds)');
 { const addP = [...$$('button')].find(b => b.textContent === 'Add person'); addP.click(); ok(!!$('#pfg-f-persons-0-name') || !!$('[id*="persons"][id$="name"]'), 'People: Add person adds a row with a Name field'); [...$$('button')].filter(b => b.textContent === 'Remove').pop().click(); }
@@ -258,7 +258,7 @@ ok(!$('.pfg-loading') && $$('details.pfg-section').every(d => d.style.display ==
 // warning before a save drops unsupported data
 { const hd = { id: 7, slug: 'old_pub', status: 'published', url: 'https://phafe.com/x.xml', dropped: [{ what: 'Tag not supported here: foo:thing', xml: '<foo:thing>x</foo:thing>' }] };
   let sent2 = 0; const hh = mkHost(null); hh.updateFeed = async () => { sent2++; return { id: 7, slug: 'old_pub', status: 'published', url: hd.url }; };
-  const m0 = w.PFGCore.liftSupport(w.PFGCore.emptyModel({}), cfg.platform); m0.title = 'Old Pub'; m0.description = 'd'; m0.value.recipients = [{ name: 'Me', address: 'me@x.com', split: 97, type: 'lnaddress' }];
+  const m0 = w.PFGCore.liftSupport(w.PFGCore.emptyModel({}), cfg.platform); m0.title = 'Old Pub'; m0.description = 'd'; m0.ownerEmail = 'a@b.co'; m0.value.recipients = [{ name: 'Me', address: 'me@x.com', split: 97, type: 'lnaddress' }];
   w.PFGEditor.render($('#c'), { cfg, model: m0, hosted: hd, host: hh, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
   [...$$('button')].find(b => /Save changes/.test(b.textContent)).click(); await tick();
   ok(!!$('.pfg-overlay [aria-label], .pfg-overlay') && /Some data will be removed/.test(w.document.body.textContent) && sent2 === 0, 'dropped data: save is held and a warning appears');
@@ -281,7 +281,7 @@ backBtn().click(); ok(backed === 1 && confirms === 0, 'Back to my feeds: no warn
 renderNew(mkHost(profile), { back() { backed++; } }); await tick(); set('#pfg-f-title', 'Mine'); backBtn().click();
 ok(confirms === 1 && backed === 2, 'Back to my feeds: warns when something typed is unsaved');
 renderNew(Object.assign(mkHost(profile), { createFeed: async (slug) => ({ id: 5, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }) }), { back() { backed++; } }); await tick();
-set('#pfg-f-title', 'Saved Co'); set('#pfg-f-description', 'Saved.'); await tick(); click('Save and publish'); await tick(); await tick();
+set('#pfg-f-title', 'Saved Co'); set('#pfg-f-description', 'Saved.'); set('#pfg-f-ownerEmail', 'a@b.co'); await tick(); click('Save and publish'); await tick(); await tick();
 ok(/Published at/.test($('#c').textContent), 'feed saved');
 backBtn().click(); ok(confirms === 1 && backed === 3, 'Back to my feeds: no warning once the changes are saved');
 set('#pfg-f-description', 'Saved again.'); backBtn().click(); ok(confirms === 2 && backed === 4, 'Back to my feeds: warns again after a new edit');
