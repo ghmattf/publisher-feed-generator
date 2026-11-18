@@ -207,7 +207,9 @@ class PFG_Feed {
 		if ( self::len( $m['ownerName'] ) > 200 ) {
 			self::err( $errors, 'ownerName', 'Feed maintainer is too long.' );
 		}
-		if ( '' !== $m['ownerEmail'] && ( self::len( $m['ownerEmail'] ) > 200 || ! preg_match( '/^[^\s@<>&"\']+@[^\s@<>&"\']+\.[^\s@<>&"\']+$/', $m['ownerEmail'] ) ) ) {
+		if ( $opts['hosted'] && '' === $m['ownerEmail'] ) {
+			self::err( $errors, 'ownerEmail', 'Feed contact email is required.' );
+		} elseif ( '' !== $m['ownerEmail'] && ( self::len( $m['ownerEmail'] ) > 200 || ! preg_match( '/^[^\s@<>&"\']+@[^\s@<>&"\']+\.[^\s@<>&"\']+$/', $m['ownerEmail'] ) ) ) {
 			self::err( $errors, 'ownerEmail', 'Feed contact email is not valid.' );
 		}
 

@@ -146,7 +146,7 @@
       field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
       field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
       field('Feed maintainer (your name)', 'ownerName'),
-      field('Feed contact email (your email)', 'ownerEmail', { type: 'email' }),
+      field('Feed contact email (your email)', 'ownerEmail', { type: 'email', hint: hosted ? 'Required for hosted feeds, so you can be reached about this feed.' : undefined }),
     ])], true, basicsGate);
 
     var slugField = null, slugInputs = null, identityKids = [], applySlug = null;
@@ -562,7 +562,7 @@
     }
     // Title and Description must be filled in before leaving Basics.
     function basicsGate() {
-      var bad = clean().errors.filter(function (e) { return e.path === 'title' || e.path === 'description'; });
+      var bad = clean().errors.filter(function (e) { return e.path === 'title' || e.path === 'description' || e.path === 'ownerEmail'; });
       if (!bad.length) return true;
       showErrors(bad);
       var f = fields[bad[0].path]; if (f && f.input && f.input.focus) f.input.focus();
