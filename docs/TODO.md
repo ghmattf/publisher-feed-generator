@@ -27,3 +27,5 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 58. Add a "Get credited!" button for each feed in the "Your hosted feeds" area. (Owner, 2026-11-17.)
 59. Add a title attribute to the podcast:remoteItem in the code snippet "Text for the release owner to add to their feed" (the publisher feed already has it). (Owner, 2026-11-17.)
 61. Collapse / expand releases (each release in the Releases section can be collapsed and expanded). (Owner, 2026-11-17.)
+62. Improve the "Identity and links" section of the editor. (Owner, 2026-11-18.)
+63. Add the funding tag (podcast:funding) to the feed. (Owner, 2026-11-18.)
