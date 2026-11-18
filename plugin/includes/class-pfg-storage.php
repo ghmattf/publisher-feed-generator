@@ -463,6 +463,34 @@ class PFG_Storage {
 		);
 	}
 
+	/**
+	 * Wipe a deleted feed from the table entirely (admin action). Only feeds already marked deleted can be purged.
+	 * The name becomes free to use again.
+	 *
+	 * @return bool
+	 */
+	public static function purge_feed( $feed ) {
+		global $wpdb;
+		if ( ! is_array( $feed ) || empty( $feed['id'] ) || 'deleted' !== $feed['status'] ) {
+			return false;
+		}
+		self::delete_file( $feed['slug'] ); // normally already gone; make sure nothing is left behind.
+		$q = self::quarantine_path( $feed['slug'] );
+		if ( file_exists( $q['file'] ) ) {
+			@unlink( $q['file'] ); // phpcs:ignore
+		}
+		$p = self::feed_path( $feed['slug'] );
+		if ( $p && '' === self::legacy_subdir( $feed['slug'] ) && is_dir( $p['dir'] ) ) {
+			foreach ( array( 'index.html', 'index.php' ) as $idx ) { // only the guard files we may have written; a folder with anything else is left alone.
+				if ( file_exists( $p['dir'] . '/' . $idx ) ) {
+					@unlink( $p['dir'] . '/' . $idx ); // phpcs:ignore
+				}
+			}
+			@rmdir( $p['dir'] ); // phpcs:ignore -- fails harmlessly if the folder is not empty.
+		}
+		return false !== $wpdb->delete( PFG_Installer::table( 'feeds' ), array( 'id' => (int) $feed['id'] ), array( '%d' ) );
+	}
+
 	/** True for a feed taken over from an existing file that has not been saved from the editor yet. */
 	public static function is_adopted_pending( $feed ) {
 		$m = self::decode_model( $feed );

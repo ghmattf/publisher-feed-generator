@@ -369,6 +369,14 @@ PFG_Storage::suspend_feed(PFG_Storage::get_feed($mvId)); array_map('unlink', glo
 ok(PFG_Storage::unsuspend_feed(PFG_Storage::get_feed($mvId)) === true && file_exists($pubFile) && strpos(file_get_contents($pubFile), '<rss') !== false, 'unsuspend with no kept file: rebuilt from the saved settings');
 PFG_Storage::suspend_feed(PFG_Storage::get_feed($mvId)); PFG_Storage::tombstone_feed(PFG_Storage::get_feed($mvId));
 ok(!glob($qd . '/' . $sf['slug'] . '-*.xml') && !file_exists($pubFile), 'delete is final: the kept copy is removed too');
+// purge: only a deleted feed can be wiped from the table; its name is then free again
+$delRow = PFG_Storage::get_feed($mvId);
+ok($delRow['status'] === 'deleted', 'the feed is marked deleted before it is purged');
+$liveRow = $delRow; $liveRow['status'] = 'published';
+ok(PFG_Storage::purge_feed($liveRow) === false && PFG_Storage::get_feed($mvId) !== null, 'purge refuses a feed that is not deleted');
+$purgedSlug = $delRow['slug'];
+ok(PFG_Storage::purge_feed($delRow) === true && PFG_Storage::get_feed($mvId) === null, 'purge removes a deleted feed from the table entirely');
+ok(PFG_Storage::slug_is_free($purgedSlug), 'a purged feed\'s name can be used again');
 $_COOKIE['pfg_session'] = $savedCookie;
 // ---- logout, config
 ok(code(call('POST', '/auth/logout', null, $H)) === 200 && code(call('GET', '/me')) === 401, 'logout ends the session');
