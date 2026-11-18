@@ -175,7 +175,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   const card = () => $$('.pfg-item').filter(e => e.querySelector('.pfg-item-head strong') && /Release|Some/.test(e.querySelector('strong').textContent)).pop();
   const hiddenOf = el => { for (let e = el; e && e !== card(); e = e.parentElement) if (e.hasAttribute('hidden')) return true; return false; };
   let c = card();
-  ok(c.querySelector('.pfg-item-head strong').textContent === 'Release 1' && [...c.querySelectorAll('.pfg-item-head button')].map(b => b.textContent).join() === 'Remove', 'header (title + buttons) shown on an empty release');
+  ok(c.querySelector('.pfg-item-head strong').textContent === 'Release 1' && [...c.querySelectorAll('.pfg-item-head button')].map(b => b.textContent).join() === 'Collapse,Remove', 'header (title + buttons) shown on an empty release');
   ok(!hiddenOf(c.querySelector('input[type=search]')) && !c.querySelector('textarea') && ![...c.querySelectorAll('button')].some(b => b.textContent === 'Read feed'), 'empty release: only the search box is shown');
   ok(hiddenOf(c.querySelector('[id$="-feedGuid"]')) && hiddenOf(c.querySelector('.pfg-chip')) && c.querySelector('.pfg-snippet') ? hiddenOf(c.querySelector('.pfg-snippet')) : true, 'empty release: everything below the search box is hidden');
   c.querySelector('input[type=search]').value = 'https://phafe.com/x/some_songs.xml'; [...c.querySelectorAll('button')].find(b => b.textContent === 'Search').click(); await tick();
@@ -310,6 +310,17 @@ ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').te
   { let shown = 0; $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: host3, hostingOn: true, paymentsLocked: true, showKeyReminder: () => shown++, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
     const more = [...$$('#c a')].find(a => a.textContent === 'More...'); more.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
     ok(!!more && shown === 1 && ![...$$('#c a')].some(a => a.textContent === 'More information'), 'payments note: "More..." link asks the page to show the key reminder'); }
+}
+// --- releases can be collapsed and expanded
+{
+  $('#c').innerHTML = '';
+  const m = w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] });
+  m.releases = [{ feedGuid: '11111111-2222-4333-8444-555555555555', feedUrl: 'https://x.example/a.xml', medium: 'music', title: 'One', feedImg: '', rel: [], attrs: {} }];
+  w.PFGEditor.render($('#c'), { cfg, model: m, hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
+  const body = () => $('#c .pfg-item-body'), fold = () => [...$$('#c .pfg-item-head button')].find(b => /^(Collapse|Expand)$/.test(b.textContent));
+  ok(!body().hidden && fold().textContent === 'Collapse', 'release starts expanded with a Collapse button');
+  fold().click(); ok(body().hidden && fold().textContent === 'Expand' && $('#c .pfg-item-head strong').textContent.length > 0, 'Collapse hides the details and keeps the heading');
+  fold().click(); ok(!body().hidden && fold().textContent === 'Collapse', 'Expand shows them again');
 }
 // --- credit invitation: option sits before the releases, disappears once added
 {

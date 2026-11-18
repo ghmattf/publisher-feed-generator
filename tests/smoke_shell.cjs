@@ -90,6 +90,11 @@ ok($$('button').find(b => b.textContent === 'Upgrade my sign-in').closest('.pfg-
 click('Upgrade my sign-in'); ok($('.pfg-overlay') && /Upgrade your sign-in/.test($('.pfg-overlay h2').textContent) && !tabNames().includes('Create account') && !tabNames().includes('This browser'), 'upgrade window offers only signer app / extension tabs');
 click('Sign in with extension'); await tick(); await tick();
 ok(w.PFGHosting.upgraded === 1 && !$('.pfg-overlay') && /Your account now uses your signer/.test(w.document.body.textContent) && !$$('button').some(b => b.textContent === 'Upgrade my sign-in'), 'upgrade: window closes, success message shown, reminder gone');
+// My feeds: no URL column; the Feed URL button opens a window with the name, the copyable address and a Go to Feed URL link
+ok(!$$('th').some(x => x.textContent === 'URL'), 'My feeds list has no URL column');
+click('Feed URL');
+ok($('.pfg-overlay') && $('#pfg-feedurl').value.startsWith('https://') && $('#pfg-feedurl').readOnly && $$('.pfg-overlay button').some(b => b.textContent === 'Copy') && $$('.pfg-overlay a').some(a => a.textContent === 'Go to Feed URL' && a.getAttribute('href') === $('#pfg-feedurl').value) && /acme/i.test($('.pfg-overlay h2').textContent), 'Feed URL window shows the feed name, the copyable address, Copy and Go to Feed URL');
+click('Close'); ok(!$('.pfg-overlay'), 'Feed URL window closes');
 // Forget this key: the whole Get started window is drawn again (Create account is back)
 sess = null; w.__bk = true; w.confirm = () => true; opened.needSignIn(() => {});
 ok($('.pfg-overlay') && !$('#pfg-newname') && $$('button').some(b => b.textContent === 'Forget this key'), 'a kept browser key: Create account is not offered, "Forget this key" is');

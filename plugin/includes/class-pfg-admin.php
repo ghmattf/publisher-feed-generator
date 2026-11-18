@@ -164,8 +164,10 @@ class PFG_Admin {
 			'writefail' => 'The feed file could not be written. Check that wp-content is writable.',
 		);
 		$notice  = isset( $_GET['pfg_notice'] ) ? sanitize_key( wp_unslash( $_GET['pfg_notice'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		$tab_for = array( 'adopted' => 'tools', 'moved' => 'tools', 'adopted_untouched' => 'tools', 'adopt_error' => 'tools', 'published' => 'feeds', 'suspended' => 'feeds', 'deleted' => 'feeds', 'blocked' => 'feeds', 'unblocked' => 'feeds', 'writefail' => 'feeds' );
+		$tab     = isset( $tab_for[ $notice ] ) ? $tab_for[ $notice ] : 'hosting';
 		?>
-		<div class="wrap">
+		<div class="wrap" data-pfg-default-tab="<?php echo esc_attr( $tab ); ?>">
 			<h1>Publisher Feeds</h1>
 			<p class="description">Publisher Feed Generator version <strong><?php echo esc_html( PFG_VERSION ); ?></strong></p>
 			<?php if ( isset( $notices[ $notice ] ) ) : ?>
@@ -184,8 +186,16 @@ class PFG_Admin {
 
 			<p>Add the generator to any page with the shortcode <code>[publisher_feed_generator]</code>.</p>
 
+			<h2 class="nav-tab-wrapper pfg-tabs" id="pfg-tabs">
+				<a href="#hosting" class="nav-tab" data-pfg-tab="hosting">Hosting</a>
+				<a href="#payments" class="nav-tab" data-pfg-tab="payments">Payments</a>
+				<a href="#roles" class="nav-tab" data-pfg-tab="roles">Roles</a>
+				<a href="#feeds" class="nav-tab" data-pfg-tab="feeds">Hosted feeds</a>
+				<a href="#tools" class="nav-tab" data-pfg-tab="tools">Adopt or move a feed</a>
+			</h2>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'pfg' ); ?>
+			<div class="pfg-tab-panel" data-pfg-tab="hosting">
 				<h2>Hosting</h2>
 				<table class="form-table" role="presentation">
 					<tr>
@@ -239,6 +249,16 @@ class PFG_Admin {
 					</tr>
 				</table>
 
+				<h2>Uninstall</h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row">Data</th>
+						<td><label><input type="checkbox" name="<?php echo esc_attr( self::field_name( 'delete_data_on_uninstall' ) ); ?>" value="1" <?php checked( $s['delete_data_on_uninstall'] ); ?> /> Delete accounts, feeds and settings when the plugin is deleted</label>
+						<p class="description">Published XML files in wp-content/pubfeeds are never deleted automatically.</p></td>
+					</tr>
+				</table>
+			</div>
+			<div class="pfg-tab-panel" data-pfg-tab="payments">
 				<h2>Payments</h2>
 				<table class="form-table" role="presentation">
 					<tr>
@@ -278,6 +298,8 @@ class PFG_Admin {
 					</tr>
 				</table>
 
+			</div>
+			<div class="pfg-tab-panel" data-pfg-tab="roles">
 				<h2>Roles</h2>
 				<p class="description">The built-in roles follow the list proposed in Podcast Namespace PR #793. The role picker on the website shows them in two groups, each in alphabetical order.</p>
 				<table class="form-table" role="presentation">
@@ -298,17 +320,11 @@ class PFG_Admin {
 					</tr>
 				</table>
 
-				<h2>Uninstall</h2>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">Data</th>
-						<td><label><input type="checkbox" name="<?php echo esc_attr( self::field_name( 'delete_data_on_uninstall' ) ); ?>" value="1" <?php checked( $s['delete_data_on_uninstall'] ); ?> /> Delete accounts, feeds and settings when the plugin is deleted</label>
-						<p class="description">Published XML files in wp-content/pubfeeds are never deleted automatically.</p></td>
-					</tr>
-				</table>
-				<?php submit_button(); ?>
+			</div>
+				<div class="pfg-tab-save" data-pfg-for="hosting payments roles"><?php submit_button(); ?></div>
 			</form>
 
+			<div class="pfg-tab-panel" data-pfg-tab="tools">
 			<h2>Adopt an existing feed</h2>
 			<p>For a publisher feed that is already on this server. It stays at its current address with its current GUID. Pick the Nostr account that will own it; that person can then edit it from the front page. The file is not changed until they save.</p>
 			<?php $accounts = PFG_Storage::list_accounts(); ?>
@@ -368,6 +384,8 @@ class PFG_Admin {
 				<?php submit_button( 'Move feed', 'secondary' ); ?>
 			</form>
 
+			</div>
+			<div class="pfg-tab-panel" data-pfg-tab="feeds">
 			<h2>Hosted feeds</h2>
 			<?php
 			$feeds = PFG_Storage::list_all_feeds();
@@ -421,6 +439,34 @@ class PFG_Admin {
 					</tbody>
 				</table>
 			<?php } ?>
+			</div>
+			<style>
+				.pfg-js .pfg-tab-panel, .pfg-js .pfg-tab-save { display: none; }
+				.pfg-js .pfg-tab-panel.is-active, .pfg-js .pfg-tab-save.is-active { display: block; }
+				.pfg-tabs { margin-bottom: 16px; }
+			</style>
+			<script>
+				( function () {
+					var wrap = document.querySelector( '.wrap[data-pfg-default-tab]' );
+					if ( ! wrap ) { return; }
+					wrap.classList.add( 'pfg-js' );
+					var links = wrap.querySelectorAll( '#pfg-tabs [data-pfg-tab]' );
+					var panels = wrap.querySelectorAll( '.pfg-tab-panel' );
+					var saves = wrap.querySelectorAll( '.pfg-tab-save' );
+					var names = [].map.call( links, function ( a ) { return a.getAttribute( 'data-pfg-tab' ); } );
+					function show( name ) {
+						if ( names.indexOf( name ) < 0 ) { name = names[0]; }
+						[].forEach.call( links, function ( a ) { a.classList.toggle( 'nav-tab-active', a.getAttribute( 'data-pfg-tab' ) === name ); a.setAttribute( 'aria-current', a.getAttribute( 'data-pfg-tab' ) === name ? 'page' : 'false' ); } );
+						[].forEach.call( panels, function ( p ) { p.classList.toggle( 'is-active', p.getAttribute( 'data-pfg-tab' ) === name ); } );
+						[].forEach.call( saves, function ( p ) { p.classList.toggle( 'is-active', p.getAttribute( 'data-pfg-for' ).split( ' ' ).indexOf( name ) >= 0 ); } );
+					}
+					[].forEach.call( links, function ( a ) {
+						a.addEventListener( 'click', function ( ev ) { ev.preventDefault(); var n = a.getAttribute( 'data-pfg-tab' ); show( n ); try { history.replaceState( null, '', '#' + n ); } catch ( e ) {} } );
+					} );
+					var fromHash = ( location.hash || '' ).replace( '#', '' );
+					show( names.indexOf( fromHash ) >= 0 ? fromHash : wrap.getAttribute( 'data-pfg-default-tab' ) );
+				}() );
+			</script>
 		</div>
 		<?php
 	}
