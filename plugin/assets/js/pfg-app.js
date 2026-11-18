@@ -233,7 +233,6 @@
             h('strong', { text: f.title || f.slug }),
             h('span', { class: 'pfg-badge ' + (live ? 'pfg-badge-ok' : 'pfg-badge-warn'), text: f.status }),
           ]),
-          h('div', { class: 'pfg-hint pfg-mono', text: f.slug }),
           f.movedTo ? h('div', { class: 'pfg-hint', text: 'Moved to ' + f.movedTo + ' on ' + new Date(f.movedAt * 1000).toISOString().slice(0, 10) }) : null,
           h('div', { class: 'pfg-row' }, [
             btn('Edit', 'pfg-btn-small', function () { editHosted(f); }),

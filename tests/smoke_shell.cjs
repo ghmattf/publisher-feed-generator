@@ -66,7 +66,7 @@ click('Paste bunker link'); ok($('#pfg-bunker') && /for example Clave, Amber, Pr
 ok($('.pfg-overlay').classList.contains('pfg-app') && $('.pfg-overlay').parentNode === w.document.body, 'sign-in overlay is outside #pfg-app and carries .pfg-app (so the colour variables apply)');
 $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
 ok(!$('.pfg-overlay'), 'sign-in window closes after login');
-ok(/My feeds/.test(w.document.body.textContent) && /acme/.test(w.document.body.textContent) && !/Your hosted feeds|Create an account in one click/.test(w.document.body.textContent), 'the feed list is on the start screen under "My feeds" in place of the sign-in card');
+ok(/My feeds/.test(w.document.body.textContent) && /Acme/.test(w.document.body.textContent) && !/Your hosted feeds|Create an account in one click/.test(w.document.body.textContent), 'the feed list is on the start screen under "My feeds" in place of the sign-in card');
 ok(/Signed in as npub1abcdefg/.test($('.pfg-bar').textContent), 'bar shows signed-in identity');
 click('New feed'); ok(opened.hosted && opened.hosted.id === null, 'new hosted feed opens editor in hosted mode');
 // ---- Move feed (from Your hosted feeds)
@@ -91,7 +91,7 @@ click('Upgrade my sign-in'); ok($('.pfg-overlay') && /Upgrade your sign-in/.test
 click('Sign in with extension'); await tick(); await tick();
 ok(w.PFGHosting.upgraded === 1 && !$('.pfg-overlay') && /Your account now uses your signer/.test(w.document.body.textContent) && !$$('button').some(b => b.textContent === 'Upgrade my sign-in'), 'upgrade: window closes, success message shown, reminder gone');
 // My feeds: no URL column; the Feed URL button opens a window with the name, the copyable address and a Go to Feed URL link
-ok(!$$('th').length && $$('.pfg-feed-card').length >= 1 && $('.pfg-feed-card .pfg-feed-top strong') && $('.pfg-feed-card .pfg-feed-top .pfg-badge'), 'My feeds: each feed is a card with the title and status on the first line, and no table headings');
+ok(!$$('th').length && $$('.pfg-feed-card').length >= 1 && $('.pfg-feed-card .pfg-feed-top strong') && $('.pfg-feed-card .pfg-feed-top .pfg-badge'), 'My feeds: each feed is a card with the title and status on the first line, and no table headings') && ok(!$('.pfg-feed-card .pfg-mono'), 'My feeds card does not show the short feed name');
 click('Feed URL');
 ok($('.pfg-overlay') && $('#pfg-feedurl').value.startsWith('https://') && $('#pfg-feedurl').readOnly && $$('.pfg-overlay button').some(b => b.textContent === 'Copy') && $$('.pfg-overlay a').some(a => a.textContent === 'Go to Feed URL' && a.getAttribute('href') === $('#pfg-feedurl').value) && /acme/i.test($('.pfg-overlay h2').textContent), 'Feed URL window shows the feed name, the copyable address, Copy and Go to Feed URL');
 click('Close'); ok(!$('.pfg-overlay'), 'Feed URL window closes');
