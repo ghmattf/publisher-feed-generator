@@ -294,7 +294,7 @@
     }
     var lockNote = h('div', { class: 'pfg-note' }, [
       'Payments are not supported when you sign in with a key kept in this browser. To set up payments, sign in with a signer app or a browser extension.',
-      ctx.moreInfoUrl ? ' ' : '', ctx.moreInfoUrl ? h('a', { href: ctx.moreInfoUrl, target: '_blank', rel: 'noopener', text: 'More information' }) : null,
+      ' ', ctx.showKeyReminder ? h('a', { href: '#', class: 'pfg-more', text: 'More...', onclick: function (ev) { ev.preventDefault(); ctx.showKeyReminder(); } }) : null,
     ]);
     var payments = ctx.paymentsLocked ? section('Receiving payment', false, [lockNote], true) : section('Receiving payment', false, [
       h('p', { class: 'pfg-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),

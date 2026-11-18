@@ -98,6 +98,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 25. (Owner request 2026-11-18.) The separate "Your hosted feeds" screen is gone. When signed in, the start screen shows "My feeds" (with a "New feed" button and the list) in place of the "Create an account in one click…" card; signed out, that card with "Get started" is shown. The editor's Payments section is headed "Receiving payment".
 
+26. (Owner request 2026-11-18.) "Forget this key" closes and redraws the whole Get started window, so Create account is offered again. In the editor's Receiving payment note for in-browser-key accounts, the link is "More...": it scrolls to the "You are signed in with a key kept in this browser" message and flashes its background green twice (the message itself keeps its "More information" link).
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.
