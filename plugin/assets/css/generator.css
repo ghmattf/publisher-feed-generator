@@ -157,3 +157,11 @@
 /* Brief green flash (twice) to point at a message */
 @keyframes pfg-flash { 0%, 100% { background: var(--pfg-warn-bg); } 25%, 75% { background: var(--pfg-ok-bg); box-shadow: 0 0 0 2px var(--pfg-ok); } 50% { background: var(--pfg-warn-bg); box-shadow: none; } }
 .pfg-app .pfg-note.pfg-flash { animation: pfg-flash 0.75s ease-in-out 2; }
+
+/* Small arrow to fold a release, like the arrow of the sections */
+.pfg-app .pfg-arrow { background: none; border: 0; padding: 0 6px; font-size: 1em; line-height: 1; cursor: pointer; color: inherit; min-width: 1.4em; }
+.pfg-app .pfg-fold-title { cursor: pointer; }
+/* My feeds: one card per feed */
+.pfg-app .pfg-feed-card { margin-bottom: 12px; }
+.pfg-app .pfg-feed-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pfg-app .pfg-feed-top strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }

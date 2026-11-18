@@ -59,7 +59,7 @@ ok(!$$('button').some(b => b.textContent === 'Paste XML') && !/Edit an existing 
 opened.back();
 click('Get started'); ok($('.pfg-overlay') && $('#pfg-newname') && selTab().join() === '', 'sign-in window shows Create account at the top and no tab preselected when no extension');
 ok(tabNames().join('|') === 'Browser extension|Scan QR code|Paste bunker link', 'sign-in tabs: Browser extension, Scan QR code, Paste bunker link');
-{ const t = $('.pfg-overlay').textContent; ok(t.indexOf('Create account') >= 0 && t.indexOf('Create account') < t.indexOf('Already a user?') && t.indexOf('Already a user?') < t.indexOf('Sign back into your account') && t.indexOf('Sign back into your account') < t.indexOf('Browser extension'), 'Create account, then "Already a user?" / "Sign back into your account", then the sign-in options'); }
+{ const t = $('.pfg-overlay').textContent; ok(t.indexOf('Create account') >= 0 && t.indexOf('Create account') < t.indexOf('Already using Nostr?') && t.indexOf('Already using Nostr?') < t.indexOf('Sign back into your account') && t.indexOf('Sign back into your account') < t.indexOf('Browser extension'), 'Create account, then "Already using Nostr?" / "Sign back into your account", then the sign-in options'); }
 ok(!/You will only be able to make changes from this browser/.test($('.pfg-overlay').textContent) && /IMPORTANT! This account only works in this browser, and is lost if you clear your browser data\./.test($('.pfg-overlay').textContent) && /You can simply "Create account" to get up and running but you should consider moving to a Nostr authentication method for continued use\./.test($('.pfg-overlay').textContent) && !/Your private key stays in your signer app or browser extension/.test($('.pfg-overlay').textContent) && /You can get started with this and move to a permanent solution later\./.test($('.pfg-overlay').textContent) && !/No app or extension needed/.test($('.pfg-overlay').textContent), 'Create account explains the browser-only limit');
 click('Browser extension'); ok(/for example Sidecar, Alby or nos2x/.test($('.pfg-overlay').textContent), 'extension tab text names Sidecar, Alby or nos2x');
 click('Paste bunker link'); ok($('#pfg-bunker') && /for example Clave, Amber, Primal/.test($('.pfg-overlay').textContent), 'bunker field available on its tab, with the new signer app names');
@@ -91,7 +91,7 @@ click('Upgrade my sign-in'); ok($('.pfg-overlay') && /Upgrade your sign-in/.test
 click('Sign in with extension'); await tick(); await tick();
 ok(w.PFGHosting.upgraded === 1 && !$('.pfg-overlay') && /Your account now uses your signer/.test(w.document.body.textContent) && !$$('button').some(b => b.textContent === 'Upgrade my sign-in'), 'upgrade: window closes, success message shown, reminder gone');
 // My feeds: no URL column; the Feed URL button opens a window with the name, the copyable address and a Go to Feed URL link
-ok(!$$('th').some(x => x.textContent === 'URL'), 'My feeds list has no URL column');
+ok(!$$('th').length && $$('.pfg-feed-card').length >= 1 && $('.pfg-feed-card .pfg-feed-top strong') && $('.pfg-feed-card .pfg-feed-top .pfg-badge'), 'My feeds: each feed is a card with the title and status on the first line, and no table headings');
 click('Feed URL');
 ok($('.pfg-overlay') && $('#pfg-feedurl').value.startsWith('https://') && $('#pfg-feedurl').readOnly && $$('.pfg-overlay button').some(b => b.textContent === 'Copy') && $$('.pfg-overlay a').some(a => a.textContent === 'Go to Feed URL' && a.getAttribute('href') === $('#pfg-feedurl').value) && /acme/i.test($('.pfg-overlay h2').textContent), 'Feed URL window shows the feed name, the copyable address, Copy and Go to Feed URL');
 click('Close'); ok(!$('.pfg-overlay'), 'Feed URL window closes');
@@ -99,7 +99,7 @@ click('Close'); ok(!$('.pfg-overlay'), 'Feed URL window closes');
 sess = null; w.__bk = true; w.confirm = () => true; opened.needSignIn(() => {});
 ok($('.pfg-overlay') && !$('#pfg-newname') && $$('button').some(b => b.textContent === 'Forget this key'), 'a kept browser key: Create account is not offered, "Forget this key" is');
 click('Forget this key');
-ok($('.pfg-overlay') && $('#pfg-newname') && $$('button').some(b => b.textContent === 'Create account') && /Already a user\?/.test($('.pfg-overlay').textContent), 'after "Forget this key" the Get started screen is redrawn with Create account');
+ok($('.pfg-overlay') && $('#pfg-newname') && $$('button').some(b => b.textContent === 'Create account') && /Already using Nostr\?/.test($('.pfg-overlay').textContent), 'after "Forget this key" the Get started screen is redrawn with Create account');
 w.__bk = false; click('Cancel');
 console.log(fails ? fails + ' FAILURES' : 'shell smoke test passed'); process.exit(fails ? 1 : 0);
 })();

@@ -175,7 +175,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   const card = () => $$('.pfg-item').filter(e => e.querySelector('.pfg-item-head strong') && /Release|Some/.test(e.querySelector('strong').textContent)).pop();
   const hiddenOf = el => { for (let e = el; e && e !== card(); e = e.parentElement) if (e.hasAttribute('hidden')) return true; return false; };
   let c = card();
-  ok(c.querySelector('.pfg-item-head strong').textContent === 'Release 1' && [...c.querySelectorAll('.pfg-item-head button')].map(b => b.textContent).join() === 'Collapse,Remove', 'header (title + buttons) shown on an empty release');
+  ok(c.querySelector('.pfg-item-head strong').textContent === 'Release 1' && [...c.querySelectorAll('.pfg-item-head button')].map(b => b.textContent).join() === '\u25BE,Remove', 'header (title + buttons) shown on an empty release');
   ok(!hiddenOf(c.querySelector('input[type=search]')) && !c.querySelector('textarea') && ![...c.querySelectorAll('button')].some(b => b.textContent === 'Read feed'), 'empty release: only the search box is shown');
   ok(hiddenOf(c.querySelector('[id$="-feedGuid"]')) && hiddenOf(c.querySelector('.pfg-chip')) && c.querySelector('.pfg-snippet') ? hiddenOf(c.querySelector('.pfg-snippet')) : true, 'empty release: everything below the search box is hidden');
   c.querySelector('input[type=search]').value = 'https://phafe.com/x/some_songs.xml'; [...c.querySelectorAll('button')].find(b => b.textContent === 'Search').click(); await tick();
@@ -318,13 +318,13 @@ ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').te
   const mk = (g, t) => ({ feedGuid: g, feedUrl: 'https://x.example/' + t + '.xml', medium: 'music', title: t, feedImg: '', rel: [], attrs: {} });
   m.releases = [mk('11111111-2222-4333-8444-555555555551', 'One'), mk('11111111-2222-4333-8444-555555555552', 'Two')];
   w.PFGEditor.render($('#c'), { cfg, model: m, hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
-  const bodies = () => [...$$('#c .pfg-item-body')], folds = () => [...$$('#c .pfg-item-head button')].filter(b => /^(Collapse|Expand)$/.test(b.textContent));
-  ok(bodies().length === 2 && bodies().every(b => b.hidden) && folds().every(b => b.textContent === 'Expand'), 'existing releases start collapsed');
+  const bodies = () => [...$$('#c .pfg-item-body')], folds = () => [...$$('#c .pfg-item-head button.pfg-arrow')];
+  ok(bodies().length === 2 && bodies().every(b => b.hidden) && folds().every(b => b.getAttribute('aria-label') === 'Expand release' && b.textContent === '\u25B8'), 'existing releases start collapsed');
   let scrolled = 0; w.HTMLElement.prototype.scrollIntoView = function () { scrolled++; };
-  folds()[0].click(); ok(!bodies()[0].hidden && bodies()[1].hidden && folds()[0].textContent === 'Collapse', 'Expand opens that release');
+  folds()[0].click(); ok(!bodies()[0].hidden && bodies()[1].hidden && folds()[0].getAttribute('aria-label') === 'Collapse release' && folds()[0].textContent === '\u25BE', 'The arrow opens that release');
   ok(scrolled === 1, 'expanding scrolls the release to the top, like the sections');
-  folds()[1].click(); ok(bodies()[0].hidden && !bodies()[1].hidden && folds()[0].textContent === 'Expand', 'expanding another release collapses the first one');
-  folds()[1].click(); ok(bodies().every(b => b.hidden), 'Collapse closes the open release');
+  folds()[1].click(); ok(bodies()[0].hidden && !bodies()[1].hidden && folds()[0].getAttribute('aria-label') === 'Expand release', 'expanding another release collapses the first one');
+  folds()[1].click(); ok(bodies().every(b => b.hidden), 'the arrow closes the open release');
   $$('button').find(b => b.textContent === 'Add release').click(); await tick();
   ok(bodies().length === 3 && bodies().filter(b => !b.hidden).length === 1 && !bodies()[2].hidden, 'a newly added release opens and the others fold');
 }
