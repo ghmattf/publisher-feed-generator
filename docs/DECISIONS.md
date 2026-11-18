@@ -106,7 +106,7 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 29. (Item 61, revised 2026-11-18.) Releases behave like the editor's sections: existing releases start collapsed, only one release is open at a time (opening one folds the others and scrolls it to the top), and a newly added release opens. The heading shows the release title and, once its feed has been read, "by <artist>".
 
-30. (Owner request 2026-11-18.) Releases fold with a small arrow (right when closed, down when open) at the start of the heading, like the arrows of the sections; clicking the heading also toggles. My feeds shows one card per feed, with the title and status on the first line, then the folder name, any moved note, and the Edit / Feed URL / Move feed / Delete buttons; there are no table headings.
+30. (Owner request 2026-11-18.) Releases fold with a small arrow (right when closed, down when open) at the start of the heading, like the arrows of the sections; clicking the heading also toggles. My feeds shows one card per feed, with the title and status on the first line, then any moved note, and the Edit / Feed URL / Move feed / Delete buttons; there are no table headings.
 
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
