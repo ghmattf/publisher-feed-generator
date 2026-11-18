@@ -66,9 +66,9 @@ click('Paste bunker link'); ok($('#pfg-bunker') && /for example Clave, Amber, Pr
 ok($('.pfg-overlay').classList.contains('pfg-app') && $('.pfg-overlay').parentNode === w.document.body, 'sign-in overlay is outside #pfg-app and carries .pfg-app (so the colour variables apply)');
 $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
 ok(!$('.pfg-overlay'), 'sign-in window closes after login');
-ok(/Hosted|Your hosted feeds/.test(w.document.body.textContent) && /acme/.test(w.document.body.textContent), 'hosted list shown with feed');
+ok(/My feeds/.test(w.document.body.textContent) && /acme/.test(w.document.body.textContent) && !/Your hosted feeds|Create an account in one click/.test(w.document.body.textContent), 'the feed list is on the start screen under "My feeds" in place of the sign-in card');
 ok(/Signed in as npub1abcdefg/.test($('.pfg-bar').textContent), 'bar shows signed-in identity');
-click('New hosted feed'); ok(opened.hosted && opened.hosted.id === null, 'new hosted feed opens editor in hosted mode');
+click('New feed'); ok(opened.hosted && opened.hosted.id === null, 'new hosted feed opens editor in hosted mode');
 // ---- Move feed (from Your hosted feeds)
 opened.back(); await tick(); await tick();
 ok($$('button').some(b => b.textContent === 'Move feed'), 'hosted list has a Move feed button');
