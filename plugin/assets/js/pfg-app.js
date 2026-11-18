@@ -112,10 +112,12 @@
     clear(kindEl);
     if (s && s.kind === 'browser') {
       kindEl.appendChild(note('warn', [
-        'You are signed in with a key kept in this browser. Payments are not available, and this account is lost if you clear your browser data. For a lasting account that can set up payments, use a signer app or a browser extension. ',
-        moreInfoLink(),
+        h('div', {}, [
+          'You are signed in with a key kept in this browser. Payments are not available, and this account is lost if you clear your browser data. For a lasting account that can set up payments, use a signer app or a browser extension. ',
+          moreInfoLink(),
+        ]),
+        h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [btn('Upgrade my sign-in', 'pfg-btn-primary', function () { openLogin(view === 'editor' ? null : showHostedList, { upgrade: true }); })]),
       ]));
-      kindEl.appendChild(h('div', { class: 'pfg-row' }, [btn('Upgrade my sign-in', 'pfg-btn-primary', function () { openLogin(view === 'editor' ? null : showHostedList, { upgrade: true }); })]));
     }
   }
   function moreInfoLink() {

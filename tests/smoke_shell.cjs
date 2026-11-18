@@ -86,6 +86,7 @@ ok(w.PFGHosting.moves.length === 1 && w.PFGHosting.moves[0][0] === 7 && w.PFGHos
 // ---- browser-key account: reminder bar and upgrade
 sess.kind = 'browser'; extPresent = true; opened.back();
 ok($$('button').some(b => b.textContent === 'Upgrade my sign-in') && /key kept in this browser/.test($('.pfg-bar').parentNode.textContent) && /Payments are not available/.test(w.document.body.textContent), 'browser-key account: persistent reminder with an Upgrade button');
+ok($$('button').find(b => b.textContent === 'Upgrade my sign-in').closest('.pfg-note-warn'), 'the Upgrade my sign-in button sits inside the in-browser-key message box');
 click('Upgrade my sign-in'); ok($('.pfg-overlay') && /Upgrade your sign-in/.test($('.pfg-overlay h2').textContent) && !tabNames().includes('Create account') && !tabNames().includes('This browser'), 'upgrade window offers only signer app / extension tabs');
 click('Sign in with extension'); await tick(); await tick();
 ok(w.PFGHosting.upgraded === 1 && !$('.pfg-overlay') && /Your account now uses your signer/.test(w.document.body.textContent) && !$$('button').some(b => b.textContent === 'Upgrade my sign-in'), 'upgrade: window closes, success message shown, reminder gone');
