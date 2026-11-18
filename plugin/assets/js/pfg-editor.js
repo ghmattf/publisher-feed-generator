@@ -296,7 +296,7 @@
       'Payments are not supported when you sign in with a key kept in this browser. To set up payments, sign in with a signer app or a browser extension.',
       ctx.moreInfoUrl ? ' ' : '', ctx.moreInfoUrl ? h('a', { href: ctx.moreInfoUrl, target: '_blank', rel: 'noopener', text: 'More information' }) : null,
     ]);
-    var payments = ctx.paymentsLocked ? section('Payments', false, [lockNote], true) : section('Payments', false, [
+    var payments = ctx.paymentsLocked ? section('Receiving payment', false, [lockNote], true) : section('Receiving payment', false, [
       h('p', { class: 'pfg-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),
       h('div', { class: 'pfg-grid' }, [field('Payment method', 'value.method', { select: ['lnaddress', 'keysend'] }), field('Suggested amount', 'value.suggested', { hint: 'Plain decimal, for example 0.000033333.' })]),
       recipsEl, totalEl,

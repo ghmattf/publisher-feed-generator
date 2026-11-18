@@ -96,6 +96,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 24. (Item 56 and owner request 2026-11-18.) The feed contact email is required for every hosted feed (browser, extension and signer logins alike), checked in both the JS and PHP validators; the anonymous self-host editor keeps it optional. Existing hosted feeds without one must be given an address before they can be saved again. The sign-in window is headed "Get started": name and "Create account" come first (not offered when a key is already kept in this browser), then "Already a user?" / "Sign back into your account", then the sign-in options (This browser if a key is kept, Browser extension, Scan QR code, Paste bunker link). An installed extension is preselected; otherwise no option is preselected.
 
+25. (Owner request 2026-11-18.) The separate "Your hosted feeds" screen is gone. When signed in, the start screen shows "My feeds" (with a "New feed" button and the list) in place of the "Create an account in one click…" card; signed out, that card with "Get started" is shown. The editor's Payments section is headed "Receiving payment".
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

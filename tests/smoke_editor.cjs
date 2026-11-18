@@ -90,7 +90,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
   const secs = () => $$('details.pfg-section'), openOnes = () => secs().filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent);
-  ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Identity and links,Payments,Releases' && openOnes().join() === 'Basics', 'sections: only Basics is expanded at first');
+  ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Identity and links,Receiving payment,Releases' && openOnes().join() === 'Basics', 'sections: only Basics is expanded at first');
   const nextIn = d => [...d.querySelectorAll(':scope > .pfg-next > button')];
   ok(secs().slice(0, 3).every(d => nextIn(d).length === 1 && nextIn(d)[0].textContent === 'Next' && d.lastElementChild.classList.contains('pfg-next')) && nextIn(secs()[3]).length === 0, 'sections: Next is the last item of every section except the last');
   nextIn(secs()[0])[0].click(); await tick();
@@ -101,13 +101,13 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   ok(openOnes().join() === 'Basics' && /description is required/i.test($('#pfg-f-description-err').textContent), 'Basics gate: Description is required as well');
   set('#pfg-f-description', 'We make records.'); await tick();
   nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Identity and links', 'Next opens the next section and closes the one before once Title and Description are filled in');
-  secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Payments', 'opening a section by its title closes the others');
+  secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Receiving payment', 'opening a section by its title closes the others');
   const scrolled = []; w.HTMLElement.prototype.scrollIntoView = function () { scrolled.push(this.querySelector('summary') ? this.querySelector('summary').textContent : '?'); };
   secs()[1].querySelector('summary').click(); await tick(); ok(scrolled.pop() === 'Identity and links', 'clicking a section title scrolls that section to the top');
-  secs()[2].querySelector('summary').click(); await tick(); secs()[2].querySelector('summary').click(); await tick(); ok(scrolled.filter(x => x === 'Payments').length === 1, 'closing a section does not scroll');
-  secs()[2].querySelector('summary').click(); await tick(); scrolled.length = 0; nextIn(secs()[1])[0].click(); ok(scrolled.pop() === 'Payments', 'Next scrolls to the next section');
+  secs()[2].querySelector('summary').click(); await tick(); secs()[2].querySelector('summary').click(); await tick(); ok(scrolled.filter(x => x === 'Receiving payment').length === 1, 'closing a section does not scroll');
+  secs()[2].querySelector('summary').click(); await tick(); scrolled.length = 0; nextIn(secs()[1])[0].click(); ok(scrolled.pop() === 'Receiving payment', 'Next scrolls to the next section');
   secs()[2].querySelector('summary').click(); await tick(); // back to the starting point for the checks below
-  nextIn(secs()[2])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Payments opens Releases');
+  nextIn(secs()[2])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Receiving payment opens Releases');
   secs()[3].querySelector('summary').click(); ok(openOnes().length === 0, 'a section can be closed again');
   set('#pfg-f-title', ''); click('Download XML'); await tick(); ok(openOnes().join() === 'Basics', 'a failed save/download opens the section holding the first error');
   ok(!$$('label').some(l => l.textContent === 'Category') && !$('#pfg-f-category') && w.PFGCore.emptyModel({}).category === 'Music', 'Category is hidden and stays set to Music');
@@ -241,7 +241,7 @@ ok($('#pfg-f-description').value === 'We make <b>music</b>.\nValue for value.', 
 ok($('#pfg-f-link').value === 'http://acme.example' && $('#pfg-f-image').value === 'http://acme.example/logo.png', 'profile website and picture fill Website and Image URL (http allowed)');
 ok($('#pfg-f-npub').value === NPUB, 'signed-in npub fills Your npub');
 ok($('#pfg-f-value-recipients-0-address').value === 'acme@getalby.com' && $('#pfg-f-value-recipients-0-split').value === '97' && $('#pfg-f-value-recipients-0-name').value === 'Acme Records', 'lud16 becomes a lnaddress payment recipient taking the non-support share (97)');
-ok(!$$('details').find(d => /Payments/.test(d.textContent.slice(0, 20))).hasAttribute('open') && /Lightning address/.test($('.pfg-note-ok').textContent), 'a profile Lightning address does not pull the Payments section open (the banner says it was filled)');
+ok(!$$('details').find(d => /Receiving payment/.test(d.textContent.slice(0, 20))).hasAttribute('open') && /Lightning address/.test($('.pfg-note-ok').textContent), 'a profile Lightning address does not pull the Payments section open (the banner says it was filled)');
 ok(/Filled in from your Nostr profile/.test($('.pfg-note-ok').textContent), 'banner says what was filled');
 ok(!/lud06|LNURL/i.test($('#c').textContent), 'lud06/LNURL is ignored');
 // typed values are never overwritten, even if the profile arrives later

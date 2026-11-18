@@ -131,9 +131,9 @@
 
   /* ---------------- start screen ---------------- */
   var view = 'start';
-  function showStart() {
+  function showStart(keepBanner) {
     view = 'start';
-    setBanner();
+    if (keepBanner !== true) setBanner();
     var wrap = h('div');
     var draft = draftStore.load();
     if (draft && draft.model) {
@@ -148,10 +148,14 @@
     var cards = h('div', { class: 'pfg-cards' });
     if (hostingOn) {
       var s = Host.getSession();
-      cards.appendChild(h('div', { class: 'pfg-card' }, [
-        h('p', { class: 'pfg-card-lead', text: 'Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
-        btn(s ? 'My feeds' : 'Get started', 'pfg-btn-primary', function () { if (s) showHostedList(); else openLogin(showHostedList); }),
-      ]));
+      if (s) {
+        wrap.appendChild(feedsBox());
+      } else {
+        cards.appendChild(h('div', { class: 'pfg-card' }, [
+          h('p', { class: 'pfg-card-lead', text: 'Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
+          btn('Get started', 'pfg-btn-primary', function () { openLogin(showStart); }),
+        ]));
+      }
     } else if (cfg.hostingNeedsGmp) {
       wrap.appendChild(h('p', { class: 'pfg-hint', text: 'Hosting is unavailable on this server right now. You can still create and download feeds.' }));
     }
@@ -196,20 +200,18 @@
   }
 
   /* ---------------- hosted list ---------------- */
-  function showHostedList() {
-    var wrap = h('div', {}, [h('h2', { text: 'Your hosted feeds' }), h('p', { text: 'Loading…' })]);
-    mount(wrap);
+  /** The signed-in person's feeds: shown on the start screen in place of the sign-in card. */
+  function feedsBox() {
+    var wrap = h('div', { class: 'pfg-feeds' }, [h('h2', { text: 'My feeds' }), h('p', { text: 'Loading…' })]);
     Host.listFeeds().then(function (feeds) {
       clear(wrap);
-      wrap.appendChild(h('h2', { text: 'Your hosted feeds' }));
+      wrap.appendChild(h('h2', { text: 'My feeds' }));
       var full = feeds.length >= (cfg.limits && cfg.limits.maxFeeds || 3);
-      var top = h('div', { class: 'pfg-row' }, [
-        btn('New hosted feed', 'pfg-btn-primary', function () {
+      wrap.appendChild(h('div', { class: 'pfg-row' }, [
+        btn('New feed', 'pfg-btn-primary', function () {
           openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: { id: null } });
         }, full ? { disabled: true } : {}),
-        btn('Back', '', showStart),
-      ]);
-      wrap.appendChild(top);
+      ]));
       if (full) wrap.appendChild(h('p', { class: 'pfg-hint', text: 'You have reached the limit of ' + cfg.limits.maxFeeds + ' hosted feeds.' }));
       if (cfg.requireApproval) wrap.appendChild(h('p', { class: 'pfg-hint', text: 'New feeds are reviewed before they go live.' }));
       if (!feeds.length) { wrap.appendChild(h('p', { text: 'You have no hosted feeds yet.' })); return; }
@@ -233,10 +235,18 @@
         tbody,
       ]));
     }).catch(function (e) {
-      if (e.status === 401) { showStart(); setBanner('warn', 'Your session ended. Please sign in again.'); return; }
-      clear(wrap); wrap.appendChild(note('bad', errText(e))); wrap.appendChild(btn('Back', '', showStart));
+      clear(wrap);
+      if (e.status === 401) { // the session has ended: offer the sign-in again (no reload loop)
+        wrap.appendChild(note('warn', 'Your session ended. Please sign in again.'));
+        wrap.appendChild(btn('Get started', 'pfg-btn-primary', function () { openLogin(showStart); }));
+        return;
+      }
+      wrap.appendChild(note('bad', errText(e)));
     });
+    return wrap;
   }
+  // The feed list is part of the start screen now.
+  function showHostedList() { showStart(true); }
 
   function editHosted(f) {
     setBanner();
