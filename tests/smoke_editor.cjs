@@ -305,6 +305,12 @@ ok(asked === 1 && $('#pfg-f-npub').value === NPUB && /signed-in account/.test($(
 $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] }), hosted: null, host: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
 getBtn().click(); await tick();
 ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').textContent), 'no signer available: helpful message instead of a dead button');
+{
+  const host3 = { getSession: () => ({ kind: 'browser', pubkey: 'ab', npub: 'npub1x' }) };
+  { let shown = 0; $('#c').innerHTML = ''; w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: host3, hostingOn: true, paymentsLocked: true, showKeyReminder: () => shown++, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
+    const more = [...$$('#c a')].find(a => a.textContent === 'More...'); more.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+    ok(!!more && shown === 1 && ![...$$('#c a')].some(a => a.textContent === 'More information'), 'payments note: "More..." link asks the page to show the key reminder'); }
+}
 // --- credit invitation: option sits before the releases, disappears once added
 {
   const GUID = '11111111-2222-4333-8444-555555555555';

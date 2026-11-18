@@ -120,6 +120,16 @@
       ]));
     }
   }
+  /** Scroll to the in-browser-key reminder and flash its background green twice. */
+  function flashKeyReminder() {
+    var box = kindEl.querySelector('.pfg-note');
+    if (!box) return;
+    if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    box.classList.remove('pfg-flash');
+    void box.offsetWidth; // restart the animation if it is clicked again
+    box.classList.add('pfg-flash');
+    setTimeout(function () { box.classList.remove('pfg-flash'); }, 1500);
+  }
   function moreInfoLink() {
     return cfg.moreInfoUrl ? h('a', { href: cfg.moreInfoUrl, target: '_blank', rel: 'noopener', text: 'More information' }) : null;
   }
@@ -191,6 +201,7 @@
       // A key kept in this browser cannot set up payments (the server enforces this too).
       paymentsLocked: !!(opts.hosted && hostingOn && Host.getSession() && Host.getSession().kind === 'browser'),
       moreInfoUrl: cfg.moreInfoUrl || '',
+      showKeyReminder: flashKeyReminder,
       getCredit: function () { return credit && !credit.pending ? credit : null; },
       creditInFeed: function () { if (creditShown) { creditShown = false; renderCredit(); } },
       onCredit: function (f) { creditWatchers.push(f); },
@@ -421,7 +432,7 @@
         ]));
         panel.appendChild(h('p', { class: 'pfg-hint', style: 'margin-top:12px' }, ['For a safer, lasting account that can set up payments, use a signer app or a browser extension. ', moreInfoLink()]));
         panel.appendChild(h('div', { class: 'pfg-row' }, [btn('Forget this key', 'pfg-btn-small pfg-btn-danger', function () {
-          if (window.confirm('Forget the key kept in this browser? You will not be able to sign in to that account again, and its feeds will be out of reach.')) { Host.forgetBrowserKey(); tabNew(); }
+          if (window.confirm('Forget the key kept in this browser? You will not be able to sign in to that account again, and its feeds will be out of reach.')) { Host.forgetBrowserKey(); close(); openLogin(after, opts); }
         })]));
         return;
       }

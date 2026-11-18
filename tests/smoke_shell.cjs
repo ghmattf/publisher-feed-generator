@@ -10,7 +10,7 @@ let fails = 0; const ok = (c, m) => { console.log(c ? 'ok  :' : 'FAIL:', m); if 
 // fake nostr + hosting
 w.PFGNostr = {};
 let forgot = 0, extPresent = false, extUsed = 0, sess = null, listed = [{ id: 7, slug: 'acme', title: 'Acme', status: 'published', url: 'https://phafe.com/acme.xml', guid: 'g' }];
-w.PFGHosting = { init: () => true, upgraded: 0, upgradeAccount: async (p) => { await p; w.PFGHosting.upgraded++; sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [], kind: 'signer' }; return sess; }, moves: [], moveFeed: async (id, u) => { w.PFGHosting.moves.push([id, u]); }, hasBrowserKey: () => false, browserKeyName: () => "", forgetBrowserKey() {}, createBrowserAccount: async () => ({}), connectBrowserKey: async () => ({}), on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
+w.PFGHosting = { init: () => true, upgraded: 0, upgradeAccount: async (p) => { await p; w.PFGHosting.upgraded++; sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [], kind: 'signer' }; return sess; }, moves: [], moveFeed: async (id, u) => { w.PFGHosting.moves.push([id, u]); }, hasBrowserKey: () => w.__bk === true, forgetBrowserKey: () => { w.__bk = false; }, browserKeyName: () => "", createBrowserAccount: async () => ({}), connectBrowserKey: async () => ({}), on() {}, getSession: () => sess, resume: async () => null, logout: async () => { sess = null; },
   listFeeds: async () => listed, connectBunker: async () => 'pk', hasExtension: () => extPresent, connectExtension: async () => { extUsed++; return 'pk'; }, npubOf: pk => 'npub1for' + pk, forgetSigner: () => { forgot++; }, login: async () => { sess = { npub: 'npub1abcdefghijklmnopqrstuvwxyz', csrf: 'c', feeds: [] }; return sess; },
   startNostrConnect: () => ({ uri: 'nostrconnect://x', qr: '<svg></svg>', done: new Promise(() => {}), cancel() {} }) };
 w.eval(fs.readFileSync(P + 'pfg-core.js', 'utf8'));
@@ -90,5 +90,11 @@ ok($$('button').find(b => b.textContent === 'Upgrade my sign-in').closest('.pfg-
 click('Upgrade my sign-in'); ok($('.pfg-overlay') && /Upgrade your sign-in/.test($('.pfg-overlay h2').textContent) && !tabNames().includes('Create account') && !tabNames().includes('This browser'), 'upgrade window offers only signer app / extension tabs');
 click('Sign in with extension'); await tick(); await tick();
 ok(w.PFGHosting.upgraded === 1 && !$('.pfg-overlay') && /Your account now uses your signer/.test(w.document.body.textContent) && !$$('button').some(b => b.textContent === 'Upgrade my sign-in'), 'upgrade: window closes, success message shown, reminder gone');
+// Forget this key: the whole Get started window is drawn again (Create account is back)
+sess = null; w.__bk = true; w.confirm = () => true; opened.needSignIn(() => {});
+ok($('.pfg-overlay') && !$('#pfg-newname') && $$('button').some(b => b.textContent === 'Forget this key'), 'a kept browser key: Create account is not offered, "Forget this key" is');
+click('Forget this key');
+ok($('.pfg-overlay') && $('#pfg-newname') && $$('button').some(b => b.textContent === 'Create account') && /Already a user\?/.test($('.pfg-overlay').textContent), 'after "Forget this key" the Get started screen is redrawn with Create account');
+w.__bk = false; click('Cancel');
 console.log(fails ? fails + ' FAILURES' : 'shell smoke test passed'); process.exit(fails ? 1 : 0);
 })();

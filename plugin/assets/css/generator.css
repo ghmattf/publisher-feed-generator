@@ -153,3 +153,7 @@
 .pfg-app [hidden] { display: none !important; }
 .pfg-dropped-detail { max-height: 40vh; overflow: auto; margin-top: 10px; }
 .pfg-dropped-detail pre { white-space: pre-wrap; word-break: break-all; margin: 4px 0 10px; }
+
+/* Brief green flash (twice) to point at a message */
+@keyframes pfg-flash { 0%, 100% { background: var(--pfg-warn-bg); } 25%, 75% { background: var(--pfg-ok-bg); box-shadow: 0 0 0 2px var(--pfg-ok); } 50% { background: var(--pfg-warn-bg); box-shadow: none; } }
+.pfg-app .pfg-note.pfg-flash { animation: pfg-flash 0.75s ease-in-out 2; }
