@@ -141,7 +141,7 @@
     var recipsEl = h('div');
     var releasesEl = h('div');
 
-    var basics = section('Basics', true, [h('div', { class: 'pfg-grid' }, [
+    var basicsGrid = h('div', { class: 'pfg-grid' }, [
       field('Name / title', 'title', { hint: 'Your label, studio or business name.', onchange: function () { autoSlug(); } }),
       field('Description', 'description', { textarea: true, wide: true }),
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
@@ -149,7 +149,8 @@
       field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
       field('Feed maintainer (your name)', 'ownerName'),
       field('Feed contact email (your email)', 'ownerEmail', { type: 'email', hint: hosted ? 'Required for hosted feeds, so you can be reached about this feed.' : undefined }),
-    ])], true, basicsGate);
+    ]);
+    var basics = section('Basics', true, [basicsGrid], true, basicsGate);
 
     var slugField = null, slugInputs = null, identityKids = [], applySlug = null;
     function autoSlug() { if (slugAuto && applySlug) applySlug(Core.slugify(m.title)); }
@@ -227,7 +228,7 @@
       personsEl,
       btn('Add person', 'pfg-btn-small', function () { if (m.persons.length >= 20) return; m.persons.push({ name: '', role: '', group: '', href: '', img: '' }); renderPersons(); changed(); }),
     ]));
-    identityKids.push(field('Include npub in the feed? (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' }));
+    var npubField = field('Include npub in the feed? (optional)', 'npub', { wide: true, hint: 'Public Nostr key only (starts with npub). Never paste a secret key (nsec).' });
     // "Get your npub": from the signed-in account, or by asking a signer for its public key (nothing is saved).
     var npubStatus = h('span', { class: 'pfg-hint', 'aria-live': 'polite' });
     function setNpub(npub) { m.npub = npub; fields.npub.input.value = npub; changed(); }
@@ -243,7 +244,9 @@
       identityKids.push(field('Support link (optional)', 'funding.url', { type: 'url', placeholder: 'https://' }));
       identityKids.push(field('Support link text', 'funding.text', { hint: 'For example "Support us".' }));
     }
-    var identity = section('Identity and links', false, [h('div', { class: 'pfg-grid' }, identityKids)], true);
+    // The old "Identity and links" section is gone: the npub follows the contact email, the rest follows it in Basics.
+    basicsGrid.appendChild(npubField);
+    identityKids.forEach(function (k) { basicsGrid.appendChild(k); });
 
     /* payments */
     function renderRecipients() {
@@ -696,7 +699,7 @@
     container.appendChild(h('h2', { text: hosted ? (hosted.id ? 'Edit hosted feed' : 'New hosted feed') : 'Feed editor' }));
     if (hosted && hosted.status && hosted.status !== 'published') container.appendChild(note('warn', 'Status: ' + hosted.status + '. This feed is not public.'));
     kept.forEach(function (n) { container.appendChild(n); });
-    [banner, summaryErr, basics, identity, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions].forEach(function (n) { container.appendChild(n); });
+    [banner, summaryErr, basics, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions].forEach(function (n) { container.appendChild(n); });
     renderRecipients(); renderSupport(); renderPersons(); renderReleases(); autoSlug(); refresh();
     dirty = false; // nothing to lose yet
 
@@ -718,7 +721,7 @@
       if (gotNpub) changed(true);
       if (!ctx.host.fetchProfile) return;
       // Hide the form until the profile has loaded, so nothing is typed into a form that is about to be filled in.
-      var hideEls = [basics, identity, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions];
+      var hideEls = [basics, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions];
       var loadingEl = h('p', { class: 'pfg-loading', role: 'status', 'aria-live': 'polite', text: 'Loading your Nostr profile to fill in the form…' });
       var loaded = false;
       function reveal() {

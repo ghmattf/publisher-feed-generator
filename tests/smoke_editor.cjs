@@ -90,9 +90,9 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
   const secs = () => $$('details.pfg-section'), openOnes = () => secs().filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent);
-  ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Identity and links,Receiving payment,Releases' && openOnes().join() === 'Basics', 'sections: only Basics is expanded at first');
+  ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Receiving payment,Releases' && openOnes().join() === 'Basics', 'sections: only Basics is expanded at first');
   const nextIn = d => [...d.querySelectorAll(':scope > .pfg-next > button')];
-  ok(secs().slice(0, 3).every(d => nextIn(d).length === 1 && nextIn(d)[0].textContent === 'Next' && d.lastElementChild.classList.contains('pfg-next')) && nextIn(secs()[3]).length === 0, 'sections: Next is the last item of every section except the last');
+  ok(secs().slice(0, 2).every(d => nextIn(d).length === 1 && nextIn(d)[0].textContent === 'Next' && d.lastElementChild.classList.contains('pfg-next')) && nextIn(secs()[2]).length === 0, 'sections: Next is the last item of every section except the last');
   nextIn(secs()[0])[0].click(); await tick();
   ok(openOnes().join() === 'Basics' && /title is required/i.test($('#pfg-f-title-err').textContent) && /description is required/i.test($('#pfg-f-description-err').textContent), 'Basics gate: Next is refused while Title and Description are empty (errors shown on both)');
   secs()[1].querySelector('summary').click(); await tick();
@@ -100,15 +100,15 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   set('#pfg-f-title', 'Acme'); nextIn(secs()[0])[0].click(); await tick();
   ok(openOnes().join() === 'Basics' && /description is required/i.test($('#pfg-f-description-err').textContent), 'Basics gate: Description is required as well');
   set('#pfg-f-description', 'We make records.'); await tick();
-  nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Identity and links', 'Next opens the next section and closes the one before once Title and Description are filled in');
-  secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Receiving payment', 'opening a section by its title closes the others');
+  nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Receiving payment', 'Next opens the next section and closes the one before once Title and Description are filled in');
+  secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Releases', 'opening a section by its title closes the others');
   const scrolled = []; w.HTMLElement.prototype.scrollIntoView = function () { scrolled.push(this.querySelector('summary') ? this.querySelector('summary').textContent : '?'); };
-  secs()[1].querySelector('summary').click(); await tick(); ok(scrolled.pop() === 'Identity and links', 'clicking a section title scrolls that section to the top');
-  secs()[2].querySelector('summary').click(); await tick(); secs()[2].querySelector('summary').click(); await tick(); ok(scrolled.filter(x => x === 'Receiving payment').length === 1, 'closing a section does not scroll');
-  secs()[2].querySelector('summary').click(); await tick(); scrolled.length = 0; nextIn(secs()[1])[0].click(); ok(scrolled.pop() === 'Receiving payment', 'Next scrolls to the next section');
-  secs()[2].querySelector('summary').click(); await tick(); // back to the starting point for the checks below
-  nextIn(secs()[2])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Receiving payment opens Releases');
-  secs()[3].querySelector('summary').click(); ok(openOnes().length === 0, 'a section can be closed again');
+  secs()[1].querySelector('summary').click(); await tick(); ok(scrolled.pop() === 'Receiving payment', 'clicking a section title scrolls that section to the top');
+  secs()[2].querySelector('summary').click(); await tick(); secs()[2].querySelector('summary').click(); await tick(); ok(scrolled.filter(x => x === 'Releases').length === 1, 'closing a section does not scroll');
+  secs()[1].querySelector('summary').click(); await tick(); scrolled.length = 0; nextIn(secs()[1])[0].click(); ok(scrolled.pop() === 'Releases', 'Next scrolls to the next section');
+  secs()[1].querySelector('summary').click(); await tick(); // back to the starting point for the checks below
+  nextIn(secs()[1])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Receiving payment opens Releases');
+  secs()[2].querySelector('summary').click(); ok(openOnes().length === 0, 'a section can be closed again');
   set('#pfg-f-title', ''); click('Download XML'); await tick(); ok(openOnes().join() === 'Basics', 'a failed save/download opens the section holding the first error');
   ok(!$$('label').some(l => l.textContent === 'Category') && !$('#pfg-f-category') && w.PFGCore.emptyModel({}).category === 'Music', 'Category is hidden and stays set to Music');
   ok($$('label').some(l => l.textContent === 'Include npub in the feed? (optional)') && !$$('label').some(l => l.textContent === 'Your npub (optional)'), 'npub label reads "Include npub in the feed? (optional)"');
@@ -220,7 +220,7 @@ set('#pfg-f-slug', '');
 const scrolled2 = []; w.HTMLElement.prototype.scrollIntoView = function () { const i = this.querySelector && this.querySelector('input,textarea,select'); scrolled2.push(i ? i.id : (this.className || this.tagName)); };
 $$('details.pfg-section').forEach(d => d.removeAttribute('open'));
 click('Save and publish'); await tick();
-ok(scrolled2.pop() === 'pfg-f-slug' && $$('details.pfg-section').filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent).join() === 'Identity and links', 'Save with a bad feed name opens its section and scrolls to it');
+ok(scrolled2.pop() === 'pfg-f-slug' && $$('details.pfg-section').filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent).join() === 'Basics', 'Save with a bad feed name opens its section and scrolls to it');
 ok(!sent && /feed name/i.test($('#pfg-f-slug-err').textContent) && $('#pfg-f-slug').parentNode.style.display === '', 'saving without a feed name is blocked, and the input is shown so it can be fixed');
 set('#pfg-f-slug', 'acme-records'); set('#pfg-f-description', ''); await tick(); $$('details.pfg-section').forEach(d => d.removeAttribute('open'));
 click('Save and publish'); await tick();

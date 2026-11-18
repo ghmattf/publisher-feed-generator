@@ -108,6 +108,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 30. (Owner request 2026-11-18.) Releases fold with a small arrow (right when closed, down when open) at the start of the heading, like the arrows of the sections; clicking the heading also toggles. My feeds shows one card per feed, with the title and status on the first line, then any moved note, and the Edit / Feed URL / Move feed / Delete buttons; there are no table headings.
 
+31. (Owner request 2026-11-18.) The "Want to self-host?" card is shown only when the person is not signed in. The editor's "Identity and links" section is gone: the npub option (with "Get your npub") now follows the contact email in Basics, and the rest of what was there (feed name for a new hosted feed, feed URL and GUID, the move-to URL for self-hosters, People, the support link) follows it at the end of Basics. The editor now has three sections: Basics, Receiving payment, Releases. TODO 43 was withdrawn.
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.
