@@ -169,11 +169,14 @@
     } else if (cfg.hostingNeedsGmp) {
       wrap.appendChild(h('p', { class: 'pfg-hint', text: 'Hosting is unavailable on this server right now. You can still create and download feeds.' }));
     }
-    cards.appendChild(h('div', { class: 'pfg-card' }, [
-      h('h3', { text: 'Want to self-host?' }),
-      h('p', { text: 'No account needed. Download the XML when you are done.' }),
-      btn('Start', '', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: null }); }),
-    ]));
+    // The self-host card is for people who are not signed in.
+    if (!(hostingOn && Host.getSession())) {
+      cards.appendChild(h('div', { class: 'pfg-card' }, [
+        h('h3', { text: 'Want to self-host?' }),
+        h('p', { text: 'No account needed. Download the XML when you are done.' }),
+        btn('Start', '', function () { openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: null }); }),
+      ]));
+    }
     wrap.appendChild(cards);
     mount(wrap);
   }

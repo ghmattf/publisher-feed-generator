@@ -90,6 +90,8 @@ ok($$('button').find(b => b.textContent === 'Upgrade my sign-in').closest('.pfg-
 click('Upgrade my sign-in'); ok($('.pfg-overlay') && /Upgrade your sign-in/.test($('.pfg-overlay h2').textContent) && !tabNames().includes('Create account') && !tabNames().includes('This browser'), 'upgrade window offers only signer app / extension tabs');
 click('Sign in with extension'); await tick(); await tick();
 ok(w.PFGHosting.upgraded === 1 && !$('.pfg-overlay') && /Your account now uses your signer/.test(w.document.body.textContent) && !$$('button').some(b => b.textContent === 'Upgrade my sign-in'), 'upgrade: window closes, success message shown, reminder gone');
+// The self-host card is only for people who are not signed in
+ok(!/Want to self-host\?/.test(w.document.body.textContent), 'signed in: the self-host card is not shown');
 // My feeds: no URL column; the Feed URL button opens a window with the name, the copyable address and a Go to Feed URL link
 ok(!$$('th').length && $$('.pfg-feed-card').length >= 1 && $('.pfg-feed-card .pfg-feed-top strong') && $('.pfg-feed-card .pfg-feed-top .pfg-badge'), 'My feeds: each feed is a card with the title and status on the first line, and no table headings') && ok(!$('.pfg-feed-card .pfg-mono'), 'My feeds card does not show the short feed name');
 click('Feed URL');
