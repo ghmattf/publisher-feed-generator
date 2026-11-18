@@ -29,3 +29,4 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 61. Collapse / expand releases (each release in the Releases section can be collapsed and expanded). (Owner, 2026-11-17.)
 62. Improve the "Identity and links" section of the editor. (Owner, 2026-11-18.)
 63. Add the funding tag (podcast:funding) to the feed. (Owner, 2026-11-18.)
+64. Reword the "Move feed" screen. (Owner, 2026-11-18.)
