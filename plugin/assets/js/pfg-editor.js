@@ -31,7 +31,8 @@
     var slug = hosted && hosted.slug ? hosted.slug : '';
     var fields = {};      // path -> {wrap, err}
     var showDet = new Set(); // releases whose feed details are expanded
-    var collapsedRel = new Set(); // releases folded up to just their heading
+    var openRel = null; // the one release shown in full; all the others are folded up to their heading
+    var relFolds = []; // {r, set(on)} for the releases drawn now
     var ui = new Map();   // release object -> {status, info, open}
     var timer = null, saving = false, slugMsg = '', dirty = false; // dirty: changed since the last save
     var slugAuto = !!(hosted && !hosted.id); // the feed name follows the title until the user types their own
@@ -373,7 +374,7 @@
           h('span', { class: 'pfg-spacer' }),
           btn('Add ' + label, 'pfg-btn-primary pfg-btn-small', function () {
             var r = { feedGuid: c.guid, feedUrl: c.feedUrl || '', medium: (cfg.mediums || []).indexOf(c.medium) >= 0 ? c.medium : 'music', title: c.title, feedImg: c.image || '', rel: (c.roles || []).slice(), attrs: {} };
-            m.releases.unshift(r);
+            m.releases.unshift(r); openRel = r;
             ui.set(r, { artist: c.artist || '', msg: c.feedUrl ? null : ['warn', 'Music Index did not give this release\'s feed address. Paste the feed\'s https address in the search box to finish adding it.'] });
             if (c.feedUrl) autoRead.add(r);
             renderReleases(); changed();
@@ -381,8 +382,11 @@
         ]),
       ]);
     }
+    /** Show one release in full and fold every other one (like the sections of the editor). */
+    function openOnly(r) { openRel = r; relFolds.forEach(function (f) { f.set(f.r !== r); }); }
     function renderReleases() {
       clear(releasesEl);
+      relFolds = [];
       var co = creditOption(); if (co) releasesEl.appendChild(co);
       if (!m.releases.length) releasesEl.appendChild(h('p', { class: 'pfg-hint', text: 'No releases yet. Add the albums, singles or shows you are involved in.' }));
       m.releases.forEach(function (r, i) {
@@ -487,10 +491,11 @@
         function setDetails(on) { if (on) showDet.add(r); else showDet.delete(r); detailsGrid.hidden = !on; detailsToggle.textContent = on ? 'Hide feed details' : 'Show feed details'; detailsToggle.setAttribute('aria-expanded', on ? 'true' : 'false'); }
         setDetails(showDet.has(r));
         ['title', 'medium', 'feedGuid', 'feedUrl', 'feedImg'].forEach(function (k) { if (fields[base + '.' + k]) fields[base + '.' + k].reveal = function () { setDetails(true); }; });
-        var foldBtn = btn('', 'pfg-btn-small', function () { setFold(!collapsedRel.has(r)); });
+        var foldBtn = btn('', 'pfg-btn-small', function () { if (openRel === r) { openRel = null; setFold(true); } else { openOnly(r); try { item.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } } });
         foldBtn.setAttribute('aria-controls', 'pfg-relbody-' + i);
-        function setFold(on) { if (on) collapsedRel.add(r); else collapsedRel.delete(r); bodyEl.hidden = !!on; foldBtn.textContent = on ? 'Expand' : 'Collapse'; foldBtn.setAttribute('aria-expanded', on ? 'false' : 'true'); }
-        var bodyEl = h('div', { class: 'pfg-item-body', hidden: collapsedRel.has(r), id: 'pfg-relbody-' + i }, [
+        function setFold(on) { bodyEl.hidden = !!on; foldBtn.textContent = on ? 'Expand' : 'Collapse'; foldBtn.setAttribute('aria-expanded', on ? 'false' : 'true'); }
+        relFolds.push({ r: r, set: setFold });
+        var bodyEl = h('div', { class: 'pfg-item-body', hidden: openRel !== r, id: 'pfg-relbody-' + i }, [
           h('div', { hidden: pop }, [
             h('div', { class: 'pfg-row' }, [searchIn, btn('Search', 'pfg-btn-small', runSearch)]),
             h('div', { class: 'pfg-hint', text: 'Search by name or paste the feed url above.' }),
@@ -511,8 +516,8 @@
           ]),
           bodyEl,
         ]);
-        item._expand = function () { setFold(false); };
-        setFold(collapsedRel.has(r));
+        item._expand = function () { openOnly(r); };
+        setFold(openRel !== r);
         fields[base + '.rel'] = { wrap: item, err: item.querySelector('#pfg-rel-err-' + i) };
         releasesEl.appendChild(item);
         refreshReleaseHelp(r);
@@ -524,8 +529,10 @@
       h('p', { class: 'pfg-hint', text: 'Albums, singles and shows you published or worked on. Each one is confirmed when its own feed links back to this feed.' }),
       releasesEl,
       h('div', { class: 'pfg-row' }, [btn('Add release', 'pfg-btn-primary pfg-btn-small', function () {
-        m.releases.push({ feedGuid: '', feedUrl: '', medium: 'music', title: '', feedImg: '', rel: [], attrs: {} });
+        var nr = { feedGuid: '', feedUrl: '', medium: 'music', title: '', feedImg: '', rel: [], attrs: {} };
+        m.releases.push(nr); openRel = nr;
         renderReleases(); changed();
+        var items = releasesEl.querySelectorAll('.pfg-item'); try { items[items.length - 1].scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ }
       })]),
     ]);
 

@@ -104,6 +104,8 @@ HttpOnly SameSite=Strict session cookie `pfg_session`; CSRF header `X-PFG-CSRF`;
 
 28. (Owner request 2026-11-18.) Hosted feeds table on the settings page: a filter row sits directly under the header, with text filters for Name, Title and Owner (matches the owner's npub) and a Status drop-down; they work live in the browser and combine. A feed whose status is "deleted" has a "Permanently delete" button (with a confirmation) that removes its row from the table entirely and deletes its now-empty feed folder, so its name can be used again. Until then a deleted feed keeps its name reserved. Only deleted feeds can be purged; the server refuses anything else.
 
+29. (Item 61, revised 2026-11-18.) Releases behave like the editor's sections: existing releases start collapsed, only one release is open at a time (opening one folds the others and scrolls it to the top), and a newly added release opens. The heading shows the release title and, once its feed has been read, "by <artist>".
+
 ## Open items
 - Owner's to-do list: see docs/TODO.md.
 - GitHub: Claude's sessions could not write to this repo (the GitHub App was not accepted by the session). The owner created issues manually.

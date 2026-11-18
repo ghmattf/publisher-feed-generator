@@ -311,16 +311,22 @@ ok($('#pfg-f-npub').value === '' && /cannot connect to a signer/.test($('#c').te
     const more = [...$$('#c a')].find(a => a.textContent === 'More...'); more.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
     ok(!!more && shown === 1 && ![...$$('#c a')].some(a => a.textContent === 'More information'), 'payments note: "More..." link asks the page to show the key reminder'); }
 }
-// --- releases can be collapsed and expanded
+// --- releases: existing ones start collapsed, only one is open at a time, the open one is scrolled to
 {
   $('#c').innerHTML = '';
   const m = w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: [] });
-  m.releases = [{ feedGuid: '11111111-2222-4333-8444-555555555555', feedUrl: 'https://x.example/a.xml', medium: 'music', title: 'One', feedImg: '', rel: [], attrs: {} }];
+  const mk = (g, t) => ({ feedGuid: g, feedUrl: 'https://x.example/' + t + '.xml', medium: 'music', title: t, feedImg: '', rel: [], attrs: {} });
+  m.releases = [mk('11111111-2222-4333-8444-555555555551', 'One'), mk('11111111-2222-4333-8444-555555555552', 'Two')];
   w.PFGEditor.render($('#c'), { cfg, model: m, hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
-  const body = () => $('#c .pfg-item-body'), fold = () => [...$$('#c .pfg-item-head button')].find(b => /^(Collapse|Expand)$/.test(b.textContent));
-  ok(!body().hidden && fold().textContent === 'Collapse', 'release starts expanded with a Collapse button');
-  fold().click(); ok(body().hidden && fold().textContent === 'Expand' && $('#c .pfg-item-head strong').textContent.length > 0, 'Collapse hides the details and keeps the heading');
-  fold().click(); ok(!body().hidden && fold().textContent === 'Collapse', 'Expand shows them again');
+  const bodies = () => [...$$('#c .pfg-item-body')], folds = () => [...$$('#c .pfg-item-head button')].filter(b => /^(Collapse|Expand)$/.test(b.textContent));
+  ok(bodies().length === 2 && bodies().every(b => b.hidden) && folds().every(b => b.textContent === 'Expand'), 'existing releases start collapsed');
+  let scrolled = 0; w.HTMLElement.prototype.scrollIntoView = function () { scrolled++; };
+  folds()[0].click(); ok(!bodies()[0].hidden && bodies()[1].hidden && folds()[0].textContent === 'Collapse', 'Expand opens that release');
+  ok(scrolled === 1, 'expanding scrolls the release to the top, like the sections');
+  folds()[1].click(); ok(bodies()[0].hidden && !bodies()[1].hidden && folds()[0].textContent === 'Expand', 'expanding another release collapses the first one');
+  folds()[1].click(); ok(bodies().every(b => b.hidden), 'Collapse closes the open release');
+  $$('button').find(b => b.textContent === 'Add release').click(); await tick();
+  ok(bodies().length === 3 && bodies().filter(b => !b.hidden).length === 1 && !bodies()[2].hidden, 'a newly added release opens and the others fold');
 }
 // --- credit invitation: option sits before the releases, disappears once added
 {
