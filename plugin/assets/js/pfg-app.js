@@ -226,25 +226,23 @@
       if (full) wrap.appendChild(h('p', { class: 'pfg-hint', text: 'You have reached the limit of ' + cfg.limits.maxFeeds + ' hosted feeds.' }));
       if (cfg.requireApproval) wrap.appendChild(h('p', { class: 'pfg-hint', text: 'New feeds are reviewed before they go live.' }));
       if (!feeds.length) { wrap.appendChild(h('p', { text: 'You have no hosted feeds yet.' })); return; }
-      var tbody = h('tbody');
       feeds.forEach(function (f) {
         var live = f.status === 'published';
-        tbody.appendChild(h('tr', {}, [
-          h('td', {}, [h('strong', { text: f.title || f.slug }), h('div', { class: 'pfg-hint pfg-mono', text: f.slug })].concat(
-            f.movedTo ? [h('div', { class: 'pfg-hint', text: 'Moved to ' + f.movedTo + ' on ' + new Date(f.movedAt * 1000).toISOString().slice(0, 10) })] : [])),
-          h('td', {}, [h('span', { class: 'pfg-badge ' + (live ? 'pfg-badge-ok' : 'pfg-badge-warn'), text: f.status })]),
-          h('td', {}, [h('div', { class: 'pfg-row' }, [
+        wrap.appendChild(h('div', { class: 'pfg-card pfg-feed-card' }, [
+          h('div', { class: 'pfg-feed-top' }, [
+            h('strong', { text: f.title || f.slug }),
+            h('span', { class: 'pfg-badge ' + (live ? 'pfg-badge-ok' : 'pfg-badge-warn'), text: f.status }),
+          ]),
+          h('div', { class: 'pfg-hint pfg-mono', text: f.slug }),
+          f.movedTo ? h('div', { class: 'pfg-hint', text: 'Moved to ' + f.movedTo + ' on ' + new Date(f.movedAt * 1000).toISOString().slice(0, 10) }) : null,
+          h('div', { class: 'pfg-row' }, [
             btn('Edit', 'pfg-btn-small', function () { editHosted(f); }),
             btn('Feed URL', 'pfg-btn-small', function () { openFeedUrl(f); }, live ? {} : { disabled: true, title: 'Not public yet' }),
             btn('Move feed', 'pfg-btn-small', function () { openMove(f); }),
             btn('Delete', 'pfg-btn-small pfg-btn-danger', function () { deleteHosted(f); }),
-          ])]),
+          ]),
         ]));
       });
-      wrap.appendChild(h('table', { class: 'pfg-table' }, [
-        h('thead', {}, [h('tr', {}, ['Feed', 'Status', ''].map(function (t) { return h('th', { text: t }); }))]),
-        tbody,
-      ]));
     }).catch(function (e) {
       clear(wrap);
       if (e.status === 401) { // the session has ended: offer the sign-in again (no reload loop)
@@ -501,7 +499,7 @@
       : 'You can simply "Create account" to get up and running but you should consider moving to a Nostr authentication method for continued use.' }));
     if (newFirst) {
       modal.appendChild(createBlock);
-      modal.appendChild(h('h3', { text: 'Already a user?' }));
+      modal.appendChild(h('h3', { text: 'Already using Nostr?' }));
       modal.appendChild(h('p', { text: 'Sign back into your account' }));
     }
     modal.appendChild(tabs);

@@ -491,9 +491,9 @@
         function setDetails(on) { if (on) showDet.add(r); else showDet.delete(r); detailsGrid.hidden = !on; detailsToggle.textContent = on ? 'Hide feed details' : 'Show feed details'; detailsToggle.setAttribute('aria-expanded', on ? 'true' : 'false'); }
         setDetails(showDet.has(r));
         ['title', 'medium', 'feedGuid', 'feedUrl', 'feedImg'].forEach(function (k) { if (fields[base + '.' + k]) fields[base + '.' + k].reveal = function () { setDetails(true); }; });
-        var foldBtn = btn('', 'pfg-btn-small', function () { if (openRel === r) { openRel = null; setFold(true); } else { openOnly(r); try { item.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } } });
+        var foldBtn = btn('', 'pfg-arrow', function () { if (openRel === r) { openRel = null; setFold(true); } else { openOnly(r); try { item.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } } });
         foldBtn.setAttribute('aria-controls', 'pfg-relbody-' + i);
-        function setFold(on) { bodyEl.hidden = !!on; foldBtn.textContent = on ? 'Expand' : 'Collapse'; foldBtn.setAttribute('aria-expanded', on ? 'false' : 'true'); }
+        function setFold(on) { bodyEl.hidden = !!on; foldBtn.textContent = on ? '\u25B8' : '\u25BE'; foldBtn.setAttribute('aria-label', on ? 'Expand release' : 'Collapse release'); foldBtn.setAttribute('aria-expanded', on ? 'false' : 'true'); }
         relFolds.push({ r: r, set: setFold });
         var bodyEl = h('div', { class: 'pfg-item-body', hidden: openRel !== r, id: 'pfg-relbody-' + i }, [
           h('div', { hidden: pop }, [
@@ -508,8 +508,8 @@
         ]);
         var item = h('div', { class: 'pfg-item' }, [
           h('div', { class: 'pfg-item-head' }, [
-            h('strong', { text: (r.title || 'Release ' + (i + 1)) + (((ui.get(r) || {}).artist) ? ' by ' + ui.get(r).artist : '') }),
             foldBtn,
+            h('strong', { class: 'pfg-fold-title', text: (r.title || 'Release ' + (i + 1)) + (((ui.get(r) || {}).artist) ? ' by ' + ui.get(r).artist : ''), onclick: function () { foldBtn.click(); } }),
             i > 0 ? btn('Up', 'pfg-btn-small', function () { m.releases.splice(i - 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
             i < m.releases.length - 1 ? btn('Down', 'pfg-btn-small', function () { m.releases.splice(i + 1, 0, m.releases.splice(i, 1)[0]); renderReleases(); changed(); }) : null,
             btn('Remove', 'pfg-btn-small pfg-btn-danger', function () { ui.delete(r); m.releases.splice(i, 1); renderReleases(); changed(); }),
