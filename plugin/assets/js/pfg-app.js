@@ -136,6 +136,10 @@
 
   function setBanner(kind, msg) { clear(bannerEl); if (msg) bannerEl.appendChild(note(kind, msg)); }
 
+  // Set right after sign-in (or when a session is restored): an account with no feeds opens the
+  // new-feed editor straight away, instead of making the person press "New feed" first.
+  var autoNewFeed = false;
+
   function mount(node, name) { if (name) view = name; mountNode(node); }
   function mountNode(node) { clear(bodyEl); bodyEl.appendChild(node); renderBar(); window.scrollTo && root.scrollIntoView && root.scrollIntoView({ block: 'start' }); }
 
@@ -154,7 +158,6 @@
         btn('Discard', 'pfg-btn-small', function () { draftStore.clear(); showStart(); }),
       ])));
     }
-    wrap.appendChild(h('p', { class: 'pfg-intro', text: 'Create Podcasting 2.0 feeds for labels, studios, engineers, artists...' }));
     var cards = h('div', { class: 'pfg-cards' });
     if (hostingOn) {
       var s = Host.getSession();
@@ -162,7 +165,7 @@
         wrap.appendChild(feedsBox());
       } else {
         cards.appendChild(h('div', { class: 'pfg-card' }, [
-          h('p', { class: 'pfg-card-lead', text: 'Create an account in one click, or sign in with a Nostr signer app or browser extension.' }),
+          h('p', { class: 'pfg-card-lead', text: 'For Labels, Studios, Engineers, Songwriters, Session Musicians, etc.' }),
           btn('Get started', 'pfg-btn-primary', function () { openLogin(showStart); }),
         ]));
       }
@@ -218,6 +221,12 @@
   function feedsBox() {
     var wrap = h('div', { class: 'pfg-feeds' }, [h('h2', { text: 'My feeds' }), h('p', { text: 'Loading…' })]);
     Host.listFeeds().then(function (feeds) {
+      var jump = autoNewFeed && !feeds.length && !draftStore.load();
+      autoNewFeed = false;
+      if (jump) { // no feeds and no draft to resume: go straight to creating the first feed
+        openEditor({ model: Core.emptyModel({ defaults: cfg.defaults }), hosted: { id: null } });
+        return;
+      }
       clear(wrap);
       wrap.appendChild(h('h2', { text: 'My feeds' }));
       var full = feeds.length >= (cfg.limits && cfg.limits.maxFeeds || 3);
@@ -398,6 +407,7 @@
         }
         close(); renderBar();
         if (upgrade) setBanner('ok', 'Your account now uses your signer. Payments can be set up (reopen your feed if it is open), and your feeds and their addresses are unchanged.');
+        autoNewFeed = true; // if this account has no feeds yet, open the new-feed editor straight away
         if (typeof after === 'function') after();
       }).catch(function (e) {
         if (closed) return;
@@ -471,15 +481,11 @@
     }
     var createBlock = h('div');
     if (!Host.hasBrowserKey()) {
-        var input = h('input', { type: 'text', id: 'pfg-newname', placeholder: 'Your name', autocomplete: 'off', 'aria-label': 'Your name' });
         createBlock.appendChild(h('p', { text: 'You can get started with this and move to a permanent solution later.' }));
-        createBlock.appendChild(input);
-        createBlock.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px' }, [
-          btn('Create account', 'pfg-btn-primary', function () { finish(Host.createBrowserAccount(input.value), 'Creating your account…'); }),
+        createBlock.appendChild(h('div', { class: 'pfg-row', style: 'margin-top:10px; justify-content:center' }, [
+          btn('Create a new account', 'pfg-btn-primary', function () { finish(Host.createBrowserAccount(''), 'Creating your account…'); }),
         ]));
         createBlock.appendChild(h('p', { class: 'pfg-hint', style: 'margin-top:12px' }, ['IMPORTANT! This account only works in this browser, and is lost if you clear your browser data. Payments are not available until you use a signer app or a browser extension. ', moreInfoLink()]));
-
-      setTimeout(function () { if (!closed) input.focus(); }, 0);
     }
     var tNew = btn('This browser', 'pfg-tab', function () { sel(tNew); status.replaceChildren(); if (attempt) { attempt.cancel(); attempt = null; } tabNew(); }, { role: 'tab' });
     var tExt = btn('Browser extension', 'pfg-tab', function () { sel(tExt); status.replaceChildren(); if (attempt) { attempt.cancel(); attempt = null; } tabExtension(); }, { role: 'tab' });
@@ -498,7 +504,7 @@
       ? 'Connect a signer app or browser extension. Your account, feeds and feed addresses move to that key. You will be asked to approve the move, and the key kept in this browser is removed afterwards.'
       : npubOnly
       ? 'Connect your signer app or browser extension so we can read your public key (npub). You are not signed in and nothing is saved on this site. Your private key stays in your signer.'
-      : 'You can simply "Create account" to get up and running but you should consider moving to a Nostr authentication method for continued use.' }));
+      : 'You can simply "Create a new account" to get up and running but you should consider moving to a Nostr authentication method for continued use.' }));
     if (newFirst) {
       modal.appendChild(createBlock);
       modal.appendChild(h('h3', { text: 'Already using Nostr?' }));
@@ -516,6 +522,6 @@
   showStart();
   if (hostingOn) {
     Host.on('session', function () { renderBar(); });
-    Host.resume().then(function (s) { if (s) { renderBar(); if (view === 'start') showStart(); } });
+    Host.resume().then(function (s) { if (s) { renderBar(); autoNewFeed = true; if (view === 'start') showStart(); } });
   }
 })();

@@ -90,7 +90,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: null, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, h, btn, note, clear });
   const secs = () => $$('details.pfg-section'), openOnes = () => secs().filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent);
-  ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Receiving payment,Releases' && openOnes().join() === 'Basics', 'sections: only Basics is expanded at first');
+  ok(secs().map(d => d.querySelector('summary').textContent).join() === 'Basics,Releases,Receiving payment' && openOnes().join() === 'Basics', 'sections: Receiving payment moved below Releases; only Basics is expanded at first');
   const nextIn = d => [...d.querySelectorAll(':scope > .pfg-next > button')];
   ok(secs().slice(0, 2).every(d => nextIn(d).length === 1 && nextIn(d)[0].textContent === 'Next' && d.lastElementChild.classList.contains('pfg-next')) && nextIn(secs()[2]).length === 0, 'sections: Next is the last item of every section except the last');
   nextIn(secs()[0])[0].click(); await tick();
@@ -100,14 +100,14 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   set('#pfg-f-title', 'Acme'); nextIn(secs()[0])[0].click(); await tick();
   ok(openOnes().join() === 'Basics' && /description is required/i.test($('#pfg-f-description-err').textContent), 'Basics gate: Description is required as well');
   set('#pfg-f-description', 'We make records.'); await tick();
-  nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Receiving payment', 'Next opens the next section and closes the one before once Title and Description are filled in');
-  secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Releases', 'opening a section by its title closes the others');
+  nextIn(secs()[0])[0].click(); ok(openOnes().join() === 'Releases', 'Next opens the next section and closes the one before once Title and Description are filled in');
+  secs()[2].querySelector('summary').click(); await tick(); ok(openOnes().join() === 'Receiving payment', 'opening a section by its title closes the others');
   const scrolled = []; w.HTMLElement.prototype.scrollIntoView = function () { scrolled.push(this.querySelector('summary') ? this.querySelector('summary').textContent : '?'); };
-  secs()[1].querySelector('summary').click(); await tick(); ok(scrolled.pop() === 'Receiving payment', 'clicking a section title scrolls that section to the top');
-  secs()[2].querySelector('summary').click(); await tick(); secs()[2].querySelector('summary').click(); await tick(); ok(scrolled.filter(x => x === 'Releases').length === 1, 'closing a section does not scroll');
-  secs()[1].querySelector('summary').click(); await tick(); scrolled.length = 0; nextIn(secs()[1])[0].click(); ok(scrolled.pop() === 'Releases', 'Next scrolls to the next section');
+  secs()[1].querySelector('summary').click(); await tick(); ok(scrolled.pop() === 'Releases', 'clicking a section title scrolls that section to the top');
+  secs()[2].querySelector('summary').click(); await tick(); secs()[2].querySelector('summary').click(); await tick(); ok(scrolled.filter(x => x === 'Receiving payment').length === 1, 'closing a section does not scroll');
+  secs()[1].querySelector('summary').click(); await tick(); scrolled.length = 0; nextIn(secs()[1])[0].click(); ok(scrolled.pop() === 'Receiving payment', 'Next scrolls to the next section');
   secs()[1].querySelector('summary').click(); await tick(); // back to the starting point for the checks below
-  nextIn(secs()[1])[0].click(); ok(openOnes().join() === 'Releases', 'Next from Receiving payment opens Releases');
+  nextIn(secs()[1])[0].click(); ok(openOnes().join() === 'Receiving payment', 'Next from Releases opens Receiving payment');
   secs()[2].querySelector('summary').click(); ok(openOnes().length === 0, 'a section can be closed again');
   set('#pfg-f-title', ''); click('Download XML'); await tick(); ok(openOnes().join() === 'Basics', 'a failed save/download opens the section holding the first error');
   ok(!$$('label').some(l => l.textContent === 'Category') && !$('#pfg-f-category') && w.PFGCore.emptyModel({}).category === 'Music', 'Category is hidden and stays set to Music');
@@ -130,7 +130,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   const actionsRow = $$('button').find(b => b.textContent === 'Download XML').parentElement;
   ok(dl && /Upload it to https:\/\/phafe\.com\/publisher\.xml/.test(dl.textContent) && $$('.pfg-note-ok').filter(n => /Downloaded publisher\.xml/.test(n.textContent)).length === 2 && (actionsRow.compareDocumentPosition($$('.pfg-note-ok').filter(n => /Downloaded publisher\.xml/.test(n.textContent))[1]) & 2), 'the download message is shown at the top and again just above the Download button');
   const labels = $$('label').map(l => l.textContent);
-  ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Feed maintainer (your name)') && labels.includes('Feed contact email (your email)') && !labels.includes('Owner name') && !labels.includes('Owner email'), 'Author and Keywords removed; owner fields renamed to Feed maintainer and Feed contact email');
+  ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Contact/Owner name') && labels.includes('Contact/Owner email') && !labels.includes('Feed maintainer (your name)') && !labels.includes('Feed contact email (your email)'), 'Author and Keywords removed; owner fields renamed to Contact/Owner name and Contact/Owner email');
 }
 // --- release URL + Music Index search
 {

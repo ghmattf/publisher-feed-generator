@@ -21,3 +21,8 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 62. Improve the editor's Basics section, which now also holds what used to be the "Identity and links" section (npub, feed URL and GUID, people, support link). (Owner, 2026-11-18.)
 64. Reword the "Move feed" screen. (Owner, 2026-11-18.)
 65. Simplify the process when using an invite link (?credit=<feed GUID>): a newly created account should go straight to a new feed (no extra button to click), and the invited release should be added automatically. (Owner, 2026-11-18.)
+
+
+## New (2026-11-24)
+
+66. 'For Artists' on front page. (Owner, 2026-11-24.)
