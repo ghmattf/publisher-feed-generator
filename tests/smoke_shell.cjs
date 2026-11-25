@@ -23,7 +23,7 @@ const tick = () => new Promise(r => setTimeout(r, 20));
 
 ok($$('.pfg-card').length === 2, 'start screen shows two cards (hosted, self-host)');
 ok(!$$('.pfg-card')[0].querySelector('h3') && !/Hosted feeds/.test($$('.pfg-card')[0].textContent) && $$('.pfg-card')[0].querySelector('button').textContent === 'Get started' && $$('.pfg-card')[0].querySelector('button').classList.contains('pfg-btn-primary') && !$$('.pfg-card')[1].querySelector('button').classList.contains('pfg-btn-primary') && $$('.pfg-card')[1].querySelector('h3').textContent === 'Want to self-host?' && $$('.pfg-card').length === 2, 'Get started (purple) is the first option; the self-host card is second with a plain Start button');
-ok($('.pfg-intro') && $('.pfg-card-lead') && $('h1').textContent === 'Get your music credits linked!' && /Create Podcasting 2\.0 feeds for labels, studios, engineers, artists\.\.\./.test(w.document.body.textContent) && !/keep it updated as you add releases/.test(w.document.body.textContent) && !/Download it and host it yourself/.test(w.document.body.textContent) && !/Start from scratch/.test(w.document.body.textContent), 'h1 reads Get your music credits linked!; the intro line is the muted one and the card line the main text colour (classes pfg-intro / pfg-card-lead); the old intro sentence and "Start from scratch" are gone');
+ok(!$('.pfg-intro') && $('.pfg-card-lead') && $('h1').textContent === 'Get your music credits linked!' && $('.pfg-card-lead').textContent === 'For Labels, Studios, Engineers, Songwriters, Session Musicians, etc.' && !/Create Podcasting 2\.0 feeds for labels, studios, engineers, artists/.test(w.document.body.textContent) && !/keep it updated as you add releases/.test(w.document.body.textContent) && !/Download it and host it yourself/.test(w.document.body.textContent) && !/Start from scratch/.test(w.document.body.textContent), 'h1 reads Get your music credits linked!; the intro line is gone and the card line reads "For Labels, Studios, Engineers, Songwriters, Session Musicians, etc."');
 click('Start'); ok(opened && opened.model.value.recipients.length === 0 && !opened.hosted, 'new feed opens editor (no payment rows by default, anonymous)');
 // "Get your npub": signer is asked for the public key only (no hosted session), then forgotten
 ok(typeof opened.getNpub === 'function', 'editor receives a getNpub helper when a signer is available');
@@ -43,7 +43,7 @@ ok(extUsed === 1 && sess === null && !$('.pfg-overlay'), 'npub-only via extensio
 ok(forgot === 2, 'npub-only via extension: signer forgotten afterwards');
 opened.getNpub(() => {}); ok(tabNames().join('|') === 'Browser extension|Paste bunker link|Scan QR code' && selTab().join() === 'Browser extension', 'extension detected: tab is first and preselected'); click('Cancel');
 extUsed = 0; sess = null; opened.needSignIn(() => {});
-ok($('.pfg-overlay h2').textContent === 'Get started' && $('#pfg-newname') && selTab().join() === 'Browser extension', 'sign-in window is headed "Get started", shows Create account at the top and preselects an installed extension');
+ok($('.pfg-overlay h2').textContent === 'Get started' && !$('#pfg-newname') && $$('button').some(b => b.textContent === 'Create a new account') && selTab().join() === 'Browser extension', 'sign-in window is headed "Get started", offers "Create a new account" with no name box and preselects an installed extension');
 click('Browser extension'); ok(/approve the sign-in/.test($('.pfg-overlay').textContent), 'extension tab available');
 click('Sign in with extension'); await tick(); await tick();
 ok(extUsed === 1 && sess && !$('.pfg-overlay'), 'sign in with extension: hosted session created and window closed');
@@ -57,16 +57,16 @@ opened.back();
 click('Discard'); ok(!w.localStorage.getItem('pfg_draft_v1'), 'discard clears draft');
 ok(!$$('button').some(b => b.textContent === 'Paste XML') && !/Edit an existing feed/.test($('#pfg-app, .pfg-app').textContent), 'no "Edit an existing feed" card or Paste XML button on the start screen');
 opened.back();
-click('Get started'); ok($('.pfg-overlay') && $('#pfg-newname') && selTab().join() === '', 'sign-in window shows Create account at the top and no tab preselected when no extension');
+click('Get started'); ok($('.pfg-overlay') && !$('#pfg-newname') && $$('button').some(b => b.textContent === 'Create a new account') && selTab().join() === '', 'sign-in window shows "Create a new account" with no name box and no tab preselected when no extension');
 ok(tabNames().join('|') === 'Browser extension|Scan QR code|Paste bunker link', 'sign-in tabs: Browser extension, Scan QR code, Paste bunker link');
-{ const t = $('.pfg-overlay').textContent; ok(t.indexOf('Create account') >= 0 && t.indexOf('Create account') < t.indexOf('Already using Nostr?') && t.indexOf('Already using Nostr?') < t.indexOf('Sign back into your account') && t.indexOf('Sign back into your account') < t.indexOf('Browser extension'), 'Create account, then "Already using Nostr?" / "Sign back into your account", then the sign-in options'); }
-ok(!/You will only be able to make changes from this browser/.test($('.pfg-overlay').textContent) && /IMPORTANT! This account only works in this browser, and is lost if you clear your browser data\./.test($('.pfg-overlay').textContent) && /You can simply "Create account" to get up and running but you should consider moving to a Nostr authentication method for continued use\./.test($('.pfg-overlay').textContent) && !/Your private key stays in your signer app or browser extension/.test($('.pfg-overlay').textContent) && /You can get started with this and move to a permanent solution later\./.test($('.pfg-overlay').textContent) && !/No app or extension needed/.test($('.pfg-overlay').textContent), 'Create account explains the browser-only limit');
+{ const t = $('.pfg-overlay').textContent; ok(t.indexOf('Create a new account') >= 0 && t.indexOf('Create a new account') < t.indexOf('Already using Nostr?') && t.indexOf('Already using Nostr?') < t.indexOf('Sign back into your account') && t.indexOf('Sign back into your account') < t.indexOf('Browser extension'), '"Create a new account", then "Already using Nostr?" / "Sign back into your account", then the sign-in options'); }
+ok(!/You will only be able to make changes from this browser/.test($('.pfg-overlay').textContent) && /IMPORTANT! This account only works in this browser, and is lost if you clear your browser data\./.test($('.pfg-overlay').textContent) && /You can simply "Create a new account" to get up and running but you should consider moving to a Nostr authentication method for continued use\./.test($('.pfg-overlay').textContent) && !/Your private key stays in your signer app or browser extension/.test($('.pfg-overlay').textContent) && /You can get started with this and move to a permanent solution later\./.test($('.pfg-overlay').textContent) && !/No app or extension needed/.test($('.pfg-overlay').textContent), '"Create a new account" explains the browser-only limit');
 click('Browser extension'); ok(/for example Sidecar, Alby or nos2x/.test($('.pfg-overlay').textContent), 'extension tab text names Sidecar, Alby or nos2x');
 click('Paste bunker link'); ok($('#pfg-bunker') && /for example Clave, Amber, Primal/.test($('.pfg-overlay').textContent), 'bunker field available on its tab, with the new signer app names');
 ok($('.pfg-overlay').classList.contains('pfg-app') && $('.pfg-overlay').parentNode === w.document.body, 'sign-in overlay is outside #pfg-app and carries .pfg-app (so the colour variables apply)');
 $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
 ok(!$('.pfg-overlay'), 'sign-in window closes after login');
-ok(/My feeds/.test(w.document.body.textContent) && /Acme/.test(w.document.body.textContent) && !/Your hosted feeds|Create an account in one click/.test(w.document.body.textContent), 'the feed list is on the start screen under "My feeds" in place of the sign-in card');
+ok(/My feeds/.test(w.document.body.textContent) && /Acme/.test(w.document.body.textContent) && !/For Labels, Studios, Engineers/.test(w.document.body.textContent) && !/Your hosted feeds|Create an account in one click/.test(w.document.body.textContent), 'the feed list is on the start screen under "My feeds" in place of the sign-in card');
 ok(/Signed in as npub1abcdefg/.test($('.pfg-bar').textContent), 'bar shows signed-in identity');
 click('New feed'); ok(opened.hosted && opened.hosted.id === null, 'new hosted feed opens editor in hosted mode');
 // ---- Move feed (from Your hosted feeds)
@@ -97,11 +97,18 @@ ok(!$$('th').length && $$('.pfg-feed-card').length >= 1 && $('.pfg-feed-card .pf
 click('Feed URL');
 ok($('.pfg-overlay') && $('#pfg-feedurl').value.startsWith('https://') && $('#pfg-feedurl').readOnly && $$('.pfg-overlay button').some(b => b.textContent === 'Copy') && $$('.pfg-overlay a').some(a => a.textContent === 'Go to Feed URL' && a.getAttribute('href') === $('#pfg-feedurl').value) && /acme/i.test($('.pfg-overlay h2').textContent), 'Feed URL window shows the feed name, the copyable address, Copy and Go to Feed URL');
 click('Close'); ok(!$('.pfg-overlay'), 'Feed URL window closes');
-// Forget this key: the whole Get started window is drawn again (Create account is back)
+// Forget this key: the whole Get started window is drawn again ("Create a new account" is back)
 sess = null; w.__bk = true; w.confirm = () => true; opened.needSignIn(() => {});
-ok($('.pfg-overlay') && !$('#pfg-newname') && $$('button').some(b => b.textContent === 'Forget this key'), 'a kept browser key: Create account is not offered, "Forget this key" is');
+ok($('.pfg-overlay') && !$('#pfg-newname') && !$$('button').some(b => b.textContent === 'Create a new account') && $$('button').some(b => b.textContent === 'Forget this key'), 'a kept browser key: "Create a new account" is not offered, "Forget this key" is');
 click('Forget this key');
-ok($('.pfg-overlay') && $('#pfg-newname') && $$('button').some(b => b.textContent === 'Create account') && /Already using Nostr\?/.test($('.pfg-overlay').textContent), 'after "Forget this key" the Get started screen is redrawn with Create account');
+ok($('.pfg-overlay') && !$('#pfg-newname') && $$('button').some(b => b.textContent === 'Create a new account') && /Already using Nostr\?/.test($('.pfg-overlay').textContent), 'after "Forget this key" the Get started screen is redrawn with "Create a new account"');
 w.__bk = false; click('Cancel');
+// Item 77: signing in to an account with no feeds opens the new-feed editor straight away
+listed = [];
+opened.back(); // redraw the start screen signed out (the session is gone)
+click('Get started');
+ok($('.pfg-overlay'), 'sign-in window opens for the zero-feed account');
+click('Paste bunker link'); $('#pfg-bunker').value = 'bunker://abc'; click('Connect'); await tick(); await tick();
+ok(opened.hosted && opened.hosted.id === null && !$('.pfg-overlay') && !/My feeds/.test(w.document.body.textContent), 'sign-in with no feeds goes straight to the new-feed editor (no "New feed" click)');
 console.log(fails ? fails + ' FAILURES' : 'shell smoke test passed'); process.exit(fails ? 1 : 0);
 })();

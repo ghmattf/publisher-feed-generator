@@ -77,7 +77,23 @@
       if (o.readonly) { input.setAttribute('readonly', ''); if (o.select) input.setAttribute('disabled', ''); }
       if (o.placeholder) input.setAttribute('placeholder', o.placeholder);
       var err = h('div', { class: 'pfg-error', id: id + '-err' });
-      var wrap = h('div', { class: 'pfg-field' + (o.wide ? ' pfg-wide' : '') }, [h('label', { for: id, text: label }), input, o.hint ? h('div', { class: 'pfg-hint', text: o.hint }) : null, err]);
+      var hintEl = o.hint ? h('div', { class: 'pfg-hint', text: o.hint }) : null;
+      var kids = [h('label', { for: id, text: label }), input, hintEl, err];
+      // Language: the hint comes first, then the chosen language in bold with a Change button; the
+      // drop-down itself stays hidden until Change is pressed.
+      var changeRow = null;
+      if (o.changeLabel && o.select) {
+        function currentLabel() { var opt = input.options[input.selectedIndex]; return opt ? opt.text : ''; }
+        var shown = h('strong', { class: 'pfg-lang-cur', text: currentLabel() });
+        changeRow = h('div', { class: 'pfg-row pfg-lang-row' }, [shown, btn('Change', 'pfg-btn-small', function () {
+          changeRow.hidden = true; input.hidden = false;
+        })]);
+        input.hidden = true;
+        // Picking a language returns the field to its resting state: the new language in bold plus the Change button.
+        input.addEventListener('change', function () { shown.textContent = currentLabel(); changeRow.hidden = false; input.hidden = true; });
+        kids = [h('label', { for: id, text: label }), hintEl, changeRow, input, err];
+      }
+      var wrap = h('div', { class: 'pfg-field' + (o.wide ? ' pfg-wide' : '') }, kids);
       input.setAttribute('aria-describedby', id + '-err');
       var ev = o.select ? 'change' : 'input';
       input.addEventListener(ev, function () {
@@ -142,13 +158,13 @@
     var releasesEl = h('div');
 
     var basicsGrid = h('div', { class: 'pfg-grid' }, [
-      field('Your name / Business name', 'title', { hint: 'Your label, studio or business name.', onchange: function () { autoSlug(); } }),
-      field('Description', 'description', { textarea: true, wide: true }),
+      field('Your name / Business name', 'title', { hint: 'Name of performer, engineer, studio, etc...', placeholder: 'Name/business being credited...', onchange: function () { autoSlug(); } }),
+      field('Description', 'description', { textarea: true, wide: true, placeholder: 'Short bio' }),
       field('Website', 'link', { type: 'url', placeholder: 'https://' }),
       field('Image URL (square)', 'image', { type: 'url', placeholder: 'https://' }),
-      field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.' }),
-      field('Feed maintainer (your name)', 'ownerName'),
-      field('Feed contact email (your email)', 'ownerEmail', { type: 'email', hint: hosted ? 'Required for hosted feeds, so you can be reached about this feed.' : undefined }),
+      field('Language', 'language', { select: Core.LANGUAGES, keepUnknown: true, hint: 'The main language of your feed.', changeLabel: true }),
+      field('Contact/Owner name', 'ownerName'),
+      field('Contact/Owner email', 'ownerEmail', { type: 'email', hint: hosted ? 'Required for hosted feeds, so you can be reached about this feed.' : undefined }),
     ]);
     var basics = section('Basics', true, [basicsGrid], true, basicsGate);
 
@@ -263,22 +279,6 @@
         supportEl.appendChild(wrap);
       });
     }
-    var lockNote = h('div', { class: 'pfg-note' }, [
-      'Payments are not supported when you sign in with a key kept in this browser. To set up payments, sign in with a signer app or a browser extension.',
-      ' ', ctx.showKeyReminder ? h('a', { href: '#', class: 'pfg-more', text: 'More...', onclick: function (ev) { ev.preventDefault(); ctx.showKeyReminder(); } }) : null,
-    ]);
-    var payments = ctx.paymentsLocked ? section('Receiving payment', false, [lockNote], true) : section('Receiving payment', false, [
-      h('p', { class: 'pfg-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),
-      h('div', { class: 'pfg-grid' }, [field('Payment method', 'value.method', { select: ['lnaddress', 'keysend'] }), field('Suggested amount', 'value.suggested', { hint: 'Plain decimal, for example 0.000033333.' })]),
-      recipsEl, totalEl,
-      h('div', { class: 'pfg-row' }, [btn('Add recipient', 'pfg-btn-small', function () {
-        if (m.value.recipients.length >= 10) return;
-        m.value.recipients.push(Core.emptyRecipient(0)); renderRecipients(); changed();
-      })]),
-      supportEl,
-    ], true);
-    if (hosted && !ctx.paymentsLocked) payments.insertBefore(note('', 'Changing who gets paid needs a fresh approval from your signer when you save.'), payments.children[1]);
-
     /* releases */
     function copyText(t, done) {
       function fallback() { var ta = h('textarea', { style: 'position:fixed;opacity:0' }); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) { /* ignore */ } document.body.removeChild(ta); done(); }
@@ -503,7 +503,24 @@
         renderReleases(); changed();
         var items = releasesEl.querySelectorAll('.pfg-item'); try { items[items.length - 1].scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ }
       })]),
+    ], true);
+
+    /* receiving payment (below Releases, 2026-11-24) */
+    var lockNote = h('div', { class: 'pfg-note' }, [
+      'Payments are not supported when you sign in with a key kept in this browser. To set up payments, sign in with a signer app or a browser extension.',
+      ' ', ctx.showKeyReminder ? h('a', { href: '#', class: 'pfg-more', text: 'More...', onclick: function (ev) { ev.preventDefault(); ctx.showKeyReminder(); } }) : null,
     ]);
+    var payments = ctx.paymentsLocked ? section('Receiving payment', false, [lockNote]) : section('Receiving payment', false, [
+      h('p', { class: 'pfg-hint', text: 'Optional. Who receives value (streaming sats and boosts) sent to this feed. If you add anyone, the splits must add up to the total shown.' }),
+      h('div', { class: 'pfg-grid' }, [field('Payment method', 'value.method', { select: ['lnaddress', 'keysend'] }), field('Suggested amount', 'value.suggested', { hint: 'Plain decimal, for example 0.000033333.' })]),
+      recipsEl, totalEl,
+      h('div', { class: 'pfg-row' }, [btn('Add recipient', 'pfg-btn-small', function () {
+        if (m.value.recipients.length >= 10) return;
+        m.value.recipients.push(Core.emptyRecipient(0)); renderRecipients(); changed();
+      })]),
+      supportEl,
+    ]);
+    if (hosted && !ctx.paymentsLocked) payments.insertBefore(note('', 'Changing who gets paid needs a fresh approval from your signer when you save.'), payments.children[1]);
 
     /* actions */
     var actions = h('div', { class: 'pfg-row' });
@@ -665,7 +682,7 @@
     container.appendChild(h('h2', { text: hosted ? (hosted.id ? 'Edit feed' : 'New feed') : 'Feed editor' }));
     if (hosted && hosted.status && hosted.status !== 'published') container.appendChild(note('warn', 'Status: ' + hosted.status + '. This feed is not public.'));
     kept.forEach(function (n) { container.appendChild(n); });
-    [banner, summaryErr, basics, payments, releases, lintEl, summaryErrBottom, bannerBottom, actions].forEach(function (n) { container.appendChild(n); });
+    [banner, summaryErr, basics, releases, payments, lintEl, summaryErrBottom, bannerBottom, actions].forEach(function (n) { container.appendChild(n); });
     renderRecipients(); renderSupport(); renderReleases(); autoSlug(); refresh();
     dirty = false; // nothing to lose yet
 

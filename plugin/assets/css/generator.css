@@ -62,7 +62,6 @@
 .pfg-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .pfg-card { background: var(--pfg-surface); border: 1px solid var(--pfg-border); border-radius: var(--pfg-radius); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
 .pfg-card p { color: var(--pfg-muted); flex: 1; }
-.pfg-app .pfg-intro { color: var(--pfg-muted); }
 .pfg-card p.pfg-card-lead { color: var(--pfg-text); }
 .pfg-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .pfg-spacer { flex: 1; }
