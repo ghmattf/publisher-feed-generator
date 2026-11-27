@@ -40,7 +40,7 @@ Findings from the owner-requested security review. Do not implement until the ow
 72. Low. Session cookie Secure flag depends on is_ssl(), which is false behind some proxies; no __Host- prefix. Fix: also honour X-Forwarded-Proto when trusted, and use the __Host- prefix when Secure.
 73. Low. trust_cf_ip can allow forged client IPs unless the origin only accepts Cloudflare traffic; behind any other proxy all users share one IP and one rate-limit bucket. Fix: document it next to the setting, and warn in the settings screen.
 74. Low. The transient-based rate limiter is not atomic (concurrent requests can slip past) and creates one option row per IP. Fix: atomic counter (custom table or object cache increment).
-75. Low. Check-then-insert races on the max-feeds-per-account check and the slug insert. Fix: unique index on the slug and a transactional count.
+75. Low. Check-then-insert race on the max-feeds-per-account check (the slug and GUID already have unique database keys, so a duplicate slug is rejected). Fix: count and insert inside one transaction, or lock per account.
 76. Low. Leftover .pfg temp files if a feed write fails part-way. Fix: remove the temp file on every failure path and sweep stale ones.
 77. Low. The suspended-feeds folder relies on .htaccess (ignored by nginx); the HMAC-derived names are the real protection. Fix: say so in the docs and the admin screen, and offer an nginx snippet.
 78. Low. Search amplification: one search can trigger up to 9 outbound Music Index calls, and details_for_guid 404s are not cached. Fix: cache misses briefly and lower the per-search detail lookups.
