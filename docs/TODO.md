@@ -29,7 +29,3 @@ Added 2026-11-13. Wording is the owner's. Completed items are removed from this 
 
 
 ## New (2026-11-25)
-
-78. "Your name / Business name" needs to be validated prior to validating "Feed name (web address)" as Name creates the feed name. (Owner, 2026-11-25.)
-79. The "Please fix the highlighted problems first." message should be cleared after successfully opening a different (eg. Basics, Releases, etc.) section. (Owner, 2026-11-25.)
-80. new feeds should be created in pubfeeds/ directory instead of pubfeeds/<feedname>/ (Owner, 2026-11-25.)

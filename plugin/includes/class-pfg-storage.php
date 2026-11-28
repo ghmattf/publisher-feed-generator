@@ -124,13 +124,25 @@ class PFG_Storage {
 		update_option( self::LEGACY_OPTION, array( 'subdir' => $subdir, 'slugs' => array_values( $slugs ) ), false );
 	}
 
+	/**
+	 * Does this feed have a folder of its own (pubfeeds/{slug}/{slug}.xml)? That was the layout until 0.9.3;
+	 * such a feed stays where it is because its address may already be registered with podcast apps and
+	 * directories. Anything else is written straight into the feed folder.
+	 */
+	private static function in_own_folder( $slug ) {
+		return is_dir( wp_normalize_path( WP_CONTENT_DIR ) . '/' . self::DIR . '/' . $slug );
+	}
+
 	public static function feed_url( $slug ) {
 		$legacy = self::legacy_subdir( $slug );
 		if ( '' !== $legacy ) {
 			$u = wp_get_upload_dir();
 			return trailingslashit( $u['baseurl'] ) . $legacy . '/' . $slug . '/' . $slug . '.xml';
 		}
-		return trailingslashit( content_url( self::DIR ) ) . $slug . '/' . $slug . '.xml';
+		if ( self::in_own_folder( $slug ) ) {
+			return trailingslashit( content_url( self::DIR ) ) . $slug . '/' . $slug . '.xml';
+		}
+		return trailingslashit( content_url( self::DIR ) ) . $slug . '.xml';
 	}
 
 	/** Public base URL of the feed folder for new feeds, with a trailing slash. */
@@ -140,7 +152,8 @@ class PFG_Storage {
 
 	/**
 	 * Absolute file path for a slug, or false if the slug is not allowed.
-	 * The folder is created on demand when a feed is written.
+	 * The feed folder is created on demand when a feed is written; a new feed is written straight into it
+	 * (pubfeeds/{slug}.xml) and only a feed that already has a folder of its own keeps that layout.
 	 */
 	public static function feed_path( $slug ) {
 		if ( self::slug_error( $slug ) ) {
@@ -153,13 +166,14 @@ class PFG_Storage {
 			$dir  = $base . '/' . $legacy . '/' . $slug;
 		} else {
 			$base = wp_normalize_path( WP_CONTENT_DIR ) . '/' . self::DIR;
-			$dir  = $base . '/' . $slug;
+			$dir  = self::in_own_folder( $slug ) ? $base . '/' . $slug : $base;
 		}
 		return array(
 			'dir'    => $dir,
 			'file'   => $dir . '/' . $slug . '.xml',
 			'base'   => $base,
 			'legacy' => '' !== $legacy,
+			'flat'   => '' === $legacy && $dir === $base, // written straight into the feed folder
 		);
 	}
 
@@ -480,7 +494,7 @@ class PFG_Storage {
 			@unlink( $q['file'] ); // phpcs:ignore
 		}
 		$p = self::feed_path( $feed['slug'] );
-		if ( $p && '' === self::legacy_subdir( $feed['slug'] ) && is_dir( $p['dir'] ) ) {
+		if ( $p && '' === self::legacy_subdir( $feed['slug'] ) && empty( $p['flat'] ) && is_dir( $p['dir'] ) ) {
 			foreach ( array( 'index.html', 'index.php' ) as $idx ) { // only the guard files we may have written; a folder with anything else is left alone.
 				if ( file_exists( $p['dir'] . '/' . $idx ) ) {
 					@unlink( $p['dir'] . '/' . $idx ); // phpcs:ignore

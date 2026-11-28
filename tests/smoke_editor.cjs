@@ -54,7 +54,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
 // --- payments optional: hosted new feed with no recipients saves and has no value block
 {
   let s2 = null;
-  const host2 = { createFeed: async (slug, feed) => { s2 = { slug, feed }; return { id: 3, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }; } };
+  const host2 = { createFeed: async (slug, feed) => { s2 = { slug, feed }; return { id: 3, slug, status: 'published', url: cfg.feedBaseUrl + slug + '.xml' }; } };
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: host2, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
   set('#pfg-f-title', 'No Pay'); set('#pfg-f-description', 'D'); set('#pfg-f-slug', 'no-pay-label'); set('#pfg-f-ownerEmail', 'a@b.co'); await tick();
@@ -66,7 +66,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
 // --- browser-key account: the title is pre-filled and the feed name follows it (and stays hidden)
 {
   let s3 = null;
-  const host3 = { getSession: () => ({ kind: 'browser', pubkey: 'ab' }), createFeed: async (slug, feed) => { s3 = { slug, feed }; return { id: 4, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }; } };
+  const host3 = { getSession: () => ({ kind: 'browser', pubkey: 'ab' }), createFeed: async (slug, feed) => { s3 = { slug, feed }; return { id: 4, slug, status: 'published', url: cfg.feedBaseUrl + slug + '.xml' }; } };
   w.document.querySelector('#c').innerHTML = '';
   w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: host3, hostingOn: true, paymentsLocked: true, suggestedName: 'Mia Records', importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
   await tick();
@@ -131,6 +131,35 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
   ok(dl && /Upload it to https:\/\/phafe\.com\/publisher\.xml/.test(dl.textContent) && $$('.pfg-note-ok').filter(n => /Downloaded publisher\.xml/.test(n.textContent)).length === 2 && (actionsRow.compareDocumentPosition($$('.pfg-note-ok').filter(n => /Downloaded publisher\.xml/.test(n.textContent))[1]) & 2), 'the download message is shown at the top and again just above the Download button');
   const labels = $$('label').map(l => l.textContent);
   ok(!$('#pfg-f-author') && !$('#pfg-f-keywords') && labels.includes('Contact/Owner name') && labels.includes('Contact/Owner email') && !labels.includes('Feed maintainer (your name)') && !labels.includes('Feed contact email (your email)'), 'Author and Keywords removed; owner fields renamed to Contact/Owner name and Contact/Owner email');
+}
+// --- item 78: "Your name / Business name" is validated before the feed name (web address)
+{
+  w.document.querySelector('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: { createFeed: async () => ({}) }, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
+  await tick();
+  click('Save and publish'); await tick();
+  ok(/title is required/i.test($('#pfg-f-title-err').textContent), 'name first: with no name given, that is what is reported');
+  ok(!$('#pfg-f-slug-err').textContent && $('#pfg-f-slug').parentNode.style.display === 'none', 'name first: the feed name is not complained about first (its input stays hidden)');
+  set('#pfg-f-slug', 'ab'); set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-ownerEmail', 'a@b.co'); await tick();
+  click('Save and publish'); await tick();
+  ok(/feed name/i.test($('#pfg-f-slug-err').textContent) && $('#pfg-f-slug').parentNode.style.display === '', 'name first: once the name is valid the feed name is checked and shown for fixing');
+}
+// --- item 79: "Please fix the highlighted problems first." is cleared when another section is opened
+{
+  w.document.querySelector('#c').innerHTML = '';
+  w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults }), hosted: { id: null }, host: { createFeed: async (slug) => ({ id: 3, slug, status: 'published', url: cfg.feedBaseUrl + slug + '.xml' }) }, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
+  const secs = () => $$('details.pfg-section');
+  const fixNotes = () => [...$$('#c .pfg-note-bad')].filter(n => /highlighted problems/.test(n.textContent));
+  set('#pfg-f-title', 'Acme'); set('#pfg-f-description', 'Desc'); set('#pfg-f-ownerEmail', 'a@b.co'); set('#pfg-f-link', 'not-a-url'); await tick();
+  click('Save and publish'); await tick();
+  ok(fixNotes().length === 2, 'message clearing: the message is shown at the top and again just above the buttons');
+  secs()[2].querySelector('summary').click(); await tick();
+  ok(fixNotes().length === 0 && secs()[2].hasAttribute('open'), 'message clearing: opening another section clears it');
+  set('#pfg-f-link', ''); await tick(); click('Save and publish'); await tick();
+  const okNotes = () => [...$$('#c .pfg-note-ok')].filter(n => /Published at/.test(n.textContent));
+  ok(okNotes().length === 2, 'message clearing: a saved feed says so, at the top and above the buttons');
+  secs()[1].querySelector('summary').click(); await tick();
+  ok(okNotes().length === 2, 'message clearing: other messages are left alone when a section is opened');
 }
 // --- release URL + Music Index search
 {
@@ -201,7 +230,7 @@ ok($('#pfg-f-guid').value === w.PFGCore.guidForUrl('https://example.com/pub.xml'
 
 // --- hosted new
 let sent = null;
-const host = { createFeed: async (slug, feed) => { sent = { slug, feed }; return { id: 9, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }; }, updateFeed: async () => ({}) };
+const host = { createFeed: async (slug, feed) => { sent = { slug, feed }; return { id: 9, slug, status: 'published', url: cfg.feedBaseUrl + slug + '.xml' }; }, updateFeed: async () => ({}) };
 w.document.querySelector('#c').innerHTML = '';
 w.PFGEditor.render($('#c'), { cfg, model: w.PFGCore.emptyModel({ defaults: cfg.defaults, platformApplied: cfg.platform }), hosted: { id: null }, host, hostingOn: true, importNotes: [], saveDraft() {}, clearDraft() {}, back() {}, needSignIn() {}, h, btn, note, clear });
 ok(/optional/i.test($('.pfg-total').textContent), 'payments empty and optional by default');
@@ -227,7 +256,7 @@ click('Save and publish'); await tick();
 ok(!sent && scrolled2.pop() === 'pfg-f-description' && $$('details.pfg-section').filter(d => d.hasAttribute('open')).map(d => d.querySelector('summary').textContent).join() === 'Basics', 'Save with a missing Description opens Basics and scrolls to the first error');
 set('#pfg-f-description', 'Desc'); await tick(); click('Save and publish'); await tick();
 ok(sent && Array.isArray(sent.feed.support) && sent.feed.support.length === 3 && sent.feed.support.every(x => x.split === 1), 'support splits are sent with the feed');
-ok(sent && sent.slug === 'acme-records' && sent.feed.guid === w.PFGCore.guidForUrl(cfg.feedBaseUrl + 'acme-records/acme-records.xml'), 'hosted create sends slug and derived guid');
+ok(sent && sent.slug === 'acme-records' && sent.feed.feedUrl === cfg.feedBaseUrl + 'acme-records.xml' && sent.feed.guid === w.PFGCore.guidForUrl(cfg.feedBaseUrl + 'acme-records.xml'), 'hosted create sends slug with the flat feed address and its derived guid');
 ok(/Published at/.test($('#c').textContent), 'success message shown');
 
 // --- new hosted feed: prefill from the signed-in Nostr profile
@@ -280,7 +309,7 @@ renderNew(mkHost(profile), { back() { backed++; } }); await tick();
 backBtn().click(); ok(backed === 1 && confirms === 0, 'Back to my feeds: no warning when the form only holds what the profile filled in');
 renderNew(mkHost(profile), { back() { backed++; } }); await tick(); set('#pfg-f-title', 'Mine'); backBtn().click();
 ok(confirms === 1 && backed === 2, 'Back to my feeds: warns when something typed is unsaved');
-renderNew(Object.assign(mkHost(profile), { createFeed: async (slug) => ({ id: 5, slug, status: 'published', url: cfg.feedBaseUrl + slug + '/' + slug + '.xml' }) }), { back() { backed++; } }); await tick();
+renderNew(Object.assign(mkHost(profile), { createFeed: async (slug) => ({ id: 5, slug, status: 'published', url: cfg.feedBaseUrl + slug + '.xml' }) }), { back() { backed++; } }); await tick();
 set('#pfg-f-title', 'Saved Co'); set('#pfg-f-description', 'Saved.'); set('#pfg-f-ownerEmail', 'a@b.co'); await tick(); click('Save and publish'); await tick(); await tick();
 ok(/Published at/.test($('#c').textContent), 'feed saved');
 backBtn().click(); ok(confirms === 1 && backed === 3, 'Back to my feeds: no warning once the changes are saved');

@@ -217,7 +217,7 @@ class PFG_Admin {
 						<th scope="row">Feed folder</th>
 						<td>
 							<code><?php echo esc_html( PFG_Storage::base_url() ); ?></code>
-							<p class="description">Each feed is written to <code>&lt;name&gt;/&lt;name&gt;.xml</code> inside this folder (<code>wp-content/pubfeeds</code>), which is created automatically.</p>
+							<p class="description">Each new feed is written straight into this folder as <code>&lt;name&gt;.xml</code> (<code>wp-content/pubfeeds</code>), which is created automatically. A feed that already has a folder of its own (<code>&lt;name&gt;/&lt;name&gt;.xml</code>, made by an earlier version) keeps it, so its address never changes.</p>
 						</td>
 					</tr>
 					<tr>
