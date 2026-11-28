@@ -46,11 +46,11 @@ ok(code(call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], 
 ok(code(call('POST', '/me/feeds', 'slug=x', $H + ['Content-Type' => 'application/x-www-form-urlencoded'])) === 415, 'form-encoded body rejected (415)');
 foreach (['../etc', 'ab', 'Acme Records', 'x/../y', str_repeat('a', 41)] as $bs) ok(code(call('POST', '/me/feeds', ['slug' => $bs, 'feed' => feed()], $H)) === 422, "bad/reserved slug refused: $bs");
 $r = call('POST', '/me/feeds', ['slug' => 'acme-records', 'feed' => feed()], $H); ok(code($r) === 201, 'create hosted feed -> 201 (' . (is_wp_error($r) ? $r->message : '') . ')');
-$f = data($r); $path = $GLOBALS['__up'] . '/wp-content/pubfeeds/acme-records/acme-records.xml';
-ok(file_exists($path), 'XML written to wp-content/pubfeeds/acme-records/');
+$f = data($r); $path = $GLOBALS['__up'] . '/wp-content/pubfeeds/acme-records.xml';
+ok(file_exists($path) && !is_dir($GLOBALS['__up'] . '/wp-content/pubfeeds/acme-records'), 'XML written straight into wp-content/pubfeeds/');
 $xml = file_get_contents($path);
 ok(strpos($xml, '<podcast:medium>publisher</podcast:medium>') !== false && strpos($xml, 'phafe@phafe.com') !== false && strpos($xml, 'heycitizen@getalby.com') !== false && strpos($xml, 'podcastindex@getalby.com') !== false && strpos($xml, 'split="97"') !== false && substr_count($xml, 'split="1"') === 3, 'file is a publisher feed with the user (97) and three support (1 each) recipients');
-ok(strpos($xml, 'https://phafe.com/wp-content/pubfeeds/acme-records/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . PFG_Feed::guid_for_url('https://phafe.com/wp-content/pubfeeds/acme-records/acme-records.xml')) !== false, 'self URL and derived GUID in file');
+ok(strpos($xml, 'https://phafe.com/wp-content/pubfeeds/acme-records.xml') !== false && strpos($xml, '<podcast:guid>' . PFG_Feed::guid_for_url('https://phafe.com/wp-content/pubfeeds/acme-records.xml') . '</podcast:guid>') !== false, 'self URL and derived GUID in file');
 $d = new DOMDocument(); ok($d->loadXML($xml), 'published XML is well-formed');
 // the new feed address is only set by the Move action: an ordinary save ignores it
 $nfu = feed(); $nfu['newFeedUrl'] = 'https://new.example.com/acme.xml';
@@ -90,9 +90,9 @@ ok(strpos($px, '<podcast:person href="https://phafe.com/mattfinlay" group="admin
 
 ok(PFG_Storage::available_slug('acme-records') === 'acme-records1', 'a name already used gets the next free one (acme-records1) instead of an error');
 $r = call('POST', '/me/feeds', ['slug' => 'bad-split', 'feed' => feed(['value' => ['recipients' => [['split' => 50]]]])], $H); ok(code($r) === 422 && !empty($r->data['errors']), 'splits not totalling 97 -> 422 with errors');
-ok(!file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/bad-split'), 'nothing written for an invalid feed');
+ok(!file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/bad-split.xml') && !file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/bad-split'), 'nothing written for an invalid feed');
 $r = call('POST', '/me/feeds', ['slug' => 'inj', 'feed' => feed(['title' => "<script>x</script> & \"q\"", 'releases' => [['feedGuid' => '07adf84f-c1fa-47a7-a121-0fb544e859bd', 'feedUrl' => 'https://x.example/a.xml', 'rel' => ['label'], 'attrs' => ['onload' => 'evil']]]])], $H);
-$ix = @file_get_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/inj/inj.xml'); $dd = new DOMDocument(); ok($ix && $dd->loadXML($ix) && strpos($ix, '<script>') === false && strpos($ix, 'onload') === false, 'markup in title escaped and unknown attributes dropped in hosted output');
+$ix = @file_get_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/inj.xml'); $dd = new DOMDocument(); ok($ix && $dd->loadXML($ix) && strpos($ix, '<script>') === false && strpos($ix, 'onload') === false, 'markup in title escaped and unknown attributes dropped in hosted output');
 ok(code(call('POST', '/me/feeds', ['slug' => 'third-one', 'feed' => feed()], $H)) === 201, 'third feed allowed');
 ok(code(call('POST', '/me/feeds', ['slug' => 'fourth-one', 'feed' => feed()], $H)) === 403, 'fourth feed refused (limit 3)');
 
@@ -142,6 +142,28 @@ ok(!file_exists($path) || strpos(file_get_contents($path), 'podcast:medium') ===
 ok(PFG_Storage::available_slug('acme-records') === 'acme-records1' && !PFG_Storage::slug_is_free('acme-records'), 'deleted slug cannot be re-registered (the next free name is offered instead)');
 ok(code(call('GET', "/me/feeds/$id")) === 404, 'deleted feed no longer readable');
 
+// ---- new feeds live straight in pubfeeds/; a feed that already has a folder of its own keeps it (never moved)
+$fr = call('POST', '/me/feeds', ['slug' => 'flat-test', 'feed' => feed()], $H);
+$fid = (int) data($fr)['id'];
+$ffile = $GLOBALS['__up'] . '/wp-content/pubfeeds/flat-test.xml';
+$fdir  = $GLOBALS['__up'] . '/wp-content/pubfeeds/flat-test';
+$furl  = 'https://phafe.com/wp-content/pubfeeds/flat-test.xml';
+ok(code($fr) === 201 && file_exists($ffile) && !is_dir($fdir), 'a new feed is written straight into wp-content/pubfeeds/ (no folder of its own)');
+ok(PFG_Storage::feed_url('flat-test') === $furl && data($fr)['url'] === $furl, 'its address is .../pubfeeds/flat-test.xml');
+$fxml = file_get_contents($ffile);
+ok(strpos($fxml, $furl) !== false && strpos($fxml, '<podcast:guid>' . PFG_Feed::guid_for_url($furl) . '</podcast:guid>') !== false, 'the file carries the flat address and the GUID derived from it');
+// what a feed made before this version looks like: a folder of its own, and the GUID of that address
+$folderUrl = 'https://phafe.com/wp-content/pubfeeds/flat-test/flat-test.xml';
+mkdir($fdir, 0755, true); rename($ffile, $fdir . '/flat-test.xml');
+$wpdb->update('wp_pfg_feeds', array('guid' => PFG_Feed::guid_for_url($folderUrl)), array('id' => $fid));
+ok(PFG_Storage::feed_url('flat-test') === $folderUrl, 'a feed that already has its own folder keeps that address');
+$ru2 = call('PUT', '/me/feeds/' . $fid, ['feed' => feed(['title' => 'Still Here'])], $H);
+ok(code($ru2) === 200 && data($ru2)['url'] === $folderUrl && file_exists($fdir . '/flat-test.xml') && !file_exists($ffile), 'saving it keeps its address and rewrites its file in its own folder, not in pubfeeds/');
+ok(strpos(file_get_contents($fdir . '/flat-test.xml'), '<title>Still Here</title>') !== false, 'the folder file was updated');
+$fdel = "$B/me/feeds/$fid";
+ok(code(call('DELETE', "/me/feeds/$fid", null, $H)) === 428, 'delete of a feed in its own folder still needs a fresh signature');
+ok(code(call('DELETE', "/me/feeds/$fid", null, $H + ['X-PFG-Auth' => base64_encode(json_encode(sign($skA, $fdel, 'DELETE', nonce())))])) === 200 && !file_exists($fdir . '/flat-test.xml'), 'deleted: its file is gone');
+
 
 // ---- existing feeds are never moved
 $GLOBALS['__opts']['pfg_db_version'] = '1';
@@ -152,10 +174,10 @@ PFG_Storage::record_legacy_feeds(); // what the v1 to v2 upgrade runs
 $lu = PFG_Storage::feed_url('mig-feed');
 ok($lu === 'https://phafe.com/wp-content/uploads/rssfeed/publishers/mig-feed/mig-feed.xml', 'a feed that already existed keeps its uploads URL after the upgrade: ' . $lu);
 ok(strpos(PFG_Storage::feed_path('mig-feed')['file'], '/rssfeed/publishers/mig-feed/') !== false, 'and its uploads file path');
-ok(PFG_Storage::feed_url('brand-new') === 'https://phafe.com/wp-content/pubfeeds/brand-new/brand-new.xml', 'a feed created after the upgrade uses /wp-content/pubfeeds/');
-@unlink($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml');
+ok(PFG_Storage::feed_url('brand-new') === 'https://phafe.com/wp-content/pubfeeds/brand-new.xml', 'a feed created after the upgrade uses /wp-content/pubfeeds/ with no folder of its own');
+@unlink($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed.xml');
 $mgf = $wpdb->get_row("SELECT * FROM wp_pfg_feeds WHERE slug='mig-feed'", ARRAY_A);
-ok(!is_wp_error(PFG_Storage::publish($mgf, PFG_Storage::decode_model($mgf))) && file_exists($GLOBALS['__up'] . '/rssfeed/publishers/mig-feed/mig-feed.xml') && !file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml'), 'editing an existing feed rewrites it in place, not in pubfeeds');
+ok(!is_wp_error(PFG_Storage::publish($mgf, PFG_Storage::decode_model($mgf))) && file_exists($GLOBALS['__up'] . '/rssfeed/publishers/mig-feed/mig-feed.xml') && !file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed.xml') && !file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/mig-feed/mig-feed.xml'), 'editing an existing feed rewrites it in place, not in pubfeeds');
 $wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='mig-feed'");
 
 // ---- adopting a feed that already exists on the server
@@ -182,7 +204,7 @@ $nof = feed(); $nof['value']['recipients'] = [];
 $wpdb->query("UPDATE wp_pfg_feeds SET status='deleted' WHERE slug='inj'");
 $r2 = call('POST', '/me/feeds', ['slug' => 'no-pay', 'feed' => $nof], $H);
 ok(code($r2) === 201, 'feed with no payment recipients is accepted (' . (is_wp_error($r2) ? $r2->message : '') . ')');
-$npx = @file_get_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/no-pay/no-pay.xml'); $dn = new DOMDocument();
+$npx = @file_get_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/no-pay.xml'); $dn = new DOMDocument();
 ok($npx && $dn->loadXML($npx) && strpos($npx, 'podcast:value') === false, 'no-payments feed has no value block (and no platform recipient)');
 $half = feed(); $half['value']['recipients'] = [['name' => 'A', 'address' => 'a@x.com', 'split' => 50, 'type' => 'lnaddress']];
 ok(code(call('PUT', '/me/feeds/' . data($r2)['id'], ['feed' => $half], $H)) === 422, 'if recipients are given, totals are still enforced');
@@ -326,7 +348,7 @@ $HC = ['X-PFG-CSRF' => data(call('GET', '/me'))['csrf']];
 ok(code(call('POST', '/me/feeds', ['slug' => 'now-paid', 'feed' => feed()], $HC)) === 201, 'payments unlocked after the upgrade');
 // feed names: reserved or used names are bumped to the next free one, checking the real folder as well as the list
 $rs = call('POST', '/me/feeds', ['slug' => 'admin', 'feed' => feed()], $HC);
-ok(code($rs) === 201 && data($rs)['slug'] === 'admin1' && file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/admin1/admin1.xml'), 'reserved name "admin" is silently saved as admin1 (the response carries the name used)');
+ok(code($rs) === 201 && data($rs)['slug'] === 'admin1' && file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/admin1.xml'), 'reserved name "admin" is silently saved as admin1 (the response carries the name used)');
 ok(PFG_Storage::available_slug('test') === 'test1', 'reserved name test becomes test1');
 mkdir($GLOBALS['__up'] . '/wp-content/pubfeeds/diskonly', 0755, true); mkdir($GLOBALS['__up'] . '/wp-content/pubfeeds/diskonly1', 0755, true); file_put_contents($GLOBALS['__up'] . '/wp-content/pubfeeds/diskonly2.xml', 'x');
 ok(PFG_Storage::slug_is_free('diskonly') === false && PFG_Storage::available_slug('diskonly') === 'diskonly3', 'a folder or file that exists on disk (but not in the database) is skipped: diskonly, diskonly1, diskonly2 taken, diskonly3 used');
@@ -348,7 +370,7 @@ ok(is_wp_error(PFG_Storage::move_feed($mvId, $npubZ)), 'move: a nostr.json that 
 $GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 200, 'body' => json_encode(['names' => ['_' => $pubZ]])] : ['code' => 404, 'body' => ''];
 $GLOBALS['__tr'] = []; $mv = PFG_Storage::move_feed($mvId, $npubZ);
 ok(!is_wp_error($mv) && $ownerOf($mvId) === $pubZ && strpos($mv['how'], 'nostr.json') !== false, 'move: NIP-05 listing on the feed\'s domain proves control; the feed moves');
-ok(file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/no-money/no-money.xml') && (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_feeds WHERE id = $mvId") === 1, 'move: file and feed record unchanged (same address, same GUID)');
+ok(file_exists($GLOBALS['__up'] . '/wp-content/pubfeeds/no-money.xml') && (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_pfg_feeds WHERE id = $mvId") === 1, 'move: file and feed record unchanged (same address, same GUID)');
 // the page itself shows the npub (second proof)
 $GLOBALS['__http'] = fn($u, $a) => strpos($u, 'nostr.json') ? ['code' => 404, 'body' => ''] : ['code' => 200, 'body' => '<a href="https://njump.me/' . PFG_Nostr::npub_encode($pubN) . '">me</a>'];
 $mv2 = PFG_Storage::move_feed($mvId, $pubN); ok(!is_wp_error($mv2) && $ownerOf($mvId) === $pubN, 'move: npub shown on the website also proves control (moved back, key given as hex)'. ' ' . (is_wp_error($mv2) ? $mv2->get_error_message() : ''));
@@ -360,7 +382,7 @@ $accZ = PFG_Storage::get_account_by_pubkey($pubZ); PFG_Storage::set_account_stat
 ok(is_wp_error(PFG_Storage::move_feed((int) $f['id'], $npubZ, true)), 'move: a blocked account cannot be given a feed'); PFG_Storage::set_account_status((int) $accZ['id'], 'active');
 $GLOBALS['__http'] = null; $GLOBALS['__httplog'] = [];
 // ---- suspend keeps the file (recoverable); delete is final
-$sf = PFG_Storage::get_feed($mvId); $pubFile = $GLOBALS['__up'] . '/wp-content/pubfeeds/' . $sf['slug'] . '/' . $sf['slug'] . '.xml'; $before = file_get_contents($pubFile);
+$sf = PFG_Storage::get_feed($mvId); $pubFile = $GLOBALS['__up'] . '/wp-content/pubfeeds/' . $sf['slug'] . '.xml'; $before = file_get_contents($pubFile);
 PFG_Storage::suspend_feed($sf);
 $qd = $GLOBALS['__up'] . '/wp-content/pubfeeds-suspended'; $qfiles = glob($qd . '/' . $sf['slug'] . '-*.xml');
 ok(!file_exists($pubFile) && PFG_Storage::get_feed($mvId)['status'] === 'suspended', 'suspend: the public file is gone and the feed is suspended');

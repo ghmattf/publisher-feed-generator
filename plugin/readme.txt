@@ -4,7 +4,7 @@ Tags: podcasting 2.0, rss, publisher feed, nostr, music
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.9.2
+Stable tag: 0.9.3
 License: GPLv2 or later
 
 A page where labels, studios, engineers, hosts and artists build Podcasting 2.0 publisher feeds (podcast:medium "publisher"). Export the XML to host yourself, or sign in with a Nostr remote signer and have it hosted on your site.
@@ -23,7 +23,7 @@ Anonymous mode (no login, nothing stored on your server):
 
 Hosted mode (optional):
 * Sign in with a Nostr browser extension (NIP-07, for example Alby or nos2x) or a remote signer (NIP-46: bunker:// link or QR code). Your private key never reaches the server.
-* New feeds are written to wp-content/pubfeeds/{name}/{name}.xml and can be edited later. Feeds made by earlier versions stay in their old uploads folder and are never moved.
+* New feeds are written to wp-content/pubfeeds/{name}.xml and can be edited later. Feeds made by earlier versions keep their folder (wp-content/pubfeeds/{name}/{name}.xml) or their old uploads folder, and are never moved.
 * A new feed is prefilled from your Nostr profile (name, description, website, image, Lightning address). Only empty fields are filled and you can change everything.
 * Changing payment recipients or deleting a feed asks the signer for a fresh signature (NIP-98).
 * Hosted accounts are stored in their own table, keyed by public key. They are not WordPress users.

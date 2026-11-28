@@ -38,7 +38,9 @@
     var slugAuto = !!(hosted && !hosted.id); // the feed name follows the title until the user types their own
 
     /* ---------- model <-> options ---------- */
-    function hostedUrl() { return cfg.feedBaseUrl + slug + '/' + slug + '.xml'; }
+    // A new feed lives straight in the feed folder: wp-content/pubfeeds/{name}.xml. A feed that already has a
+    // folder of its own keeps it (its address is registered already) and the server sends that address as hosted.url.
+    function hostedUrl() { return cfg.feedBaseUrl + slug + '.xml'; }
     function syncHostedIdentity() {
       if (!hosted) return;
       if (hosted.id) { m.feedUrl = hosted.url; return; }
@@ -126,7 +128,7 @@
       var all = [sum].concat(kids);
       if (hasNext) all.push(h('div', { class: 'pfg-next' }, [btn('Next', 'pfg-btn-small pfg-btn-primary', function () {
         var n = sectionList[idx + 1];
-        if (n && mayLeave(sectionList[idx])) { openSection(n); try { n.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } }
+        if (n && mayLeave(sectionList[idx])) { clearFixBanner(); openSection(n); try { n.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ } }
       })]));
       var d = h('details', { class: 'pfg-section' }, all);
       d._gate = gate || null;
@@ -138,6 +140,7 @@
           if (lastOpen && lastOpen !== d && !mayLeave(lastOpen)) { d.removeAttribute('open'); lastOpen.setAttribute('open', ''); return; } // the section being left is not complete
           sectionList.forEach(function (x) { if (x !== d) x.removeAttribute('open'); });
           lastOpen = d;
+          clearFixBanner(); // this section opened, so the problems belong to the one before it
           try { d.scrollIntoView({ block: 'start' }); } catch (e) { /* not essential */ }
         }, 0);
       });
@@ -152,6 +155,12 @@
     // The same messages are repeated just above the buttons, so they are seen without scrolling back up.
     var bannerBottom = h('div', { 'aria-live': 'polite' });
     var summaryErrBottom = h('div');
+    var FIX_MSG = 'Please fix the highlighted problems first.';
+    // That message belongs to the section it was raised in: opening another section means the reader has moved on
+    // from it, so it goes. Banners set by anything else (a save, a download, a refused name) are left alone.
+    function clearFixBanner() {
+      [banner, bannerBottom].forEach(function (box) { if (box.textContent.trim() === FIX_MSG) clear(box); });
+    }
     var lintEl = h('div');
     var totalEl = h('div', { class: 'pfg-total' });
     var recipsEl = h('div');
@@ -616,7 +625,7 @@
     }
     function download() {
       setBanner();
-      var r = build(); if (!r) { setBanner('bad', 'Please fix the highlighted problems first.'); return; }
+      var r = build(); if (!r) { setBanner('bad', FIX_MSG); return; }
       var blob = new Blob([r.xml], { type: 'application/rss+xml' });
       var a = h('a', { href: URL.createObjectURL(blob), download: fileName() });
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -653,8 +662,13 @@
     function save() {
       if (saving) return;
       var r = clean();
-      if (hosted && !hosted.id && !SLUG_RE.test(slug)) { slugMsg = 'Choose a valid feed name first.'; showErrors([]); revealSlug(); return; }
-      if (r.errors.length) { showErrors(r.errors); setBanner('bad', 'Please fix the highlighted problems first.'); revealError(r.errors); return; }
+      // "Your name / Business name" is validated first: the feed name is made from it, so its problems come before
+      // the feed name (web address) is looked at.
+      var slugBad = hosted && !hosted.id && !SLUG_RE.test(slug);
+      // While the feed name is not usable yet, errors about its own address are noise (refresh() hides them too).
+      var errs = slugBad ? r.errors.filter(function (e) { return e.path !== 'guid' && e.path !== 'feedUrl'; }) : r.errors;
+      if (errs.length) { showErrors(errs); setBanner('bad', FIX_MSG); revealError(errs); return; }
+      if (slugBad) { slugMsg = 'Choose a valid feed name first.'; showErrors([]); revealSlug(); return; }
       if (hosted && hosted.dropped && hosted.dropped.length && !hosted.dropOk) { confirmDropped(function () { hosted.dropOk = true; save(); }); return; }
       saving = true; saveBtn.disabled = true; dirty = false; setBanner('', 'Saving… your signer may ask you to confirm.'); // edits made while saving set it again
       var p = hosted.id ? ctx.host.updateFeed(hosted.id, r.model) : ctx.host.createFeed(slug, r.model);
